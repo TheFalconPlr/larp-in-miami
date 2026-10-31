@@ -31,7 +31,7 @@ local TEXT = {
 	BuyMax = "Max",
 	BuyMaxCount = "Max ×%d",
 	MaxLevel = "MAX",
-	PerClick = " LP per click",
+	PerClick = " LP / click",
 	Capacity = " LP",
 	PerClickChip = "+%s / click",
 	HintFirstClick = "Click anywhere to earn LP!",
@@ -150,7 +150,7 @@ local function makeCard(parent, order, opts)
 
 	c.effect = Kit.text(card, {
 		Position = UDim2.fromOffset(158, 98),
-		Size = UDim2.fromOffset(250, 32),
+		Size = UDim2.fromOffset(184, 32),
 		Text = "",
 		TextColor3 = Theme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Left,
