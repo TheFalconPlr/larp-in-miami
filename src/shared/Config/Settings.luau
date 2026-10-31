@@ -29,6 +29,11 @@ local Settings = {
 	},
 	-- Jak często serwer wysyła graczowi jego stan (s).
 	SyncInterval = 0.1,
+	Ui = {
+		-- Arkusz ikon (assets/icons/larp-icons.png) wgrany do Roblox, np. "rbxassetid://1234567890".
+		-- Puste = zamiast ikon są emoji.
+		IconSheet = "",
+	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.
 		AllowInStudio = true,

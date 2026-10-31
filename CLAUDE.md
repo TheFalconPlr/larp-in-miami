@@ -14,4 +14,5 @@ Gra Roblox (clicker/simulator) dla Denyy (konto Roblox TheFalconPlr, grupa „La
 - Moduły w `Shared/Logic` to czysta logika bez Roblox API (testowalna w lupa). Serwer jest jedynym źródłem prawdy: klient tylko prosi przez `Net` i pokazuje stan z `Sync`.
 - Nowe pola zapisu dodawaj w `Data/Template` (Reconcile je uzupełni). Zmiana znaczenia pola wymaga migracji w `DataService` (`MIGRATIONS`, podbij `Version`).
 - Zaokrąglenia jak w arkuszu: połówki w górę (`math.floor(x + 0.5 + 1e-9)`), nie bankierskie.
+- UI: wygląd z kanwy „Larp in Miami — UI” (Design artifact). Budujemy go w kodzie z klocków `src/client/Ui/Kit.luau` (napisy z obrysem, przyciski z krawędzią, kafelki, pigułki, okna), kolory w `Ui/Theme.luau`, rozmiary w pikselach bazowych 1280×720 (UIScale w Hud). Ikony z arkusza `assets/icons/larp-icons.png` (`tools/build_icons.py`, kolejność = `Ui/Icons.luau`); ID wgranego arkusza w `Settings.Ui.IconSheet`, bez niego emoji.
 - Nowy kod trafia na gałąź `main`. Użytkownik pobiera go przez `git pull`, a `rojo serve` przenosi go do Studio.

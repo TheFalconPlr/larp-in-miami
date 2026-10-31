@@ -16,8 +16,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 | --- | --- | --- |
 | `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
 | `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, LoopService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
-| `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `economy/` (model i symulacja) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony z arkusza), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
+| `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
 | `licenses` | — | licencje bibliotek (ProfileStore: Apache 2.0) |
 
 ## Instalacja (raz, Windows)
@@ -87,6 +88,20 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/reset` | czyści zapis, jak u nowego gracza |
 
 Liczby można pisać z sufiksami: `1.5K`, `2M`, `3T`, `1e12`.
+
+## UI i ikony
+
+Wygląd UI jest zaprojektowany na kanwie „Larp in Miami — UI” (styl: jasne kolory Miami, grube obrysy, przyciski z wypukłą krawędzią). Kod UI buduje go z klocków w `src/client/Ui/Kit.luau`, a kolory i rozmiary są w `src/client/Ui/Theme.luau`.
+
+Ikony są w jednym obrazku, `assets/icons/larp-icons.png` (16 ikon). Dopóki nie jest wgrany do Roblox, gra pokazuje zamiast ikon emoji. Żeby go wgrać:
+
+1. W Studio otwórz **Asset Manager** (zakładka Home albo menu Window).
+2. Po lewej wybierz inwentarz gry (**Project**) albo grupy, bo gra należy do grupy.
+3. Kliknij przycisk importu i wybierz plik `larp-icons.png` z folderu projektu (`assets\icons`).
+4. Gdy obrazek pojawi się na liście (po krótkiej moderacji), kliknij go prawym przyciskiem → **Copy Asset ID**.
+5. Wyślij to ID Claude. Trafi do `src/shared/Config/Settings.luau` (`Ui.IconSheet`).
+
+Nowa ikona: dopisz ją w `tools/build_icons.py`, uruchom go (wymaga `pip install playwright`) i wgraj arkusz jeszcze raz.
 
 ## Liczby z arkusza
 
