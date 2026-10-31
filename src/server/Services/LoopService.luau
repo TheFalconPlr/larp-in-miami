@@ -106,20 +106,30 @@ local function flush(player, s)
 end
 
 ----------------------------------------------------------------- Klik
-local function doClick(player, s)
+-- count kliknięć naraz (paczka od klienta albo Auto-Click). Limit serwera decyduje, ile się liczy.
+local function doClicks(player, s, count)
 	local data = DataService.get(player)
 	if data == nil then
 		return
 	end
-	if s.limiter:take(os.clock(), 1) < 1 then
+	local granted = s.limiter:take(os.clock(), count)
+	if granted < 1 then
 		return
 	end
-	local added, sold = Loop.click(data, contextFor(player))
-	if added > 0 or sold > 0 then
-		s.dirty = true
+	local ctx = contextFor(player)
+	local soldTotal = 0
+	for _ = 1, granted do
+		local added, sold = Loop.click(data, ctx)
+		if added > 0 or sold > 0 then
+			s.dirty = true
+		end
+		soldTotal = soldTotal + sold
+		if added <= 0 and sold <= 0 then
+			break -- pełny Bag bez Auto-Sell: kolejne kliknięcia też nic nie dadzą
+		end
 	end
-	if sold > 0 then
-		notify(player, { Kind = "Sold", Cash = sold, Auto = true })
+	if soldTotal > 0 then
+		notify(player, { Kind = "Sold", Cash = soldTotal, Auto = true })
 	end
 end
 
@@ -322,9 +332,10 @@ local function onHeartbeat(dt)
 			end
 			if GamepassService.owns(player, "AutoClick") and data.Settings.AutoClick ~= false then
 				s.autoTimer = s.autoTimer + dt * autoRate
-				while s.autoTimer >= 1 do
-					s.autoTimer = s.autoTimer - 1
-					doClick(player, s)
+				if s.autoTimer >= 1 then
+					local whole = math.floor(s.autoTimer)
+					s.autoTimer = s.autoTimer - whole
+					doClicks(player, s, whole)
 				end
 			else
 				s.autoTimer = 0
@@ -361,10 +372,17 @@ function LoopService.start()
 		LoopService.markDirty(player)
 	end)
 
-	Net.event("Click").OnServerEvent:Connect(function(player)
+	Net.event("Click").OnServerEvent:Connect(function(player, count)
 		local s = sessions[player]
-		if s ~= nil then
-			doClick(player, s)
+		if s == nil then
+			return
+		end
+		if type(count) ~= "number" or count ~= count then
+			count = 1
+		end
+		count = math.min(math.floor(count), Settings.Click.MaxBatch)
+		if count >= 1 then
+			doClicks(player, s, count)
 		end
 	end)
 	Net.event("TeleportToSell").OnServerEvent:Connect(teleportToSell)

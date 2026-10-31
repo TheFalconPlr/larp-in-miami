@@ -11,9 +11,13 @@ local Settings = {
 	},
 	Click = {
 		-- Limit serwera: najwyżej tyle kliknięć na sekundę (ręczne i Auto-Click razem).
-		MaxPerSecond = 10,
+		MaxPerSecond = 100,
 		-- Ile kliknięć może przyjść naraz, np. po chwilowym lagu.
-		Burst = 10,
+		Burst = 100,
+		-- Klient wysyła kliknięcia paczkami co tyle sekund (mniej zdarzeń w sieci).
+		BatchInterval = 0.1,
+		-- Najwięcej kliknięć w jednej paczce.
+		MaxBatch = 100,
 	},
 	Sell = {
 		-- Pole Sell to część (Part) z tym tagiem albo o tej nazwie. Bez niej serwer stawia tymczasowe pole.

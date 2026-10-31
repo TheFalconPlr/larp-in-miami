@@ -3,6 +3,7 @@
 -- żeby nie pokazywać kliknięć, których serwer nie przyjmie.
 
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -32,6 +33,19 @@ function ClickInput.start(hud)
 		limiter.rate = math.max(1, rate)
 	end)
 
+	-- Kliknięcia zbieramy i wysyłamy paczką co Settings.Click.BatchInterval sekund.
+	local pending = 0
+	local sinceFlush = 0
+	RunService.Heartbeat:Connect(function(dt)
+		sinceFlush = sinceFlush + dt
+		if pending > 0 and sinceFlush >= Settings.Click.BatchInterval then
+			local count = math.min(pending, Settings.Click.MaxBatch)
+			pending = pending - count
+			sinceFlush = 0
+			clickEvent:FireServer(count)
+		end
+	end)
+
 	local function click(screenPosition)
 		local view = State.view
 		if view == nil then
@@ -40,7 +54,7 @@ function ClickInput.start(hud)
 		if limiter:take(os.clock(), 1) < 1 then
 			return
 		end
-		clickEvent:FireServer()
+		pending = pending + 1
 		hud.clickFeedback(screenPosition, view)
 	end
 
