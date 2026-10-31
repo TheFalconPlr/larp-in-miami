@@ -14,10 +14,11 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (wszystkie liczby z arkusza), `Formulas` (wzory), `Format` (zapis 1.5K, 937.5Qa), `Tests/ConfigSpec` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (test liczb, tylko w Studio) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, LoopService, AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `economy/` (model i symulacja) |
+| `licenses` | — | licencje bibliotek (ProfileStore: Apache 2.0) |
 
 ## Instalacja (raz, Windows)
 
@@ -41,20 +42,8 @@ Wszystkie komendy wpisujesz w PowerShell.
    rojo plugin install
    ```
    Jeśli Rokit zapyta, czy ufasz narzędziu, odpowiedz `y`. Po instalacji pluginu uruchom Studio ponownie.
+   Jeśli `rojo` zgłasza „Aftman error”, masz starsze narzędzie Aftman: zmień nazwę folderu `$HOME\.aftman` (np. na `.aftman-stary`) i otwórz PowerShell od nowa.
 5. Opcjonalnie: VS Code z rozszerzeniami **Rojo** i **Luau Language Server**, jeśli chcesz zaglądać w kod.
-
-## Pierwsze uruchomienie (test Etapu 1)
-
-1. Otwórz w Roblox Studio grę grupy „Larping Studio$”. Nową grę tworzysz przez File → Publish to Roblox, a jako twórcę wybierasz grupę.
-2. W PowerShell w folderze projektu wpisz `rojo serve` i zostaw okno otwarte.
-3. W Studio: zakładka **Plugins → Rojo → Connect**.
-4. Kliknij **Play** i otwórz okno **Output** (View → Output). Powinno się tam pojawić:
-   ```
-   [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
-   ConfigCheck: OK (64 testów zgodnych z arkuszem)
-   [Larp in Miami] Klient gotowy: TwojNick, ekonomia v2 (arkusz z 29.10.2026)
-   ```
-   Jeśli widzisz te trzy linie, Etap 1 jest skończony.
 
 ## Codzienna praca
 
@@ -62,13 +51,50 @@ Wszystkie komendy wpisujesz w PowerShell.
 2. `rojo serve` i w Studio Rojo → Connect.
 3. Budujesz i testujesz w Studio, a grę zapisujesz normalnie (Ctrl+S albo Publish).
 
+Po **Play** w oknie Output powinny być m.in. te linie:
+```
+[Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
+ConfigCheck: OK (64 testów zgodnych z arkuszem)
+LoopCheck: OK (39 testów pętli: klik, Bag, Sell, ulepszenia)
+[Dane] TwojNick: zapis wczytany (DataStore: Access)
+```
+
+## Etap 2: rdzeń pętli
+
+Co działa: klikanie (myszą albo krótkim dotknięciem ekranu), LP trafiają do Bag, pole Sell zamienia LP na L$, przycisk SELL przenosi na pole Sell, ulepszenia Click Multiplier i Bag (Kup 1 i Kup max), zapis postępu, leaderstats (L$ i Rebirthy), podpowiedzi dla nowego gracza i tryb testowy.
+
+**Pole Sell.** Jeśli na mapie nie ma pola Sell, serwer stawia tymczasowe zielone pole obok spawnu. Gdy zbudujesz prawdziwe, nazwij część (Part) podłogi pola `SellPad` albo dodaj jej tag `SellPad` (Properties → Tags). Wtedy tymczasowe pole przestanie się pojawiać.
+
+**Zapis danych.** Studio z włączonym „Enable Studio Access to API Services” zapisuje do prawdziwego DataStore tej gry. Dopóki gra nie jest publiczna, to nic złego, a test „wyjdź i wróć” działa w Studio: Stop, potem znowu Play. Jeśli w Output jest `DataStore: NoAccess`, włącz ten przełącznik (File → Experience Settings → Security).
+
+**Ustawienia** (limit kliknięć, nazwa DataStore, admini) są w `src/shared/Config/Settings.luau`.
+
+### Tryb testowy (komendy na czacie)
+
+Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lewym górnym rogu widać wtedy „TEST MODE”. Odpowiedzi pojawiają się na czacie.
+
+| Komenda | Co robi |
+| --- | --- |
+| `/cmds` | lista komend |
+| `/cash 1.5M` | dodaje L$ (`/cash -100` odejmuje) |
+| `/lp 500` | dodaje LP do Bag, także ponad pojemność |
+| `/click 20` | ustawia poziom Click Multipliera (0–150) |
+| `/bag 10` | ustawia poziom Bag (0–35) |
+| `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
+| `/aura 500` | ustawia Aurę |
+| `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`) |
+| `/stats` | pokazuje zapis |
+| `/reset` | czyści zapis, jak u nowego gracza |
+
+Liczby można pisać z sufiksami: `1.5K`, `2M`, `3T`, `1e12`.
+
 ## Liczby z arkusza
 
 Wszystkie ceny, szanse i mnożniki są w `src/shared/Config/Economy.luau`. Tego pliku nie edytuj ręcznie, bo powstaje z modelu ekonomii:
 
 ```powershell
 python tools/gen_config.py   # tworzy Economy.luau od nowa
-python tools/test_luau.py    # sprawdza wzory i liczby (wymaga: pip install lupa)
+python tools/test_luau.py    # sprawdza wzory, pętlę i liczby (wymaga: pip install lupa)
 ```
 
 Jeśli zmienisz coś w arkuszu, wyślij go Claude, a Config zostanie wygenerowany od nowa.

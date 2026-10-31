@@ -46,6 +46,47 @@ function Format.number(n)
 	return trimZeros(string.format("%.2f", rounded)) .. SUFFIXES[tier]
 end
 
+-- Małe liczby z jednym miejscem po przecinku (1.5 LP za klik), większe jak number().
+function Format.small(n)
+	if n < 100 and n ~= math.floor(n) then
+		return trimZeros(string.format("%.1f", n))
+	end
+	return Format.number(n)
+end
+
+local SUFFIX_VALUE = {}
+for i, s in ipairs(SUFFIXES) do
+	SUFFIX_VALUE[string.lower(s)] = 10 ^ (3 * i)
+end
+
+-- Odwrotność number() dla komend testowych: "1.5M" -> 1500000, "3t" -> 3e12, "2e9", "-100".
+-- Zła liczba -> nil.
+function Format.parse(text)
+	if type(text) ~= "string" then
+		return nil
+	end
+	text = string.gsub(text, "[%s,_]", "")
+	local num, suffix = string.match(text, "^(%-?[%d%.]+[eE]?[%+%-]?%d*)(%a*)$")
+	if num == nil then
+		return nil
+	end
+	local n = tonumber(num)
+	if n == nil then
+		return nil
+	end
+	if suffix ~= "" then
+		local mult = SUFFIX_VALUE[string.lower(suffix)]
+		if mult == nil then
+			return nil
+		end
+		n = n * mult
+	end
+	if n ~= n or n == math.huge or n == -math.huge then
+		return nil
+	end
+	return n
+end
+
 -- Czas: 45s, 3m 05s, 1h 05m.
 function Format.duration(seconds)
 	seconds = math.max(0, math.floor(seconds + 0.5))

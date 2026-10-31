@@ -1,9 +1,10 @@
 """Test modułów Luau poza Roblox (Lua 5.1 przez bibliotekę lupa): pip install lupa
 
 Sprawdza:
-  1. czy wszystkie pliki .luau się kompilują (kod piszemy w podzbiorze zgodnym z Lua 5.1, więc to też poprawny Luau),
-  2. ConfigSpec (te same testy, które w Studio uruchamia ConfigCheck),
-  3. zgodność wzorów z modelem ekonomii w Pythonie (koszty Aury, LP za klik, szanse, ceny),
+  1. czy wszystkie pliki .luau się kompilują (nasz kod piszemy w podzbiorze zgodnym z Lua 5.1,
+     więc to też poprawny Luau; biblioteki z folderów Vendor pomijamy, bo używają pełnego Luau),
+  2. ConfigSpec i LoopSpec (te same testy, które w Studio uruchamia ConfigCheck),
+  3. zgodność wzorów i pętli z modelem ekonomii w Pythonie (koszty, LP za klik, Bag, szanse, ceny),
   4. losowanie ze szczęściem (Monte Carlo) względem wzoru na szanse.
 Uruchom z głównego folderu projektu:  python tools/test_luau.py
 """
@@ -17,7 +18,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..'))
 sys.path.insert(0, os.path.join(HERE, 'economy'))
 
-import economy2 as v2            # noqa: E402
+import economy as E                # noqa: E402
+import economy2 as v2              # noqa: E402
 from final_cfg2 import final_cfg2  # noqa: E402
 
 SRC = os.path.join(ROOT, 'src')
@@ -34,6 +36,8 @@ def ok(cond, msg):
 # ---------------------------------------------------------------- 1. kompilacja
 files = []
 for dp, dn, fn in os.walk(SRC):
+    if 'Vendor' in os.path.relpath(dp, SRC).split(os.sep):
+        continue
     for f in fn:
         if f.endswith('.luau'):
             files.append(os.path.join(dp, f))
@@ -43,6 +47,7 @@ for p in sorted(files):
         err = compile_check(fh.read(), os.path.relpath(p, ROOT))
     ok(err is None, 'kompilacja %s: %s' % (os.path.relpath(p, ROOT), err))
 print('kompilacja: %d plików' % len(files))
+
 
 # ---------------------------------------------------------------- 2. moduły z atrapą script/require
 def read_src(path):
@@ -54,8 +59,7 @@ lua.globals().py_read = read_src
 lua.execute('''
 local cache = {}
 function make_node(name, path, parent)
-    local node = { Name = name, __path = path, Parent = parent }
-    return node
+    return { Name = name, __path = path, Parent = parent }
 end
 function require(mod)
     local p = rawget(mod, "__path")
@@ -67,28 +71,52 @@ function require(mod)
     cache[p] = result
     return result
 end
+function deep_copy(t)
+    local c = {}
+    for k, v in pairs(t) do
+        if type(v) == "table" then c[k] = deep_copy(v) else c[k] = v end
+    end
+    return c
+end
 ''')
 make_node = lua.globals().make_node
-shared_dir = os.path.join(SRC, 'shared')
-Shared = make_node('Shared', None, None)
-Config = make_node('Config', None, Shared)
-Tests = make_node('Tests', None, Shared)
-Shared.Config = Config
-Shared.Tests = Tests
-Config.Economy = make_node('Economy', os.path.join(shared_dir, 'Config', 'Economy.luau'), Config)
-Shared.Format = make_node('Format', os.path.join(shared_dir, 'Format.luau'), Shared)
-Shared.Formulas = make_node('Formulas', os.path.join(shared_dir, 'Formulas.luau'), Shared)
-Tests.ConfigSpec = make_node('ConfigSpec', os.path.join(shared_dir, 'Tests', 'ConfigSpec.luau'), Tests)
-
 req = lua.globals().require
-Economy = req(Config.Economy)
+deep_copy = lua.globals().deep_copy
+
+
+def build_tree(path, name, parent):
+    """Folder -> węzeł z dziećmi (jak w Roblox: script.Parent.Config.Economy)."""
+    node = make_node(name, None, parent)
+    for entry in sorted(os.listdir(path)):
+        full = os.path.join(path, entry)
+        if os.path.isdir(full):
+            node[entry] = build_tree(full, entry, node)
+        elif entry.endswith('.luau'):
+            stem = entry[:-len('.luau')]
+            for suffix in ('.server', '.client'):
+                if stem.endswith(suffix):
+                    stem = stem[:-len(suffix)]
+            node[stem] = make_node(stem, full, node)
+    return node
+
+
+Shared = build_tree(os.path.join(SRC, 'shared'), 'Shared', None)
+Economy = req(Shared.Config.Economy)
 Format = req(Shared.Format)
 Formulas = req(Shared.Formulas)
-spec = req(Tests.ConfigSpec)
-passed, failed, messages = spec(Economy, Formulas, Format)
-for i in range(1, (len(messages) if messages else 0) + 1):
-    fails.append('ConfigSpec: ' + messages[i])
-print('ConfigSpec: %d OK, %d błędów' % (passed, failed))
+Loop = req(Shared.Logic.Loop)
+Template = req(Shared.Data.Template)
+
+
+def run_spec(name, result):
+    passed, failed, messages = result
+    for i in range(1, (len(messages) if messages else 0) + 1):
+        fails.append(messages[i])
+    print('%s: %d OK, %d błędów' % (name, passed, failed))
+
+
+run_spec('ConfigSpec', req(Shared.Tests.ConfigSpec)(Economy, Formulas, Format))
+run_spec('LoopSpec', req(Shared.Tests.LoopSpec)())
 
 # ---------------------------------------------------------------- 3. zgodność z modelem w Pythonie
 cfg = final_cfg2()
@@ -116,6 +144,46 @@ for L in range(1, 11):
 fees = {1: '40T', 2: '100T', 3: '5Qa', 4: '15Qa', 5: '40Qa', 6: '75Qa', 7: '150Qa', 8: '300Qa', 9: '500Qa', 10: '750Qa'}
 for L, s in fees.items():
     ok(Format.number(cfg['REB_FEE'][L]) == s, 'zapis opłaty R%d: %s' % (L, Format.number(cfg['REB_FEE'][L])))
+
+# Pętla: LP za klik i Bag tak jak w modelu (economy.py: cp × K × ZONE_CLICK × lp_mult, v2: × Click Boost)
+payer_lp = {'free': 1.0, '2xLP': 2.0, 'all': 2.1}
+payer_passes = {'free': {}, '2xLP': {'TwoXLP': True}, 'all': {'TwoXLP': True, 'Verified': True}}
+for L in (0, 1, 7, 33, 90, 150):
+    for z in range(1, 6):
+        for R in (0, 3, 10):
+            for cb in (0, 5, 40):
+                for payer in ('free', '2xLP', 'all'):
+                    d = deep_copy(Template)
+                    d.ClickLevel = L
+                    d.RebirthLevel = R
+                    d.AuraUpgrades.ClickBoost = cb
+                    ctx = lua.table_from({'zone': z, 'passes': lua.table_from(payer_passes[payer])})
+                    got = Loop.clickLP(d, ctx)
+                    exp = (E.clout_value(L) * (1 + 0.1 * cb) * cfg['ZONE_CLICK'][z]
+                           * cfg['REB_MULT'][R] * payer_lp[payer])
+                    ok(abs(got - exp) <= 1e-9 * max(1, exp),
+                       'LP za klik L=%d strefa %d R%d boost %d %s: Luau %s, model %s' % (L, z, R, cb, payer, got, exp))
+for L in range(0, 36):
+    ok(Loop.capacityAt(L, lua.table_from({})) == E.bag_capacity(cfg, L), 'pojemność Bag poz. %d' % L)
+for L in range(1, 151):
+    ok(Loop.levelCost('Click', L) == E.clout_cost(cfg, L), 'koszt Click Multipliera poz. %d' % L)
+for L in range(1, 36):
+    ok(Loop.levelCost('Bag', L) == E.bag_cost(cfg, L), 'koszt Bag poz. %d' % L)
+rng = random.Random(3)
+for _ in range(300):
+    kind = rng.choice(['Click', 'Bag'])
+    max_level = 150 if kind == 'Click' else 35
+    start = rng.randint(0, max_level)
+    cash = 10 ** rng.uniform(0, 19)
+    count, total = Loop.affordable(kind, start, cash)
+    c, t = 0, 0.0
+    while start + c < max_level:
+        cost = (E.clout_cost if kind == 'Click' else E.bag_cost)(cfg, start + c + 1)
+        if t + cost > cash:
+            break
+        t += cost
+        c += 1
+    ok(count == c and abs(total - t) <= 1e-9 * max(1, t), 'Kup max %s od poz. %d za %s' % (kind, start, cash))
 
 # ---------------------------------------------------------------- 4. losowanie ze szczęściem
 rng = random.Random(7)
