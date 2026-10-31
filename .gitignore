@@ -1,0 +1,14 @@
+# Pliki miejsca z Roblox Studio (mapa i modele są w chmurze Roblox, nie w Git)
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
+sourcemap.json
+
+# Python
+__pycache__/
+*.pyc
+
+# System
+.DS_Store
+Thumbs.db

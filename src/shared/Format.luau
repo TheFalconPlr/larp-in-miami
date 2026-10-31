@@ -1,0 +1,92 @@
+-- Formatowanie liczb i czasu tak, jak pokazuje je gra: 1.5K, 2.3M, 937.5Qa, 1h 05m.
+-- Ten sam zapis co kolumna „W grze” w arkuszu ekonomii.
+
+local Format = {}
+
+local SUFFIXES = {
+	"K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No",
+	"Dc", "Ud", "Dd", "Td", "Qad", "Qid", "Sxd", "Spd", "Ocd", "Nod", "Vg",
+}
+
+local function trimZeros(s)
+	s = string.gsub(s, "(%..-)0+$", "%1")
+	s = string.gsub(s, "%.$", "")
+	return s
+end
+
+-- Liczba z sufiksem (maks. 2 miejsca po przecinku, bez zbędnych zer).
+function Format.number(n)
+	if n ~= n then
+		return "NaN"
+	end
+	if n < 0 then
+		return "-" .. Format.number(-n)
+	end
+	if n == math.huge then
+		return "∞"
+	end
+	if n < 1000 then
+		local rounded = math.floor(n + 0.5)
+		if rounded < 1000 then
+			return tostring(rounded)
+		end
+	end
+	local tier = math.floor(math.log10(n) / 3 + 1e-12)
+	if tier < 1 then
+		tier = 1
+	end
+	if tier > #SUFFIXES then
+		tier = #SUFFIXES
+	end
+	local rounded = math.floor(n / 10 ^ (tier * 3) * 100 + 0.5) / 100
+	if rounded >= 1000 and tier < #SUFFIXES then
+		tier = tier + 1
+		rounded = math.floor(n / 10 ^ (tier * 3) * 100 + 0.5) / 100
+	end
+	return trimZeros(string.format("%.2f", rounded)) .. SUFFIXES[tier]
+end
+
+-- Czas: 45s, 3m 05s, 1h 05m.
+function Format.duration(seconds)
+	seconds = math.max(0, math.floor(seconds + 0.5))
+	local h = math.floor(seconds / 3600)
+	local m = math.floor((seconds % 3600) / 60)
+	local s = seconds % 60
+	if h > 0 then
+		return string.format("%dh %02dm", h, m)
+	elseif m > 0 then
+		return string.format("%dm %02ds", m, s)
+	end
+	return string.format("%ds", s)
+end
+
+-- Procent: 0.05 -> "5%", 0.004 -> "0.4%", 0.00004 -> "0.004%".
+function Format.percent(p)
+	local v = p * 100
+	local s
+	if v >= 10 then
+		s = string.format("%.1f", v)
+	elseif v >= 0.1 then
+		s = string.format("%.2f", v)
+	else
+		s = string.format("%.4f", v)
+	end
+	return trimZeros(s) .. "%"
+end
+
+-- Szansa jako „1 in X” dla graczy (tekst w grze po angielsku): 0.00004 -> "1 in 25,000".
+function Format.oneIn(p)
+	if p <= 0 then
+		return "-"
+	end
+	local x = math.floor(1 / p + 0.5)
+	local s = tostring(x)
+	local out = ""
+	while #s > 3 do
+		out = "," .. string.sub(s, -3) .. out
+		s = string.sub(s, 1, -4)
+	end
+	return "1 in " .. s .. out
+end
+
+return Format
