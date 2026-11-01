@@ -37,12 +37,14 @@ local TEXT = {
 	Capacity = " LP",
 	PerClickChip = "+%s / click",
 	HintFirstClick = "Click anywhere to earn LP!",
-	HintBagFullFirst = "Your bag is full! Press SELL to get L$",
-	HintBagFull = "Bag full! Press SELL",
+	HintBagFullFirst = "Your bag is full! Press", -- potem czerwone SELL i HintBagFullFirstEnd
+	HintBagFullFirstEnd = "to get L$",
+	HintBagFull = "Bag full! Press", -- potem czerwone SELL
 	HintFirstUpgrade = "Buy an upgrade to earn more LP!",
 	BagFull = "BAG FULL!",
 	BagFullPop = "BAG FULL",
-	SoldPrefix = "Sold %s LP for",
+	Sold = "Sold", -- „Sold 34.35K LP for 💵 34.35K”: liczba LP na zielono, kwota L$ na złoto
+	SoldFor = "LP for",
 	NotEnough = "Not enough L$",
 	Upgraded = "%s → Lv %d",
 	TestMode = "TEST MODE · /cmds",
@@ -360,11 +362,16 @@ function Hud.start()
 	}, { maxSize = 52, stroke = 5, gradient = Theme.Gradients.Gold })
 
 	----------------------------------------------------------------- Pasek Bag na dole pośrodku
+	-- W pasku: zapełnienie Bag na środku wolnego miejsca i „+X / click” przy prawym końcu.
+	local BAR_WIDTH = 520
+	local BAR_TEXT_LEFT = 50 -- tu kończy się ikona Bag
+	local PER_CLICK_SIZE = 20
+	local PER_CLICK_RIGHT = 20 -- odstęp „+X / click” od prawego końca paska
 	local bagGroup = Kit.new("Frame", {
 		Name = "Bag",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -30),
-		Size = UDim2.fromOffset(520, 56),
+		Size = UDim2.fromOffset(BAR_WIDTH, 56),
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
@@ -408,8 +415,8 @@ function Hud.start()
 	})
 	Kit.corner(bagGloss, 5)
 	local bagLabel = Kit.text(bagInner, {
-		Position = UDim2.fromOffset(40, 4),
-		Size = UDim2.new(1, -80, 0, 42),
+		Position = UDim2.fromOffset(BAR_TEXT_LEFT, 4),
+		Size = UDim2.fromOffset(BAR_WIDTH - 2 * BAR_TEXT_LEFT, 42),
 		Text = "",
 		ZIndex = 6,
 	}, { maxSize = 30, stroke = 3.5 })
@@ -419,18 +426,21 @@ function Hud.start()
 		ZIndex = 7,
 		Parent = bagInner,
 	})
-	local perClick = Kit.pill(bagInner, {
-		name = "PerClick",
-		anchor = Vector2.new(1, 1),
-		position = UDim2.new(1, -8, 0, -4),
-		height = 34,
-		edge = 0,
-		border = 3,
-		padLeft = 4,
-		padRight = 12,
-		gap = 4,
+	local perClickLabel = Kit.new("TextLabel", {
+		Name = "PerClick",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -PER_CLICK_RIGHT, 0, 25),
+		Size = UDim2.fromOffset(0, 30),
+		BackgroundTransparency = 1,
+		Font = Theme.Font,
+		Text = "",
+		TextSize = PER_CLICK_SIZE,
+		TextColor3 = Theme.White,
+		TextXAlignment = Enum.TextXAlignment.Right,
+		ZIndex = 6,
+		Parent = bagInner,
 	})
-	perClick.holder.ZIndex = 7
+	Kit.stroke(perClickLabel, 3)
 
 	----------------------------------------------------------------- Podpowiedź u góry
 	local hintHolder = Kit.new("Frame", {
@@ -443,12 +453,12 @@ function Hud.start()
 		Parent = gui,
 	})
 	registerScale(hintHolder)
-	local hint = Kit.pill(hintHolder, {
+	local hint = Kit.line(hintHolder, {
+		name = "HintLine",
 		anchor = Vector2.new(0.5, 0),
 		position = UDim2.new(0.5, 0, 0, 0),
-		height = 52,
-		padLeft = 8,
-		padRight = 24,
+		height = 56,
+		gap = 8,
 	})
 	TweenService:Create(
 		hint.holder,
@@ -461,7 +471,7 @@ function Hud.start()
 	local toasts = Kit.new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -142),
+		Position = UDim2.new(0.5, 0, 1, -128),
 		Size = UDim2.fromOffset(800, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
@@ -524,27 +534,26 @@ function Hud.start()
 	})
 
 	----------------------------------------------------------------- Efekty
-	-- Komunikat: wyskakuje, wisi chwilę i znika przez zmniejszenie (bez CanvasGroup, który przy UIScale
-	-- ucinał komunikaty). Naraz najwyżej 3.
+	-- Komunikat: sam tekst z obrysem i ikonami (bez tła). Wyskakuje, wisi chwilę i znika przez
+	-- zmniejszenie (bez CanvasGroup, który przy UIScale ucinał komunikaty). Naraz najwyżej 3.
 	local toastCount = 0
 	local function toast(items)
 		toastCount = toastCount + 1
 		local row = Kit.new("Frame", {
 			Name = "Toast",
 			LayoutOrder = toastCount,
-			Size = UDim2.fromOffset(800, 58),
+			Size = UDim2.fromOffset(800, 54),
 			BackgroundTransparency = 1,
 			Parent = toasts,
 		})
-		local pill = Kit.pill(row, {
+		local line = Kit.line(row, {
+			name = "ToastLine",
 			anchor = Vector2.new(0.5, 0),
 			position = UDim2.fromScale(0.5, 0),
 			height = 50,
-			padLeft = 8,
-			padRight = 22,
 			items = items,
 		})
-		local grow = Kit.new("UIScale", { Scale = 0.6, Parent = pill.holder })
+		local grow = Kit.new("UIScale", { Scale = 0.6, Parent = line.holder })
 		TweenService:Create(grow, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 		local rows = {}
 		for _, child in ipairs(toasts:GetChildren()) do
@@ -568,8 +577,8 @@ function Hud.start()
 		end)
 	end
 
-	local function textToast(text, color)
-		toast({ { text = text, size = 24, color = color or Theme.Dark } })
+	local function textToast(text, colors)
+		toast({ { text = text, size = 26, colors = colors } })
 	end
 
 	local activePops = 0
@@ -702,16 +711,23 @@ function Hud.start()
 
 	local function updateHint(view)
 		local pulseUpgrades = false
+		-- SELL w podpowiedziach jest czerwone jak napis „BAG FULL” przy klikaniu z pełnym Bag
+		local sellWord = { text = TEXT.Sell, size = 27, colors = Theme.Gradients.BagFull }
 		if view.Clicks == 0 and view.Bag <= 0 and view.Sells == 0 then
-			setHint("first", { { icon = "Click", size = 44 }, { text = TEXT.HintFirstClick, size = 25 } })
+			setHint("first", { { icon = "Click", size = 46 }, { text = TEXT.HintFirstClick, size = 27 } })
 		elseif view.BagFull then
 			if view.Sells == 0 then
-				setHint("fullFirst", { { icon = "Sell", size = 44 }, { text = TEXT.HintBagFullFirst, size = 25 } })
+				setHint("fullFirst", {
+					{ icon = "Sell", size = 46 },
+					{ text = TEXT.HintBagFullFirst, size = 27 },
+					sellWord,
+					{ text = TEXT.HintBagFullFirstEnd, size = 27 },
+				})
 			else
-				setHint("full", { { icon = "Sell", size = 44 }, { text = TEXT.HintBagFull, size = 25 } })
+				setHint("full", { { icon = "Sell", size = 46 }, { text = TEXT.HintBagFull, size = 27 }, sellWord })
 			end
 		elseif view.Sells >= 1 and view.ClickLevel == 0 and view.NextClickCost ~= nil and view.Cash >= view.NextClickCost then
-			setHint("upgrade", { { icon = "Upgrades", size = 44 }, { text = TEXT.HintFirstUpgrade, size = 25 } })
+			setHint("upgrade", { { icon = "Upgrades", size = 46 }, { text = TEXT.HintFirstUpgrade, size = 27 } })
 			pulseUpgrades = true
 		else
 			setHint(nil, nil)
@@ -764,7 +780,12 @@ function Hud.start()
 		local chipText = string.format(TEXT.PerClickChip, Format.small(view.LPPerClick))
 		if chipText ~= perClickText then
 			perClickText = chipText
-			perClick.set({ { icon = "LP", size = 30 }, { text = chipText, size = 18 } })
+			local width = Kit.measure(chipText, PER_CLICK_SIZE).X + 4
+			perClickLabel.Text = chipText
+			perClickLabel.Size = UDim2.fromOffset(width, 30)
+			-- zapełnienie Bag dostaje miejsce od ikony Bag do „+X / click” (długie liczby się zmniejszą)
+			local right = BAR_WIDTH - PER_CLICK_RIGHT - width - 10
+			bagLabel.Size = UDim2.fromOffset(math.max(120, right - BAR_TEXT_LEFT), 42)
 		end
 
 		-- Okno Upgrades
@@ -831,9 +852,9 @@ function Hud.start()
 				name = TEXT.ClickTitle
 				icon = "Click"
 			end
-			toast({ { icon = icon, size = 40 }, { text = string.format(TEXT.Upgraded, name, result.Level), size = 24, color = Theme.Dark } })
+			toast({ { icon = icon, size = 44 }, { text = string.format(TEXT.Upgraded, name, result.Level), size = 26 } })
 		elseif result.Reason == "NotEnough" then
-			textToast(TEXT.NotEnough, Theme.BadgeRed)
+			textToast(TEXT.NotEnough, Theme.Gradients.Red)
 		end
 	end
 
@@ -892,10 +913,12 @@ function Hud.start()
 		else
 			Sounds.play("Sell")
 			toast({
-				{ icon = "Sell", size = 40 },
-				{ text = string.format(TEXT.SoldPrefix, Format.number(payload.LP or 0)), size = 22, color = Theme.Dark },
-				{ icon = "Cash", size = 32 },
-				{ text = Format.number(payload.Cash or 0), size = 24, color = Theme.GoldText, stroke = 2.5 },
+				{ icon = "Sell", size = 44 },
+				{ text = TEXT.Sold, size = 26 },
+				{ text = Format.number(payload.LP or 0), size = 26, colors = Theme.Gradients.Money },
+				{ text = TEXT.SoldFor, size = 26 },
+				{ icon = "Cash", size = 38 },
+				{ text = Format.number(payload.Cash or 0), size = 28, colors = Theme.Gradients.Gold },
 			})
 			flyCoins(7)
 		end

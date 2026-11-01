@@ -45,10 +45,12 @@ local Settings = {
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",
 	},
-	-- Dźwięki (ID z Toolboxa). Volume 0–1, MinGap = najmniejszy odstęp między odtworzeniami (s).
+	-- Dźwięki (ID z Toolboxa). Volume: 0.5 = normalnie, 1 = głośno (cichy plik może mieć więcej, do 10).
+	-- MinGap = najmniejszy odstęp między odtworzeniami (s).
 	Sounds = {
 		Button = { Id = 100809160609628, Volume = 0.5, MinGap = 0.05 }, -- domyślny dźwięk przycisków
-		Click = { Id = 139719503904449, Volume = 0.35, MinGap = 0.06 }, -- klikanie na LP
+		-- klikanie na LP (cichy dźwięk „hover”, dlatego głośność 1)
+		Click = { Id = 139719503904449, Volume = 1, MinGap = 0.06 },
 		Sell = { Id = 111773238101465, Volume = 0.6, MinGap = 0.15 }, -- sprzedaż
 	},
 	Admin = {

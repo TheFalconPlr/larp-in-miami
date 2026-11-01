@@ -56,9 +56,8 @@ function ClickInput.start(hud)
 			return
 		end
 		pending = pending + 1
-		if not view.BagFull then
-			Sounds.play("Click")
-		end
+		-- dźwięk przy każdym kliknięciu, także z pełnym Bag (wtedy napis „BAG FULL” mówi, czemu nic nie wpadło)
+		Sounds.play("Click")
 		hud.clickFeedback(screenPosition, view)
 	end
 

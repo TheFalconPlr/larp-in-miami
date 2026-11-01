@@ -1,6 +1,7 @@
 -- Klocki UI w stylu gry (projekt na kanwie „Larp in Miami — UI”): napisy z obrysem, przyciski
--- z wypukłą krawędzią, kafelki menu z czerwoną kropką, białe „pigułki” na podpowiedzi i komunikaty
--- oraz okno z tytułem i przyciskiem X. Rozmiary w pikselach bazowych (ekran 1280×720).
+-- z wypukłą krawędzią, kafelki menu z czerwoną kropką, rzędy tekstu z ikonami bez tła (komunikaty
+-- i podpowiedzi), „pigułki” (np. TEST MODE) oraz okno z tytułem i przyciskiem X.
+-- Rozmiary w pikselach bazowych (ekran 1280×720).
 
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
@@ -41,6 +42,12 @@ function Kit.stroke(parent, thickness, mode, color)
 		LineJoinMode = Enum.LineJoinMode.Round,
 		Parent = parent,
 	})
+end
+
+-- Rozmiar napisu w czcionce gry (bez obrysu). Znaczniki RichText nie liczą się do szerokości.
+function Kit.measure(text, size)
+	local plain = string.gsub(text, "<[^>]+>", "")
+	return TextService:GetTextSize(plain, size, Theme.Font, Vector2.new(4000, 1000))
 end
 
 -- Gradient: 2 kolory (góra → dół) albo 3 kolory (0, 0.6, 1). rotation 90 = pionowo, 0 = poziomo.
@@ -251,7 +258,85 @@ function Kit.tile(parent, opts)
 	return b
 end
 
------------------------------------------------------------------ Pigułka (podpowiedź, komunikat, chip)
+----------------------------------------------------------------- Napis z ikonami, bez tła
+-- Komunikaty i podpowiedzi: ikony i napisy w jednym rzędzie, bez tła. Napisy są białe z grubym
+-- ciemnym obrysem, więc czytają się na każdym tle. Treść to lista:
+--   { icon = "Sell", size = 44 }                              ikona
+--   { text = "Sold", size = 26 }                              biały napis
+--   { text = "34.35K", colors = Theme.Gradients.Money }       napis w kolorze (gradient)
+--   { text = "...", color = Color3, stroke = 3, rich = true } własny kolor, obrys, RichText
+-- Szerokość liczy się z treści. opts: name, anchor, position, height, gap, items.
+-- Zwraca { holder, set(items) }.
+function Kit.line(parent, opts)
+	local height = opts.height or 50
+	local gap = opts.gap or 7
+	local holder = Kit.new("Frame", {
+		Name = opts.name or "Line",
+		AnchorPoint = opts.anchor,
+		Position = opts.position,
+		Size = UDim2.fromOffset(0, height),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+
+	local api = { holder = holder }
+	function api.set(items)
+		for _, child in ipairs(holder:GetChildren()) do
+			if child:GetAttribute("LineItem") then
+				child:Destroy()
+			end
+		end
+		local x = 0
+		for i, item in ipairs(items) do
+			if i > 1 then
+				x = x + gap
+			end
+			local node
+			local width
+			if item.icon ~= nil then
+				width = item.size or height
+				node = Icons.make(item.icon, {
+					AnchorPoint = Vector2.new(0, 0.5),
+					Position = UDim2.new(0, x, 0.5, 0),
+					Size = UDim2.fromOffset(width, width),
+					ZIndex = 2,
+					Parent = holder,
+				})
+			else
+				local textSize = item.size or 26
+				local bounds = Kit.measure(item.text, textSize)
+				width = bounds.X + 2
+				-- wysokość = wysokość napisu, żeby gradient szedł od góry do dołu liter
+				node = Kit.new("TextLabel", {
+					AnchorPoint = Vector2.new(0, 0.5),
+					Position = UDim2.new(0, x, 0.5, 0),
+					Size = UDim2.fromOffset(width, bounds.Y),
+					BackgroundTransparency = 1,
+					Font = Theme.Font,
+					Text = item.text,
+					TextSize = textSize,
+					TextColor3 = item.color or Theme.White,
+					RichText = item.rich == true,
+					ZIndex = 3,
+					Parent = holder,
+				})
+				Kit.stroke(node, item.stroke or math.max(2, textSize / 7))
+				if item.colors ~= nil then
+					Kit.gradient(node, item.colors, 90)
+				end
+			end
+			node:SetAttribute("LineItem", true)
+			x = x + width
+		end
+		holder.Size = UDim2.fromOffset(x, height)
+	end
+	if opts.items ~= nil then
+		api.set(opts.items)
+	end
+	return api
+end
+
+----------------------------------------------------------------- Pigułka (np. TEST MODE)
 -- Biała pigułka z obrysem i krawędzią. Treść to lista: { icon = "Cash", size = 32 } albo
 -- { text = "...", size = 22, color = Color3, stroke = 3 }. Szerokość liczy się z treści.
 function Kit.pill(parent, opts)
@@ -313,8 +398,7 @@ function Kit.pill(parent, opts)
 				x = x + size
 			else
 				local textSize = item.size or math.floor(height * 0.5)
-				local plain = string.gsub(item.text, "<[^>]+>", "")
-				local bounds = TextService:GetTextSize(plain, textSize, Theme.Font, Vector2.new(4000, height))
+				local bounds = Kit.measure(item.text, textSize)
 				local label = Kit.new("TextLabel", {
 					AnchorPoint = Vector2.new(0, 0.5),
 					Position = UDim2.new(0, x, 0.5, 0),

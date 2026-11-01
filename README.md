@@ -91,12 +91,12 @@ Liczby można pisać z sufiksami: `1.5K`, `2M`, `3T`, `1e12`.
 
 ## UI i ikony
 
-Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wzorem ikon „inwestowania”, grube ciemne obrysy i przyciski z wypukłą krawędzią. Kod UI buduje go z klocków w `src/client/Ui/Kit.luau`, kolory i rozmiary są w `src/client/Ui/Theme.luau`, a wzór w `src/client/Ui/Pattern.luau` (rysowany z kształtów, nic nie trzeba wgrywać). Pierwszy szkic był na kanwie „Larp in Miami — UI”.
+Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wzorem ikon „inwestowania”, grube ciemne obrysy i przyciski z wypukłą krawędzią. Komunikaty i podpowiedzi to sam biały tekst z obrysem i ikonami (bez tła), a ważne słowa mają kolor (np. czerwone SELL, zielona liczba LP). Kod UI buduje go z klocków w `src/client/Ui/Kit.luau`, kolory i rozmiary są w `src/client/Ui/Theme.luau`, a wzór w `src/client/Ui/Pattern.luau` (rysowany z kształtów, nic nie trzeba wgrywać). Pierwszy szkic był na kanwie „Larp in Miami — UI”.
 
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
 - **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
-- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), z głośnością.
+- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10).
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 
 Ikony bez własnego ID biorą się z arkusza `assets/icons/larp-icons.png` (16 ikon), a dopóki nie jest wgrany do Roblox, są emoji. Żeby go wgrać:

@@ -33,6 +33,7 @@ Theme.Gradients = {
 	CardPink = { hex("#FF73BC"), hex("#DB3189") },
 	CardBlue = { hex("#55CBFF"), hex("#1E88E3") },
 	BagFull = { hex("#E8243A"), hex("#A8102A") },
+	Money = { hex("#7BF26A"), hex("#14A84A") }, -- zielony jak banknoty (kwoty w komunikatach)
 }
 
 -- Pasek Bag: czerwony, od lewej do prawej.
