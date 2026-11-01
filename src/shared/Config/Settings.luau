@@ -36,7 +36,7 @@ local Settings = {
 		-- Własne ikony z Toolboxa: ID Decala albo obrazka (liczba) albo gotowe "rbxassetid://…".
 		-- Ikona z tej listy ma pierwszeństwo przed arkuszem. Nazwy jak w src/client/Ui/Icons.luau.
 		Icons = {
-			Bag = 112098959943734, -- tymczasowa
+			Bag = 15507676003,
 			Click = 17293879645,
 			Upgrades = 108527921987826,
 			Cash = 15040641396, -- raczej tymczasowa
@@ -49,8 +49,10 @@ local Settings = {
 	-- MinGap = najmniejszy odstęp między odtworzeniami (s).
 	Sounds = {
 		Button = { Id = 100809160609628, Volume = 0.5, MinGap = 0.05 }, -- domyślny dźwięk przycisków
-		-- klikanie na LP (cichy dźwięk „hover”, dlatego głośność 1)
-		Click = { Id = 139719503904449, Volume = 1, MinGap = 0.06 },
+		-- klikanie na LP (cichy dźwięk „hover”, dlatego głośność 1). Rise: klikanie pod rząd podnosi
+		-- dźwięk o Step półtonów co klik, najwyżej o Max półtonów (12 = oktawa); po Reset sekundach
+		-- przerwy wraca do zwykłej wysokości. Bez Rise dźwięk ma tylko lekko losową wysokość.
+		Click = { Id = 139719503904449, Volume = 1, MinGap = 0.06, Rise = { Step = 1, Max = 12, Reset = 0.8 } },
 		Sell = { Id = 111773238101465, Volume = 0.6, MinGap = 0.15 }, -- sprzedaż
 	},
 	Admin = {

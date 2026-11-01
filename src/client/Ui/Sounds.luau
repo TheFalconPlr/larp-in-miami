@@ -12,6 +12,26 @@ local Sounds = {}
 local POOL_SIZE = 6
 local pools = {}
 local lastPlayed = {}
+local streaks = {} -- [nazwa] = { count, time }: ile razy pod rząd (dla dźwięku, który rośnie)
+
+-- Dźwięk z ustawieniem Rise idzie w górę przy każdym kolejnym odtworzeniu pod rząd
+-- (jak nuty w Peggle): o Step półtonów, najwyżej o Max półtonów (12 = oktawa, 2× szybciej).
+-- Po Reset sekundach przerwy wraca do zwykłej wysokości.
+local function risingPitch(name, rise, now)
+	local streak = streaks[name]
+	if streak == nil then
+		streak = { count = 0, time = -math.huge }
+		streaks[name] = streak
+	end
+	local step = rise.Step or 1
+	if now - streak.time > (rise.Reset or 0.8) then
+		streak.count = 0
+	else
+		streak.count = math.min(streak.count + 1, math.floor((rise.Max or 12) / step))
+	end
+	streak.time = now
+	return 2 ^ (streak.count * step / 12)
+end
 
 local function pool(name)
 	local existing = pools[name]
@@ -51,7 +71,8 @@ function Sounds.preload()
 	end)
 end
 
--- opts: volume (mnożnik głośności), pitch (prędkość; domyślnie lekko losowa)
+-- opts: volume (mnożnik głośności), pitch (prędkość; domyślnie lekko losowa albo rosnąca, gdy
+-- dźwięk ma w Settings ustawienie Rise)
 function Sounds.play(name, opts)
 	local p = pool(name)
 	if p == nil then
@@ -72,6 +93,8 @@ function Sounds.play(name, opts)
 	sound.Volume = volume
 	if opts ~= nil and opts.pitch ~= nil then
 		sound.PlaybackSpeed = opts.pitch
+	elseif p.info.Rise ~= nil then
+		sound.PlaybackSpeed = risingPitch(name, p.info.Rise, now)
 	else
 		sound.PlaybackSpeed = 0.96 + math.random() * 0.08
 	end

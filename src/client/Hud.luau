@@ -37,9 +37,9 @@ local TEXT = {
 	Capacity = " LP",
 	PerClickChip = "+%s / click",
 	HintFirstClick = "Click anywhere to earn LP!",
-	HintBagFullFirst = "Your bag is full! Press", -- potem czerwone SELL i HintBagFullFirstEnd
+	HintBagFullFirst = "Your bag is full! Press", -- potem zielone SELL i HintBagFullFirstEnd
 	HintBagFullFirstEnd = "to get L$",
-	HintBagFull = "Bag full! Press", -- potem czerwone SELL
+	HintBagFull = "Bag full! Press", -- potem zielone SELL
 	HintFirstUpgrade = "Buy an upgrade to earn more LP!",
 	BagFull = "BAG FULL!",
 	BagFullPop = "BAG FULL",
@@ -302,6 +302,7 @@ function Hud.start()
 	local sellTile = Kit.tile(left, {
 		name = "Sell",
 		icon = "Sell",
+		iconSize = 92, -- banknot ma w obrazku pusty margines, więc trochę większy
 		text = TEXT.Sell,
 		colors = Theme.Gradients.Green,
 		order = 1,
@@ -711,8 +712,8 @@ function Hud.start()
 
 	local function updateHint(view)
 		local pulseUpgrades = false
-		-- SELL w podpowiedziach jest czerwone jak napis „BAG FULL” przy klikaniu z pełnym Bag
-		local sellWord = { text = TEXT.Sell, size = 27, colors = Theme.Gradients.BagFull }
+		-- SELL w podpowiedziach jest zielone jak przycisk SELL
+		local sellWord = { text = TEXT.Sell, size = 27, colors = Theme.Gradients.Green }
 		if view.Clicks == 0 and view.Bag <= 0 and view.Sells == 0 then
 			setHint("first", { { icon = "Click", size = 46 }, { text = TEXT.HintFirstClick, size = 27 } })
 		elseif view.BagFull then

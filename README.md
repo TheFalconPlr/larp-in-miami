@@ -96,7 +96,7 @@ Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wz
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
 - **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
-- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10).
+- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 
 Ikony bez własnego ID biorą się z arkusza `assets/icons/larp-icons.png` (16 ikon), a dopóki nie jest wgrany do Roblox, są emoji. Żeby go wgrać:

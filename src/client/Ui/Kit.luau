@@ -229,7 +229,8 @@ function Kit.badge(parent, props)
 end
 
 ----------------------------------------------------------------- Kafelek menu
--- opts: name, icon, text, colors, order, textSize. Zwraca to co Kit.button oraz badge.
+-- opts: name, icon, iconSize (domyślnie 84; większa dla ikon z pustym marginesem), text, colors,
+-- order, textSize. Zwraca to co Kit.button oraz badge.
 function Kit.tile(parent, opts)
 	local b = Kit.button(parent, {
 		name = opts.name,
@@ -239,10 +240,12 @@ function Kit.tile(parent, opts)
 		edge = 6,
 		order = opts.order,
 	})
+	-- ikona na środku części kafelka nad napisem (napis zachodzi na dolną krawędź)
+	local iconSize = opts.iconSize or 84
 	Icons.make(opts.icon, {
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 2),
-		Size = UDim2.fromOffset(80, 80),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, 48),
+		Size = UDim2.fromOffset(iconSize, iconSize),
 		ZIndex = 5,
 		Parent = b.face,
 	})
@@ -265,8 +268,19 @@ end
 --   { text = "Sold", size = 26 }                              biały napis
 --   { text = "34.35K", colors = Theme.Gradients.Money }       napis w kolorze (gradient)
 --   { text = "...", color = Color3, stroke = 3, rich = true } własny kolor, obrys, RichText
+-- Napisy obok siebie dzieli zwykła spacja (jak w jednym zdaniu), ikony odstęp gap.
 -- Szerokość liczy się z treści. opts: name, anchor, position, height, gap, items.
 -- Zwraca { holder, set(items) }.
+local spaceCache = {}
+local function spaceWidth(size)
+	local cached = spaceCache[size]
+	if cached == nil then
+		cached = Kit.measure("a a", size).X - Kit.measure("aa", size).X
+		spaceCache[size] = cached
+	end
+	return cached
+end
+
 function Kit.line(parent, opts)
 	local height = opts.height or 50
 	local gap = opts.gap or 7
@@ -287,10 +301,16 @@ function Kit.line(parent, opts)
 			end
 		end
 		local x = 0
+		local previous = nil
 		for i, item in ipairs(items) do
 			if i > 1 then
-				x = x + gap
+				if item.icon == nil and previous.icon == nil then
+					x = x + spaceWidth(math.max(item.size or 26, previous.size or 26))
+				else
+					x = x + gap
+				end
 			end
+			previous = item
 			local node
 			local width
 			if item.icon ~= nil then
@@ -305,7 +325,7 @@ function Kit.line(parent, opts)
 			else
 				local textSize = item.size or 26
 				local bounds = Kit.measure(item.text, textSize)
-				width = bounds.X + 2
+				width = bounds.X
 				-- wysokość = wysokość napisu, żeby gradient szedł od góry do dołu liter
 				node = Kit.new("TextLabel", {
 					AnchorPoint = Vector2.new(0, 0.5),
@@ -315,6 +335,7 @@ function Kit.line(parent, opts)
 					Font = Theme.Font,
 					Text = item.text,
 					TextSize = textSize,
+					TextXAlignment = Enum.TextXAlignment.Left,
 					TextColor3 = item.color or Theme.White,
 					RichText = item.rich == true,
 					ZIndex = 3,
