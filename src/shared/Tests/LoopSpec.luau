@@ -1,4 +1,4 @@
--- Testy pętli: klik, Bag, Sell, Auto-Sell, ulepszenia, limit kliknięć i zapis liczb w komendach.
+-- Testy pętli: klik, Bag, Sell, Auto-Sell, ulepszenia, strefy, limit kliknięć i zapis liczb w komendach.
 -- Uruchamia je ConfigCheck w Studio i tools/test_luau.py poza Roblox.
 -- Zwraca funkcję: passed, failed, messages.
 
@@ -137,6 +137,29 @@ return function()
 			and view.BagFull == false,
 		"widok dla HUD nowego gracza"
 	)
+
+	----------------------------------------------------------------- Strefy
+	d = fresh()
+	check(Loop.nextZone(d) == Economy.Zones[2], "nowy gracz może kupić strefę 2")
+	d.Cash = Economy.Zones[2].Cost - 1
+	local bought, why = Loop.buyZone(d, 2)
+	check(not bought and why == "NotEnough" and d.ZonesUnlocked == 1, "za mało L$ na strefę 2")
+	d.Cash = Economy.Zones[2].Cost
+	bought, why = Loop.buyZone(d, 3)
+	check(not bought and why == "Locked", "strefy kupuje się po kolei")
+	bought = Loop.buyZone(d, 2)
+	check(bought and d.ZonesUnlocked == 2 and d.Cash == 0, "strefa 2 kosztuje 6K L$")
+	bought, why = Loop.buyZone(d, 2)
+	check(not bought and why == "Owned", "kupionej strefy nie kupuje się drugi raz")
+	bought, why = Loop.buyZone(d, 9)
+	check(not bought and why == "BadRequest", "nie ma strefy 9")
+	check(
+		Loop.effectiveZone(d, 4) == 2 and Loop.effectiveZone(d, 2) == 2 and Loop.effectiveZone(d, nil) == 1,
+		"mnożnik najwyżej z ostatniej odblokowanej strefy"
+	)
+	check(Loop.view(d, { zone = 2 }).Zone == 2 and Loop.view(d, {}).ZonesUnlocked == 2, "widok ma strefę i odblokowane strefy")
+	d.ZonesUnlocked = #Economy.Zones
+	check(Loop.nextZone(d) == nil, "po ostatniej strefie nie ma następnej")
 
 	----------------------------------------------------------------- Limit kliknięć
 	local limiter = RateLimiter.new(10, 10)

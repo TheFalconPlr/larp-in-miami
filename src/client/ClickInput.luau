@@ -12,7 +12,6 @@ local Settings = require(Shared.Config.Settings)
 local RateLimiter = require(Shared.Logic.RateLimiter)
 local Net = require(Shared.Net)
 local State = require(script.Parent.State)
-local Sounds = require(script.Parent.Ui.Sounds)
 
 local ClickInput = {}
 
@@ -56,8 +55,7 @@ function ClickInput.start(hud)
 			return
 		end
 		pending = pending + 1
-		-- dźwięk przy każdym kliknięciu, także z pełnym Bag (wtedy napis „BAG FULL” mówi, czemu nic nie wpadło)
-		Sounds.play("Click")
+		-- napis i dźwięk kliknięcia (przy pełnym Bag razem z napisem „BAG FULL”) robi HUD
 		hud.clickFeedback(screenPosition, view)
 	end
 

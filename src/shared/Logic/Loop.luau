@@ -1,8 +1,8 @@
--- Rdzeń pętli: LP za klik, Bag, Sell i ulepszenia za L$. Same obliczenia na danych gracza,
+-- Rdzeń pętli: LP za klik, Bag, Sell, ulepszenia i strefy za L$. Same obliczenia na danych gracza,
 -- bez Roblox API, więc działają na serwerze, w UI i w testach (tools/test_luau.py).
 --
 -- data to zapis gracza (Shared/Data/Template). ctx opisuje to, czego nie ma w zapisie:
---   zone        strefa, w której gracz stoi (Mnożnik strefy), domyślnie 1
+--   zone        strefa, której mnożnik dostaje gracz (Loop.effectiveZone), domyślnie 1
 --   passes      gamepassy, np. { TwoXLP = true, AutoSell = true }
 --   inGroup     gracz jest w grupie gry (+5% LP)
 --   friends     liczba znajomych na serwerze (+10% LP każdy, maks. 3)
@@ -216,6 +216,46 @@ function Loop.buy(data, kind, limit)
 	return count, total
 end
 
+----------------------------------------------------------------- Strefy
+-- Strefa, której mnożnik dostaje gracz: ta, w której stoi, ale najwyżej ostatnia odblokowana
+-- (kto obejdzie bramkę, nie dostanie lepszego mnożnika). standing nil = strefa 1.
+function Loop.effectiveZone(data, standing)
+	local zone = standing or 1
+	if zone > data.ZonesUnlocked then
+		zone = data.ZonesUnlocked
+	end
+	if zone < 1 then
+		zone = 1
+	end
+	return zone
+end
+
+-- Następna strefa do kupienia (tabela z Economy.Zones) albo nil, gdy wszystkie są odblokowane.
+function Loop.nextZone(data)
+	return Economy.Zones[data.ZonesUnlocked + 1]
+end
+
+-- Kupuje strefę `id`. Strefy kupuje się po kolei. Zwraca true albo false i powód:
+-- BadRequest (nie ma takiej strefy), Owned (już kupiona), Locked (najpierw poprzednia), NotEnough.
+function Loop.buyZone(data, id)
+	local zone = Economy.Zones[id]
+	if zone == nil then
+		return false, "BadRequest"
+	end
+	if id <= data.ZonesUnlocked then
+		return false, "Owned"
+	end
+	if id ~= data.ZonesUnlocked + 1 then
+		return false, "Locked"
+	end
+	if data.Cash < zone.Cost then
+		return false, "NotEnough"
+	end
+	data.Cash = data.Cash - zone.Cost
+	data.ZonesUnlocked = id
+	return true, nil
+end
+
 ----------------------------------------------------------------- Widok dla HUD
 -- Wszystko, co pokazuje HUD, policzone w jednym miejscu (na serwerze).
 function Loop.view(data, ctx)
@@ -235,6 +275,7 @@ function Loop.view(data, ctx)
 		BagMaxLevel = Loop.MaxLevel.Bag,
 		NextBagCost = bagCost,
 		Zone = (ctx and ctx.zone) or 1,
+		ZonesUnlocked = data.ZonesUnlocked,
 		RebirthLevel = data.RebirthLevel,
 		RebirthCount = data.RebirthCount,
 		Aura = data.Aura,

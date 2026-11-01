@@ -54,6 +54,8 @@ local Settings = {
 		-- przerwy wraca do zwykłej wysokości. Bez Rise dźwięk ma tylko lekko losową wysokość.
 		Click = { Id = 139719503904449, Volume = 1, MinGap = 0.06, Rise = { Step = 1, Max = 12, Reset = 0.8 } },
 		Sell = { Id = 111773238101465, Volume = 0.6, MinGap = 0.15 }, -- sprzedaż
+		-- odblokowanie strefy (na razie ten sam dźwięk co sprzedaż; podmień, gdy znajdziesz lepszy)
+		Unlock = { Id = 111773238101465, Volume = 0.8, MinGap = 0.5 },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

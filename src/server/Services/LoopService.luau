@@ -1,6 +1,7 @@
 -- Rdzeń pętli na serwerze: klik z limitem, Auto-Click, Bag, pole Sell, darmowy teleport na Sell,
--- ulepszenia za L$, leaderstats i wysyłanie stanu do gracza. Liczby liczy Shared/Logic/Loop.
--- Serwer sprawdza każde żądanie; klient tylko prosi i pokazuje.
+-- ulepszenia i strefy za L$, leaderstats i wysyłanie stanu do gracza. Liczby liczy Shared/Logic/Loop,
+-- a to, w której strefie gracz stoi, ZoneService. Serwer sprawdza każde żądanie; klient tylko prosi
+-- i pokazuje.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -18,6 +19,7 @@ local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
 local GamepassService = require(script.Parent.GamepassService)
+local ZoneService = require(script.Parent.ZoneService)
 
 local LoopService = {}
 
@@ -27,10 +29,16 @@ local pads = {} -- lista pól Sell
 local hookedPads = {}
 
 ----------------------------------------------------------------- Pomocnicze
--- Kontekst do obliczeń z Shared/Logic/Loop. Kolejne etapy dopiszą tu strefę, bonusy i boosty.
+-- Kontekst do obliczeń z Shared/Logic/Loop. Kolejne etapy dopiszą tu bonusy i boosty.
 local function contextFor(player)
+	local zone = 1
+	local data = DataService.get(player)
+	if data ~= nil then
+		-- strefa, w której gracz stoi, ale najwyżej ostatnia kupiona
+		zone = Loop.effectiveZone(data, ZoneService.standing(player))
+	end
 	return {
-		zone = 1, -- Etap 3: strefa, w której gracz stoi
+		zone = zone,
 		passes = GamepassService.passes(player),
 		inGroup = false, -- Etap 7: bonus za grupę
 		friends = 0, -- Etap 7: bonus za znajomych
@@ -304,6 +312,23 @@ local function buyUpgrade(player, kind, mode)
 	return { Ok = true, Bought = bought, Spent = spent, Level = level }
 end
 
+-- Kupno strefy (tylko następnej po kolei). Bramkę otwiera potem klient, gdy dostanie nowy stan.
+local function buyZone(player, id)
+	if type(id) ~= "number" then
+		return { Ok = false, Reason = "BadRequest" }
+	end
+	local data = DataService.get(player)
+	if data == nil then
+		return { Ok = false, Reason = "NotLoaded" }
+	end
+	local ok, reason = Loop.buyZone(data, id)
+	if not ok then
+		return { Ok = false, Reason = reason }
+	end
+	LoopService.markDirty(player)
+	return { Ok = true, Zone = id }
+end
+
 local function setSetting(player, key, value)
 	if (key ~= "AutoClick" and key ~= "AutoSell") or type(value) ~= "boolean" then
 		return
@@ -371,6 +396,10 @@ function LoopService.start()
 	GamepassService.onChanged(function(player)
 		LoopService.markDirty(player)
 	end)
+	-- inna strefa = inny mnożnik LP, więc HUD dostaje nowy stan
+	ZoneService.onChanged(function(player)
+		LoopService.markDirty(player)
+	end)
 
 	Net.event("Click").OnServerEvent:Connect(function(player, count)
 		local s = sessions[player]
@@ -388,6 +417,7 @@ function LoopService.start()
 	Net.event("TeleportToSell").OnServerEvent:Connect(teleportToSell)
 	Net.event("SetSetting").OnServerEvent:Connect(setSetting)
 	Net.func("BuyUpgrade").OnServerInvoke = buyUpgrade
+	Net.func("BuyZone").OnServerInvoke = buyZone
 
 	setupPads()
 	RunService.Heartbeat:Connect(onHeartbeat)

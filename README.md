@@ -14,10 +14,11 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, LoopService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony z arkusza), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
+| `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
 | `licenses` | — | licencje bibliotek (ProfileStore: Apache 2.0) |
 
@@ -56,7 +57,7 @@ Po **Play** w oknie Output powinny być m.in. te linie:
 ```
 [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
 ConfigCheck: OK (64 testów zgodnych z arkuszem)
-LoopCheck: OK (39 testów pętli: klik, Bag, Sell, ulepszenia)
+LoopCheck: OK (48 testów pętli: klik, Bag, Sell, ulepszenia, strefy)
 [Dane] TwojNick: zapis wczytany (DataStore: Access)
 ```
 
@@ -70,6 +71,23 @@ Co działa: klikanie (myszą albo krótkim dotknięciem ekranu), LP trafiają do
 
 **Ustawienia** (limit kliknięć, nazwa DataStore, admini) są w `src/shared/Config/Settings.luau`.
 
+## Etap 3: strefy
+
+Co działa: 5 stref z arkusza. Downtown Miami jest za darmo, a kolejne kupujesz za L$: Luxury Cars (6K), Luxury Mall (800K), Miami Beach (150M) i Private Airport (3T). Kupuje się je po kolei, przy bramce: gdy podejdziesz, otworzy się okno „Unlock” z ceną i mnożnikiem. Bramka znika tylko u gracza, który kupił strefę, a inni dalej widzą ścianę. W kupionej strefie każdy klik daje więcej LP (×1,5, ×5, ×8 i ×250), a po wejściu do strefy u góry ekranu pojawia się jej nazwa. Nad zamkniętymi bramkami wiszą tablice z nazwą, mnożnikiem i ceną.
+
+**Tymczasowe strefy.** Dopóki na mapie nie ma stref, serwer stawia kolorową ścieżkę przed spawnem, w stronę, w którą patrzy SpawnLocation. Są na niej strefy 2–5 z bramkami i ścianami po bokach. Odległości są z arkusza: środek strefy jest tak daleko od spawnu, ile trwa powrót z niej na Sell (np. strefa 5: 35 s × 16 studs/s = 560 studs).
+
+![Układ tymczasowych stref](docs/strefy-uklad.png)
+
+**Twoje strefy.** Gdy budujesz prawdziwą mapę, nazwij części tak:
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Strefa 2–5 | `Zone2` … `Zone5` | Część (podłoga strefy albo niewidzialne pudło) albo model/folder z całą strefą. Do strefy liczy się wszystko nad jej częściami, do 60 studs w górę. Poza strefami 2–5 jest strefa 1 (spawn i Sell). |
+| Bramka | `Gate2` … `Gate5` | Część albo model, który zamyka przejście do strefy. Ścieżka powinna mieć ściany po bokach, żeby bramki nie dało się obejść (mnożnik i tak działa tylko w kupionej strefie). |
+
+Gdy na mapie jest choć jedna część `ZoneN`, tymczasowe strefy już się nie pojawiają. Jeśli którejś strefy albo bramki brakuje, w Output będzie ostrzeżenie `[Strefy]`.
+
 ### Tryb testowy (komendy na czacie)
 
 Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lewym górnym rogu widać wtedy „TEST MODE”. Odpowiedzi pojawiają się na czacie.
@@ -81,6 +99,8 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/lp 500` | dodaje LP do Bag, także ponad pojemność |
 | `/click 20` | ustawia poziom Click Multipliera (0–150) |
 | `/bag 10` | ustawia poziom Bag (0–35) |
+| `/zone 3` | ustawia ostatnią kupioną strefę (1 = tylko start) |
+| `/tp 4` | teleportuje do strefy (mnożnik działa tylko w kupionej) |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
 | `/aura 500` | ustawia Aurę |
 | `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`) |
@@ -96,7 +116,7 @@ Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wz
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
 - **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
-- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
+- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `Unlock` (kupno strefy, na razie ten sam co Sell). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 
 Ikony bez własnego ID biorą się z arkusza `assets/icons/larp-icons.png` (16 ikon), a dopóki nie jest wgrany do Roblox, są emoji. Żeby go wgrać:

@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Economy = require(Shared.Config.Economy)
 local Format = require(Shared.Format)
 local Loop = require(Shared.Logic.Loop)
 local Settings = require(Shared.Config.Settings)
@@ -41,6 +42,8 @@ local TEXT = {
 	HintBagFullFirstEnd = "to get L$",
 	HintBagFull = "Bag full! Press", -- potem zielone SELL
 	HintFirstUpgrade = "Buy an upgrade to earn more LP!",
+	HintZone = "Unlock", -- potem złota nazwa strefy 2 i HintZoneEnd
+	HintZoneEnd = "at the gate!",
 	BagFull = "BAG FULL!",
 	BagFullPop = "BAG FULL",
 	Sold = "Sold", -- „Sold 34.35K LP for 💵 34.35K”: liczba LP na zielono, kwota L$ na złoto
@@ -730,6 +733,13 @@ function Hud.start()
 		elseif view.Sells >= 1 and view.ClickLevel == 0 and view.NextClickCost ~= nil and view.Cash >= view.NextClickCost then
 			setHint("upgrade", { { icon = "Upgrades", size = 46 }, { text = TEXT.HintFirstUpgrade, size = 27 } })
 			pulseUpgrades = true
+		elseif view.ZonesUnlocked == 1 and view.Sells >= 1 and view.Cash >= Economy.Zones[2].Cost then
+			-- pierwsza strefa do kupienia: podpowiedź, gdzie ją kupić
+			setHint("zone", {
+				{ text = TEXT.HintZone, size = 27 },
+				{ text = Economy.Zones[2].Name, size = 27, colors = Theme.Gradients.Gold },
+				{ text = TEXT.HintZoneEnd, size = 27 },
+			})
 		else
 			setHint(nil, nil)
 		end
@@ -936,17 +946,30 @@ function Hud.start()
 	watchCamera()
 
 	----------------------------------------------------------------- Dla ClickInput
-	local api = {}
+	local api = {
+		gui = gui,
+		registerScale = registerScale,
+		toast = toast,
+	}
+	-- Inne okna (np. odblokowanie strefy) zamykają okno Upgrades, żeby się nie nakładały.
+	function api.closeUpgrades()
+		panel.hide()
+	end
+
+	-- Napis i dźwięk kliknięcia. Z pełnym Bag dźwięk gra tylko razem z napisem „BAG FULL”
+	-- (co 0,5 s) i zawsze tak samo wysoko, bo kliknięcie nic nie dało.
 	local lastFullPop = 0
 	function api.clickFeedback(screenPosition, view)
 		if view.BagFull then
 			local now = os.clock()
 			if now - lastFullPop > 0.5 then
 				lastFullPop = now
+				Sounds.play("Click", { pitch = 1 })
 				pop(screenPosition, TEXT.BagFullPop, Theme.Gradients.BagFull)
 			end
 			return
 		end
+		Sounds.play("Click")
 		pop(screenPosition, "+" .. Format.small(view.LPPerClick), Theme.Gradients.LP)
 	end
 	return api

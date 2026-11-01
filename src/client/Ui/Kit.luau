@@ -450,8 +450,9 @@ function Kit.pill(parent, opts)
 end
 
 ----------------------------------------------------------------- Okno
--- Okno na środku ekranu: tytuł z ikoną nad lewym rogiem i czerwony X w prawym.
--- opts: name, size (Vector2), title, icon. Zwraca { holder, content, open, hide, toggle, isOpen }.
+-- Okno na środku ekranu: tytuł (z ikoną albo bez) nad lewym rogiem i czerwony X w prawym.
+-- opts: name, size (Vector2), title, icon (może nie być), padding, top, bottom.
+-- Zwraca { holder, content, title, close, open, hide, toggle, isOpen }.
 function Kit.panel(parent, opts)
 	local holder = Kit.new("Frame", {
 		Name = opts.name or "Panel",
@@ -492,18 +493,22 @@ function Kit.panel(parent, opts)
 	Kit.stroke(body, 5, Enum.ApplyStrokeMode.Border)
 	Kit.gradient(body, Theme.Gradients.Panel, 90)
 	Pattern.fill(body, opts.size, { radius = 30 })
-	Icons.make(opts.icon, {
-		Position = UDim2.fromOffset(-34, -58),
-		Size = UDim2.fromOffset(108, 108),
-		Rotation = -8,
-		ZIndex = 6,
-		Parent = inner,
-	})
-	Kit.text(inner, {
+	local titleX = 24
+	if opts.icon ~= nil then
+		Icons.make(opts.icon, {
+			Position = UDim2.fromOffset(-34, -58),
+			Size = UDim2.fromOffset(108, 108),
+			Rotation = -8,
+			ZIndex = 6,
+			Parent = inner,
+		})
+		titleX = 80
+	end
+	local title = Kit.text(inner, {
 		Name = "Title",
-		Position = UDim2.fromOffset(80, -38),
-		Size = UDim2.fromOffset(opts.size.X - 200, 68),
-		Text = opts.title,
+		Position = UDim2.fromOffset(titleX, -38),
+		Size = UDim2.fromOffset(opts.size.X - 120 - titleX, 68),
+		Text = opts.title or "",
 		TextXAlignment = Enum.TextXAlignment.Left,
 		ZIndex = 6,
 	}, { maxSize = 56, stroke = 5 })
@@ -530,7 +535,7 @@ function Kit.panel(parent, opts)
 		Parent = inner,
 	})
 
-	local api = { holder = holder, content = content, close = close }
+	local api = { holder = holder, content = content, close = close, title = title }
 	function api.isOpen()
 		return holder.Visible
 	end

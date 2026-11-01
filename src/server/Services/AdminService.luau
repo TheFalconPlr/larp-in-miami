@@ -17,6 +17,7 @@ local Net = require(Shared.Net)
 local DataService = require(script.Parent.DataService)
 local GamepassService = require(script.Parent.GamepassService)
 local LoopService = require(script.Parent.LoopService)
+local ZoneService = require(script.Parent.ZoneService)
 
 local AdminService = {}
 
@@ -103,6 +104,27 @@ command("bag", "/bag [poziom]", "ustaw poziom Bag (0–35)", function(_, data, a
 	return string.format("Bag: poziom %d (%s LP)", data.BagLevel, Format.number(Formulas.bagCapacity(data.BagLevel, false)))
 end)
 
+local function needZone(arg)
+	local n = math.floor(needNumber(arg))
+	if Economy.Zones[n] == nil then
+		error(string.format("podaj strefę od 1 do %d", #Economy.Zones), 0)
+	end
+	return n
+end
+
+command("zone", "/zone [1–5]", "ustaw ostatnią kupioną strefę (1 = tylko start)", function(_, data, args)
+	data.ZonesUnlocked = needZone(args[1])
+	return string.format("Kupione strefy: 1–%d (ostatnia: %s)", data.ZonesUnlocked, Economy.Zones[data.ZonesUnlocked].Name)
+end)
+
+command("tp", "/tp [1–5]", "teleport do strefy (mnożnik działa tylko w kupionej)", function(player, _, args)
+	local n = needZone(args[1])
+	if not ZoneService.teleport(player, n) then
+		error("ta strefa nie ma części na mapie albo nie masz postaci", 0)
+	end
+	return string.format("Teleport: strefa %d (%s)", n, Economy.Zones[n].Name)
+end)
+
 command("rebirth", "/rebirth [ile]", "ustaw liczbę Rebirthów (poziom = najwyżej 10)", function(_, data, args)
 	local count = needLevel(args[1], 1000)
 	data.RebirthCount = count
@@ -140,11 +162,12 @@ end)
 
 command("stats", "/stats", "pokaż swój zapis", function(_, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
 		data.BagLevel,
+		data.ZonesUnlocked,
 		data.RebirthCount,
 		data.RebirthLevel,
 		Format.number(data.Aura),
