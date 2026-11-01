@@ -1,5 +1,7 @@
--- Ikony z arkusza assets/icons/larp-icons.png (4×4 pola po 256 px, kolejność jak w tools/build_icons.py).
--- Dopóki arkusz nie jest wgrany do Roblox (Settings.Ui.IconSheet puste), w miejscu ikon są emoji.
+-- Ikony. Kolejność wyboru dla każdej nazwy:
+--   1. własna ikona z Settings.Ui.Icons (ID Decala albo obrazka z Toolboxa),
+--   2. pole z arkusza assets/icons/larp-icons.png (Settings.Ui.IconSheet, 4×4 pola po 256 px),
+--   3. emoji, dopóki nic z powyższych nie jest ustawione.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -41,19 +43,41 @@ for i, name in ipairs(ORDER) do
 	INDEX[name] = i - 1
 end
 
-function Icons.hasSheet()
+local function sheet()
 	local id = Settings.Ui and Settings.Ui.IconSheet
-	return type(id) == "string" and id ~= ""
+	if type(id) == "string" and id ~= "" then
+		return id
+	end
+	return nil
 end
 
--- Ikona jako GuiObject: ImageLabel z wycinkiem arkusza albo TextLabel z emoji.
+-- Treść obrazka dla własnej ikony. Liczba = ID z Toolboxa: miniatura Roblox działa i dla Decali,
+-- i dla obrazków. Tekst (np. "rbxassetid://…") zostaje bez zmian.
+local function custom(name)
+	local list = Settings.Ui and Settings.Ui.Icons
+	local value = list and list[name]
+	if type(value) == "number" then
+		return "rbxthumb://type=Asset&id=" .. string.format("%d", value) .. "&w=420&h=420"
+	elseif type(value) == "string" and value ~= "" then
+		return value
+	end
+	return nil
+end
+
+-- Ikona jako GuiObject (ImageLabel albo TextLabel z emoji).
 -- props to zwykłe właściwości (Size, Position, AnchorPoint, ZIndex, Parent…).
 function Icons.make(name, props)
-	local index = INDEX[name] or 0
 	local icon
-	if Icons.hasSheet() then
+	local own = custom(name)
+	local sheetId = sheet()
+	if own ~= nil then
 		icon = Instance.new("ImageLabel")
-		icon.Image = Settings.Ui.IconSheet
+		icon.Image = own
+		icon.ScaleType = Enum.ScaleType.Fit
+	elseif sheetId ~= nil then
+		local index = INDEX[name] or 0
+		icon = Instance.new("ImageLabel")
+		icon.Image = sheetId
 		icon.ImageRectSize = Vector2.new(CELL, CELL)
 		icon.ImageRectOffset = Vector2.new((index % COLUMNS) * CELL, math.floor(index / COLUMNS) * CELL)
 		icon.ScaleType = Enum.ScaleType.Stretch

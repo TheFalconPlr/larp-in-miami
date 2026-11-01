@@ -12,6 +12,7 @@ local Settings = require(Shared.Config.Settings)
 local RateLimiter = require(Shared.Logic.RateLimiter)
 local Net = require(Shared.Net)
 local State = require(script.Parent.State)
+local Sounds = require(script.Parent.Ui.Sounds)
 
 local ClickInput = {}
 
@@ -55,6 +56,9 @@ function ClickInput.start(hud)
 			return
 		end
 		pending = pending + 1
+		if not view.BagFull then
+			Sounds.play("Click")
+		end
 		hud.clickFeedback(screenPosition, view)
 	end
 

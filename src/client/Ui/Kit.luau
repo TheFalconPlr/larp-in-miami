@@ -7,6 +7,8 @@ local TextService = game:GetService("TextService")
 
 local Theme = require(script.Parent.Theme)
 local Icons = require(script.Parent.Icons)
+local Sounds = require(script.Parent.Sounds)
+local Pattern = require(script.Parent.Pattern)
 
 local Kit = {}
 
@@ -79,7 +81,8 @@ end
 
 ----------------------------------------------------------------- Przycisk z wypukłą krawędzią
 -- opts: size (Vector2), text, colors, radius, edge, border, textSize, textStroke, name, order,
--- anchor, position. Zwraca { holder, face, label, Activated, setColors, setText }.
+-- anchor, position, sound (nazwa z Settings.Sounds, domyślnie "Button"; false = bez dźwięku).
+-- Zwraca { holder, face, label, Activated, setColors, setText }.
 function Kit.button(parent, opts)
 	local edge = opts.edge or 5
 	local radius = opts.radius or 18
@@ -165,6 +168,12 @@ function Kit.button(parent, opts)
 		gloss.BackgroundTransparency = 0.72
 		press(false)
 	end)
+	if opts.sound ~= false then
+		local soundName = opts.sound or "Button"
+		face.Activated:Connect(function()
+			Sounds.play(soundName)
+		end)
+	end
 
 	local api = { holder = holder, face = face, label = label, Activated = face.Activated }
 	function api.setColors(colors)
@@ -377,6 +386,7 @@ function Kit.panel(parent, opts)
 	Kit.corner(body, 30)
 	Kit.stroke(body, 5, Enum.ApplyStrokeMode.Border)
 	Kit.gradient(body, Theme.Gradients.Panel, 90)
+	Pattern.fill(body, opts.size, { radius = 30 })
 	Icons.make(opts.icon, {
 		Position = UDim2.fromOffset(-34, -58),
 		Size = UDim2.fromOffset(108, 108),
@@ -404,10 +414,12 @@ function Kit.panel(parent, opts)
 		position = UDim2.new(1, 10, 0, 10),
 	})
 	close.holder.ZIndex = 7
+	local padding = opts.padding or 28
+	local top = opts.top or 60
 	local content = Kit.new("Frame", {
 		Name = "Content",
-		Position = UDim2.fromOffset(28, 60),
-		Size = UDim2.new(1, -56, 1, -80),
+		Position = UDim2.fromOffset(padding, top),
+		Size = UDim2.new(1, -2 * padding, 1, -top - (opts.bottom or 20)),
 		BackgroundTransparency = 1,
 		ZIndex = 3,
 		Parent = inner,

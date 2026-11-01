@@ -17,6 +17,8 @@ local State = require(script.Parent.State)
 local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
 local Icons = require(script.Parent.Ui.Icons)
+local Sounds = require(script.Parent.Ui.Sounds)
+local Pattern = require(script.Parent.Ui.Pattern)
 
 local Hud = {}
 
@@ -108,12 +110,23 @@ local function makeCard(parent, order, opts)
 	Kit.corner(card, 24)
 	Kit.stroke(card, 4, Enum.ApplyStrokeMode.Border)
 	Kit.gradient(card, opts.colors, 90)
+	-- wzór na karcie: białe, półprzezroczyste ikony inwestowania (pod resztą karty)
+	Pattern.fill(card, Vector2.new(600, 168), {
+		color = Theme.White,
+		transparency = 0.86,
+		scale = 0.6,
+		stepX = 78,
+		stepY = 62,
+		inset = 10,
+		zIndex = 1,
+	})
 
 	local iconBox = Kit.new("Frame", {
 		Position = UDim2.fromOffset(18, 20),
 		Size = UDim2.fromOffset(120, 120),
 		BackgroundColor3 = Theme.White,
 		BorderSizePixel = 0,
+		ZIndex = 2,
 		Parent = card,
 	})
 	Kit.corner(iconBox, 28)
@@ -127,18 +140,19 @@ local function makeCard(parent, order, opts)
 
 	local c = { frame = card }
 	Kit.text(card, {
-		Position = UDim2.fromOffset(158, 12),
-		Size = UDim2.fromOffset(250, 40),
+		Position = UDim2.fromOffset(156, 10),
+		Size = UDim2.fromOffset(214, 42),
 		Text = opts.title,
-		TextColor3 = Theme.Dark,
 		TextXAlignment = Enum.TextXAlignment.Left,
-	}, { maxSize = 31, stroke = 0 })
+		ZIndex = 2,
+	}, { maxSize = 31, stroke = 3 })
 
 	local chip = Kit.new("Frame", {
-		Position = UDim2.fromOffset(158, 58),
+		Position = UDim2.fromOffset(156, 58),
 		Size = UDim2.fromOffset(118, 30),
 		BackgroundColor3 = Theme.Dark,
 		BorderSizePixel = 0,
+		ZIndex = 2,
 		Parent = card,
 	})
 	Kit.corner(chip, 15)
@@ -149,19 +163,20 @@ local function makeCard(parent, order, opts)
 	}, { maxSize = 20, stroke = 0 })
 
 	c.effect = Kit.text(card, {
-		Position = UDim2.fromOffset(158, 98),
-		Size = UDim2.fromOffset(184, 32),
+		Position = UDim2.fromOffset(156, 98),
+		Size = UDim2.fromOffset(178, 32),
 		Text = "",
-		TextColor3 = Theme.Muted,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		RichText = true,
-	}, { maxSize = 23, stroke = 0 })
+		ZIndex = 2,
+	}, { maxSize = 23, stroke = 2.5 })
 
 	local priceRow = Kit.new("Frame", {
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -16, 0, 12),
 		Size = UDim2.fromOffset(210, 46),
 		BackgroundTransparency = 1,
+		ZIndex = 2,
 		Parent = card,
 	})
 	Kit.new("UIListLayout", {
@@ -188,22 +203,24 @@ local function makeCard(parent, order, opts)
 
 	c.buyMax = Kit.button(card, {
 		name = "BuyMax",
-		size = Vector2.new(124, 58),
+		size = Vector2.new(116, 56),
 		text = TEXT.BuyMax,
 		colors = Theme.Gradients.Yellow,
 		anchor = Vector2.new(1, 1),
 		position = UDim2.new(1, -16, 1, -12),
-		textSize = 25,
+		textSize = 24,
 	})
 	c.buyOne = Kit.button(card, {
 		name = "BuyOne",
-		size = Vector2.new(124, 58),
+		size = Vector2.new(116, 56),
 		text = TEXT.BuyOne,
 		colors = Theme.Gradients.Green,
 		anchor = Vector2.new(1, 1),
-		position = UDim2.new(1, -150, 1, -12),
-		textSize = 25,
+		position = UDim2.new(1, -142, 1, -12),
+		textSize = 24,
 	})
+	c.buyMax.holder.ZIndex = 2
+	c.buyOne.holder.ZIndex = 2
 	return c
 end
 
@@ -444,7 +461,7 @@ function Hud.start()
 	local toasts = Kit.new("Frame", {
 		Name = "Toasts",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -112),
+		Position = UDim2.new(0.5, 0, 1, -142),
 		Size = UDim2.fromOffset(800, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
@@ -460,11 +477,19 @@ function Hud.start()
 	})
 
 	----------------------------------------------------------------- Okno Upgrades
-	local panel = Kit.panel(gui, { name = "UpgradesPanel", size = Vector2.new(680, 450), title = TEXT.UpgradesTitle, icon = "Upgrades" })
+	local panel = Kit.panel(gui, {
+		name = "UpgradesPanel",
+		size = Vector2.new(680, 460),
+		title = TEXT.UpgradesTitle,
+		icon = "Upgrades",
+		padding = 40,
+		top = 64,
+		bottom = 38,
+	})
 	registerScale(panel.holder)
-	Kit.new("UIListLayout", { Padding = UDim.new(0, 18), SortOrder = Enum.SortOrder.LayoutOrder, Parent = panel.content })
+	Kit.new("UIListLayout", { Padding = UDim.new(0, 22), SortOrder = Enum.SortOrder.LayoutOrder, Parent = panel.content })
 	local clickCard = makeCard(panel.content, 1, { name = "Click", title = TEXT.ClickTitle, icon = "Click", colors = Theme.Gradients.CardPink })
-	local bagCard = makeCard(panel.content, 2, { name = "Bag", title = TEXT.BagTitle, icon = "Bag", colors = Theme.Gradients.CardAqua })
+	local bagCard = makeCard(panel.content, 2, { name = "Bag", title = TEXT.BagTitle, icon = "Bag", colors = Theme.Gradients.CardBlue })
 
 	----------------------------------------------------------------- Tryb testowy i zaciemnienie
 	local testHolder = Kit.new("Frame", {
@@ -499,16 +524,19 @@ function Hud.start()
 	})
 
 	----------------------------------------------------------------- Efekty
+	-- Komunikat: wyskakuje, wisi chwilę i znika przez zmniejszenie (bez CanvasGroup, który przy UIScale
+	-- ucinał komunikaty). Naraz najwyżej 3.
 	local toastCount = 0
 	local function toast(items)
 		toastCount = toastCount + 1
-		local group = Kit.new("CanvasGroup", {
+		local row = Kit.new("Frame", {
+			Name = "Toast",
 			LayoutOrder = toastCount,
 			Size = UDim2.fromOffset(800, 58),
 			BackgroundTransparency = 1,
 			Parent = toasts,
 		})
-		Kit.pill(group, {
+		local pill = Kit.pill(row, {
 			anchor = Vector2.new(0.5, 0),
 			position = UDim2.fromScale(0.5, 0),
 			height = 50,
@@ -516,25 +544,27 @@ function Hud.start()
 			padRight = 22,
 			items = items,
 		})
-		local groups = {}
+		local grow = Kit.new("UIScale", { Scale = 0.6, Parent = pill.holder })
+		TweenService:Create(grow, TweenInfo.new(0.18, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		local rows = {}
 		for _, child in ipairs(toasts:GetChildren()) do
-			if child:IsA("CanvasGroup") then
-				table.insert(groups, child)
+			if child:IsA("Frame") then
+				table.insert(rows, child)
 			end
 		end
-		if #groups > 3 then
-			table.sort(groups, function(a, b)
+		if #rows > 3 then
+			table.sort(rows, function(a, b)
 				return a.LayoutOrder < b.LayoutOrder
 			end)
-			groups[1]:Destroy()
+			rows[1]:Destroy()
 		end
 		task.delay(2.4, function()
-			if group.Parent == nil then
+			if row.Parent == nil then
 				return
 			end
-			TweenService:Create(group, TweenInfo.new(0.35), { GroupTransparency = 1 }):Play()
-			task.wait(0.4)
-			group:Destroy()
+			TweenService:Create(grow, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+			task.wait(0.22)
+			row:Destroy()
 		end)
 	end
 
@@ -656,6 +686,7 @@ function Hud.start()
 	----------------------------------------------------------------- Rysowanie stanu
 	local lastView = nil
 	local wasFull = false
+	local bagBlink = nil -- tween migania pełnego Bag (false = brak, nil = jeszcze nie ustawiony kolor)
 	local perClickText = nil
 
 	local function setHint(key, items)
@@ -701,17 +732,31 @@ function Hud.start()
 		end
 		TweenService:Create(bagFill, TweenInfo.new(0.12), { Size = UDim2.fromScale(fraction, 1) }):Play()
 		if view.BagFull then
-			bagFillGradient.Color = ColorSequence.new(Theme.Gradients.BagFull[1], Theme.Gradients.BagFull[2])
 			bagLabel.Text = TEXT.BagFull
 			if not wasFull then
+				bagFillGradient.Color = ColorSequence.new(Theme.Gradients.BagFull[1], Theme.Gradients.BagFull[2])
 				shake(bagInner)
+				-- pełny Bag miga: kolor paska przygasa i wraca
+				bagBlink = TweenService:Create(
+					bagFill,
+					TweenInfo.new(0.45, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+					{ BackgroundColor3 = Color3.fromRGB(255, 170, 170) }
+				)
+				bagBlink:Play()
 			end
 		else
-			bagFillGradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Theme.BagFill[1]),
-				ColorSequenceKeypoint.new(0.6, Theme.BagFill[2]),
-				ColorSequenceKeypoint.new(1, Theme.BagFill[3]),
-			})
+			if wasFull or bagBlink == nil then
+				if bagBlink then
+					bagBlink:Cancel()
+				end
+				bagBlink = false
+				bagFill.BackgroundColor3 = Theme.White
+				bagFillGradient.Color = ColorSequence.new({
+					ColorSequenceKeypoint.new(0, Theme.BagFill[1]),
+					ColorSequenceKeypoint.new(0.6, Theme.BagFill[2]),
+					ColorSequenceKeypoint.new(1, Theme.BagFill[3]),
+				})
+			end
 			bagLabel.Text = Format.number(view.Bag) .. " / " .. Format.number(capacity) .. " LP"
 		end
 		wasFull = view.BagFull == true
@@ -725,12 +770,12 @@ function Hud.start()
 		-- Okno Upgrades
 		local clickEffect = Format.small(view.LPPerClick)
 		if view.NextLPPerClick ~= nil then
-			clickEffect = clickEffect .. ' → <font color="' .. Theme.Good .. '">' .. Format.small(view.NextLPPerClick) .. "</font>"
+			clickEffect = clickEffect .. ' → <font color="' .. Theme.NextValue .. '">' .. Format.small(view.NextLPPerClick) .. "</font>"
 		end
 		renderCard(clickCard, "Click", view.ClickLevel, view.NextClickCost, view.Cash, clickEffect .. TEXT.PerClick)
 		local bagEffect = Format.number(capacity)
 		if view.NextBagCapacity ~= nil then
-			bagEffect = bagEffect .. ' → <font color="' .. Theme.Good .. '">' .. Format.number(view.NextBagCapacity) .. "</font>"
+			bagEffect = bagEffect .. ' → <font color="' .. Theme.NextValue .. '">' .. Format.number(view.NextBagCapacity) .. "</font>"
 		end
 		renderCard(bagCard, "Bag", view.BagLevel, view.NextBagCost, view.Cash, bagEffect .. TEXT.Capacity)
 
@@ -842,8 +887,10 @@ function Hud.start()
 			return
 		end
 		if payload.Auto then
+			Sounds.play("Sell", { volume = 0.4 })
 			pop(center(cashIcon) + Vector2.new(60 * currentScale, -40 * currentScale), "+" .. Format.number(payload.Cash or 0), Theme.Gradients.Gold)
 		else
+			Sounds.play("Sell")
 			toast({
 				{ icon = "Sell", size = 40 },
 				{ text = string.format(TEXT.SoldPrefix, Format.number(payload.LP or 0)), size = 22, color = Theme.Dark },

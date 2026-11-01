@@ -11,13 +11,13 @@ local Settings = {
 	},
 	Click = {
 		-- Limit serwera: najwyżej tyle kliknięć na sekundę (ręczne i Auto-Click razem).
-		MaxPerSecond = 100,
+		MaxPerSecond = 50,
 		-- Ile kliknięć może przyjść naraz, np. po chwilowym lagu.
-		Burst = 100,
+		Burst = 50,
 		-- Klient wysyła kliknięcia paczkami co tyle sekund (mniej zdarzeń w sieci).
 		BatchInterval = 0.1,
 		-- Najwięcej kliknięć w jednej paczce.
-		MaxBatch = 100,
+		MaxBatch = 50,
 	},
 	Sell = {
 		-- Pole Sell to część (Part) z tym tagiem albo o tej nazwie. Bez niej serwer stawia tymczasowe pole.
@@ -31,8 +31,25 @@ local Settings = {
 	SyncInterval = 0.1,
 	Ui = {
 		-- Arkusz ikon (assets/icons/larp-icons.png) wgrany do Roblox, np. "rbxassetid://1234567890".
-		-- Puste = zamiast ikon są emoji.
+		-- Puste = ikony bez własnego ID poniżej są jako emoji.
 		IconSheet = "",
+		-- Własne ikony z Toolboxa: ID Decala albo obrazka (liczba) albo gotowe "rbxassetid://…".
+		-- Ikona z tej listy ma pierwszeństwo przed arkuszem. Nazwy jak w src/client/Ui/Icons.luau.
+		Icons = {
+			Bag = 112098959943734, -- tymczasowa
+			Click = 17293879645,
+			Upgrades = 108527921987826,
+			Cash = 15040641396, -- raczej tymczasowa
+			Sell = 131296908597094, -- raczej tymczasowa
+		},
+		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
+		Pattern = "",
+	},
+	-- Dźwięki (ID z Toolboxa). Volume 0–1, MinGap = najmniejszy odstęp między odtworzeniami (s).
+	Sounds = {
+		Button = { Id = 100809160609628, Volume = 0.5, MinGap = 0.05 }, -- domyślny dźwięk przycisków
+		Click = { Id = 139719503904449, Volume = 0.35, MinGap = 0.06 }, -- klikanie na LP
+		Sell = { Id = 111773238101465, Volume = 0.6, MinGap = 0.15 }, -- sprzedaż
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.
