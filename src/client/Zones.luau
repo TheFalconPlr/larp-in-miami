@@ -32,7 +32,6 @@ local TEXT = {
 	Earn = "Earn",
 	Unlock = "UNLOCK",
 	Unlocked = "unlocked!",
-	NotEnough = "Not enough L$",
 	Locked = "Unlock the previous zone first",
 }
 
@@ -393,9 +392,9 @@ function Zones.start(hud)
 			popup.hide()
 			-- bramka otworzy się i pojawi się komunikat, gdy przyjdzie nowy stan z serwera
 		elseif result.Reason == "NotEnough" then
-			hud.toast({ { text = TEXT.NotEnough, size = 26, colors = Theme.Gradients.Red } })
+			hud.notEnough(unlockButton)
 		elseif result.Reason == "Locked" then
-			hud.toast({ { text = TEXT.Locked, size = 26, colors = Theme.Gradients.Red } })
+			hud.toast({ { text = TEXT.Locked, size = 26, colors = Theme.Gradients.Red } }, "ZoneLocked")
 		end
 	end)
 

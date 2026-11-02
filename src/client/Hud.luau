@@ -46,6 +46,7 @@ local TEXT = {
 	HintZoneEnd = "at the gate!",
 	BagFull = "BAG FULL!",
 	BagFullPop = "BAG FULL",
+	LarpPop = "Larp", -- napis przy kursorze przy każdym kliknięciu
 	Sold = "Sold", -- „Sold 34.35K LP for 💵 34.35K”: liczba LP na zielono, kwota L$ na złoto
 	SoldFor = "LP for",
 	NotEnough = "Not enough L$",
@@ -122,7 +123,7 @@ local function makeCard(parent, order, opts)
 		scale = 0.6,
 		stepX = 78,
 		stepY = 62,
-		inset = 10,
+		radius = 24,
 		zIndex = 1,
 	})
 
@@ -259,6 +260,7 @@ end
 ----------------------------------------------------------------- Start
 function Hud.start()
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	local api = {} -- to, co HUD daje innym modułom (wypełniane na końcu)
 
 	local gui = Kit.new("ScreenGui", {
 		Name = "LarpHUD",
@@ -274,6 +276,15 @@ function Hud.start()
 		IgnoreGuiInset = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 		DisplayOrder = 6,
+		Parent = playerGui,
+	})
+	-- komunikaty mają własną warstwę nad oknami (Upgrades, Unlock), żeby nic ich nie zasłaniało
+	local toastGui = Kit.new("ScreenGui", {
+		Name = "LarpToasts",
+		ResetOnSpawn = false,
+		IgnoreGuiInset = false,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		DisplayOrder = 7,
 		Parent = playerGui,
 	})
 	local topGui = Kit.new("ScreenGui", {
@@ -479,7 +490,7 @@ function Hud.start()
 		Size = UDim2.fromOffset(800, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Parent = gui,
+		Parent = toastGui,
 	})
 	registerScale(toasts)
 	Kit.new("UIListLayout", {
@@ -538,10 +549,39 @@ function Hud.start()
 	})
 
 	----------------------------------------------------------------- Efekty
-	-- Komunikat: sam tekst z obrysem i ikonami (bez tła). Wyskakuje, wisi chwilę i znika przez
-	-- zmniejszenie (bez CanvasGroup, który przy UIScale ucinał komunikaty). Naraz najwyżej 3.
+	-- Komunikat: sam tekst z obrysem i ikonami (bez tła), na własnej warstwie nad oknami.
+	-- Wyskakuje, wisi chwilę i znika przez zmniejszenie (bez CanvasGroup, który przy UIScale ucinał
+	-- komunikaty). Naraz najwyżej 3. Komunikat z kluczem (np. "NotEnough") się nie powtarza:
+	-- drugi raz tylko odświeża ten, który już wisi.
 	local toastCount = 0
-	local function toast(items)
+	local toastByKey = {}
+
+	local function hideToastLater(entry)
+		entry.token = entry.token + 1
+		local token = entry.token
+		task.delay(2.4, function()
+			if entry.token ~= token or entry.row.Parent == nil then
+				return
+			end
+			TweenService:Create(entry.grow, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+			task.wait(0.22)
+			if entry.token == token then
+				entry.row:Destroy()
+				if entry.key ~= nil and toastByKey[entry.key] == entry then
+					toastByKey[entry.key] = nil
+				end
+			end
+		end)
+	end
+
+	local function toast(items, key)
+		local existing = key and toastByKey[key]
+		if existing and existing.row.Parent ~= nil then
+			existing.grow.Scale = 1.18
+			TweenService:Create(existing.grow, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			hideToastLater(existing)
+			return
+		end
 		toastCount = toastCount + 1
 		local row = Kit.new("Frame", {
 			Name = "Toast",
@@ -571,32 +611,39 @@ function Hud.start()
 			end)
 			rows[1]:Destroy()
 		end
-		task.delay(2.4, function()
-			if row.Parent == nil then
-				return
-			end
-			TweenService:Create(grow, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
-			task.wait(0.22)
-			row:Destroy()
-		end)
+		local entry = { row = row, grow = grow, token = 0, key = key }
+		if key ~= nil then
+			toastByKey[key] = entry
+		end
+		hideToastLater(entry)
 	end
 
-	local function textToast(text, colors)
-		toast({ { text = text, size = 26, colors = colors } })
+	local function textToast(text, colors, key)
+		toast({ { text = text, size = 26, colors = colors } }, key)
 	end
 
-	local activePops = 0
-	local function pop(screenPosition, text, colors)
-		if activePops >= 25 then
+	-- Wyskakujący napis (np. „Larp” przy kursorze, „+X” nad paskiem Bag, „+L$” przy licznika L$).
+	-- Każdy rodzaj ma swój limit, żeby napisy nie zasłoniły ekranu przy szybkim klikaniu.
+	-- opts: kind (cursor, bar, other), size (Vector2, piksele bazowe), rise, driftX, duration,
+	-- rotation (najwyżej tyle stopni w lewo albo w prawo), stroke.
+	local POP_LIMIT = { cursor = 8, bar = 8, other = 12 }
+	local activePops = { cursor = 0, bar = 0, other = 0 }
+	local function pop(screenPosition, text, colors, opts)
+		opts = opts or {}
+		local kind = opts.kind or "other"
+		if activePops[kind] >= POP_LIMIT[kind] then
 			return
 		end
-		activePops = activePops + 1
+		activePops[kind] = activePops[kind] + 1
 		local s = currentScale
+		local size = opts.size or Vector2.new(220, 54)
+		local rotation = opts.rotation or 10
+		local duration = opts.duration or 0.75
 		local label = Kit.new("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromOffset(screenPosition.X + math.random(-16, 16), screenPosition.Y - 14),
-			Size = UDim2.fromOffset(220 * s, 54 * s),
-			Rotation = math.random(-10, 10),
+			Position = UDim2.fromOffset(screenPosition.X, screenPosition.Y),
+			Size = UDim2.fromOffset(size.X * s, size.Y * s),
+			Rotation = math.random(-rotation, rotation),
 			BackgroundTransparency = 1,
 			Font = Theme.Font,
 			Text = text,
@@ -604,19 +651,19 @@ function Hud.start()
 			TextScaled = true,
 			Parent = popsGui,
 		})
-		local stroke = Kit.stroke(label, 4 * s)
+		local stroke = Kit.stroke(label, (opts.stroke or 4) * s)
 		Kit.gradient(label, colors, 90)
 		local grow = Kit.new("UIScale", { Scale = 0.5, Parent = label })
 		TweenService:Create(grow, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		local info = TweenInfo.new(0.75, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+		local info = TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 		TweenService:Create(label, info, {
-			Position = label.Position - UDim2.fromOffset(0, 80 * s),
+			Position = label.Position + UDim2.fromOffset((opts.driftX or 0) * s, -(opts.rise or 80) * s),
 			TextTransparency = 1,
 		}):Play()
 		TweenService:Create(stroke, info, { Transparency = 1 }):Play()
-		task.delay(0.8, function()
+		task.delay(duration + 0.05, function()
 			label:Destroy()
-			activePops = activePops - 1
+			activePops[kind] = activePops[kind] - 1
 		end)
 	end
 
@@ -748,6 +795,7 @@ function Hud.start()
 	end
 
 	local function render(view)
+		local firstRender = lastView == nil
 		lastView = view
 		setCash(view.Cash)
 
@@ -761,6 +809,9 @@ function Hud.start()
 		if view.BagFull then
 			bagLabel.Text = TEXT.BagFull
 			if not wasFull then
+				if not firstRender then
+					Sounds.play("BagFull") -- Bag właśnie się zapełnił
+				end
 				bagFillGradient.Color = ColorSequence.new(Theme.Gradients.BagFull[1], Theme.Gradients.BagFull[2])
 				shake(bagInner)
 				-- pełny Bag miga: kolor paska przygasa i wraca
@@ -844,7 +895,7 @@ function Hud.start()
 
 	----------------------------------------------------------------- Przyciski
 	local buying = false
-	local function buy(kind, mode)
+	local function buy(kind, mode, button)
 		if buying then
 			return
 		end
@@ -865,21 +916,21 @@ function Hud.start()
 			end
 			toast({ { icon = icon, size = 44 }, { text = string.format(TEXT.Upgraded, name, result.Level), size = 26 } })
 		elseif result.Reason == "NotEnough" then
-			textToast(TEXT.NotEnough, Theme.Gradients.Red)
+			api.notEnough(button)
 		end
 	end
 
 	clickCard.buyOne.Activated:Connect(function()
-		buy("Click", "One")
+		buy("Click", "One", clickCard.buyOne)
 	end)
 	clickCard.buyMax.Activated:Connect(function()
-		buy("Click", "Max")
+		buy("Click", "Max", clickCard.buyMax)
 	end)
 	bagCard.buyOne.Activated:Connect(function()
-		buy("Bag", "One")
+		buy("Bag", "One", bagCard.buyOne)
 	end)
 	bagCard.buyMax.Activated:Connect(function()
-		buy("Bag", "Max")
+		buy("Bag", "Max", bagCard.buyMax)
 	end)
 
 	upgradesTile.Activated:Connect(function()
@@ -920,7 +971,7 @@ function Hud.start()
 		end
 		if payload.Auto then
 			Sounds.play("Sell", { volume = 0.4 })
-			pop(center(cashIcon) + Vector2.new(60 * currentScale, -40 * currentScale), "+" .. Format.number(payload.Cash or 0), Theme.Gradients.Gold)
+			pop(center(cashIcon) + Vector2.new(60 * currentScale, -54 * currentScale), "+" .. Format.number(payload.Cash or 0), Theme.Gradients.Gold)
 		else
 			Sounds.play("Sell")
 			toast({
@@ -945,32 +996,60 @@ function Hud.start()
 	Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(watchCamera)
 	watchCamera()
 
-	----------------------------------------------------------------- Dla ClickInput
-	local api = {
-		gui = gui,
-		registerScale = registerScale,
-		toast = toast,
-	}
+	----------------------------------------------------------------- Dla ClickInput i innych modułów
+	-- (api jest zadeklarowane wyżej, bo używa go też buy)
+	api.gui = gui
+	api.registerScale = registerScale
+	api.toast = toast
 	-- Inne okna (np. odblokowanie strefy) zamykają okno Upgrades, żeby się nie nakładały.
 	function api.closeUpgrades()
 		panel.hide()
 	end
 
-	-- Napis i dźwięk kliknięcia. Z pełnym Bag dźwięk gra tylko razem z napisem „BAG FULL”
-	-- (co 0,5 s) i zawsze tak samo wysoko, bo kliknięcie nic nie dało.
+	-- Brak L$ na zakup: dźwięk, czerwony komunikat (jeden, nie kilka naraz) i potrząśnięty przycisk.
+	function api.notEnough(button)
+		Sounds.play("NotEnough")
+		textToast(TEXT.NotEnough, Theme.Gradients.Red, "NotEnough")
+		if button ~= nil then
+			Kit.shake(button.holder)
+		end
+	end
+
+	-- Klik: mały napis „Larp” przy kursorze, a „+X” wylatuje z paska Bag (widać, że LP wpadają
+	-- do Bag). Z pełnym Bag jest napis „BAG FULL” i dźwięk pełnego Bag, razem, najwyżej co 0,5 s.
 	local lastFullPop = 0
 	function api.clickFeedback(screenPosition, view)
 		if view.BagFull then
 			local now = os.clock()
 			if now - lastFullPop > 0.5 then
 				lastFullPop = now
-				Sounds.play("Click", { pitch = 1 })
-				pop(screenPosition, TEXT.BagFullPop, Theme.Gradients.BagFull)
+				Sounds.play("BagFullClick")
+				pop(screenPosition + Vector2.new(math.random(-16, 16), -14), TEXT.BagFullPop, Theme.Gradients.BagFull)
 			end
 			return
 		end
 		Sounds.play("Click")
-		pop(screenPosition, "+" .. Format.small(view.LPPerClick), Theme.Gradients.LP)
+		local s = currentScale
+		pop(screenPosition + Vector2.new(math.random(-10, 10), -12 * s), TEXT.LarpPop, Theme.Gradients.LP, {
+			kind = "cursor",
+			size = Vector2.new(110, 34),
+			rise = 50,
+			duration = 0.55,
+			rotation = 8,
+			stroke = 3,
+		})
+		local barPosition = bagTrack.AbsolutePosition
+		local barSize = bagTrack.AbsoluteSize
+		local x = barPosition.X + barSize.X * (0.12 + math.random() * 0.8)
+		pop(Vector2.new(x, barPosition.Y - 4 * s), "+" .. Format.small(view.LPPerClick), Theme.Gradients.LP, {
+			kind = "bar",
+			size = Vector2.new(140, 36),
+			rise = 46,
+			driftX = math.random(-24, 24),
+			duration = 0.7,
+			rotation = 6,
+			stroke = 3,
+		})
 	end
 	return api
 end

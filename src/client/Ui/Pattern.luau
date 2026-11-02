@@ -78,15 +78,30 @@ local function icon(parent, x, y, s, style)
 	end
 end
 
--- Wypełnia ramkę wzorem. size: rozmiar ramki (Vector2, piksele bazowe).
--- opts: inset (margines bez wzoru), scale (wielkość ikon), stepX, stepY (odstępy), color,
--- transparency (0 = pełny kolor, np. 0.85 = biały prześwit na kolorowej karcie), radius, zIndex.
+-- Czy ikona (lewy górny róg x, y, bok box) zachodzi na zaokrąglony róg ramki o promieniu radius.
+-- Ramka przycina ikony tylko prostokątnie, więc w rogach ikon nie stawiamy.
+local function inCorner(x, y, box, size, radius)
+	if radius <= 0 then
+		return false
+	end
+	local left = x < radius
+	local right = x + box > size.X - radius
+	local top = y < radius
+	local bottom = y + box > size.Y - radius
+	return (left or right) and (top or bottom)
+end
+
+-- Wypełnia całą ramkę wzorem (jak tapeta): ikony na brzegach są przycięte, a środkowa ikona
+-- stoi na środku ramki. size: rozmiar ramki (Vector2, piksele bazowe).
+-- opts: scale (wielkość ikon), stepX, stepY (odstępy), color, transparency (0 = pełny kolor,
+-- np. 0.86 = biały prześwit na kolorowej karcie), radius (zaokrąglenie rogów ramki), zIndex.
 function Pattern.fill(parent, size, opts)
 	opts = opts or {}
 	local holder = Instance.new("Frame")
 	holder.Name = "Pattern"
 	holder.BackgroundTransparency = 1
 	holder.Size = UDim2.fromScale(1, 1)
+	holder.ClipsDescendants = true
 	holder.ZIndex = opts.zIndex or 1
 	holder.Parent = parent
 
@@ -105,10 +120,10 @@ function Pattern.fill(parent, size, opts)
 		return holder
 	end
 
-	local scale = opts.scale or 0.8
-	local stepX = opts.stepX or 104
-	local stepY = opts.stepY or 88
-	local inset = opts.inset or 24
+	local scale = opts.scale or 0.7
+	local stepX = opts.stepX or 92
+	local stepY = opts.stepY or 76
+	local radius = opts.radius or 0
 	local transparency = opts.transparency or 0
 	local style = {
 		color = opts.color or Theme.PatternColor,
@@ -116,17 +131,19 @@ function Pattern.fill(parent, size, opts)
 		extend = (transparency > 0) and 0 or THICK,
 	}
 	local box = BOX * scale
-	local columns = math.floor((size.X - 2 * inset - box) / stepX) + 1
-	local startX = (size.X - ((columns - 1) * stepX + box)) / 2
+	-- pierwsza kolumna i rząd tuż poza ramką, tak żeby jedna ikona wypadła dokładnie na środku
+	local startX = ((size.X - box) / 2) % stepX - stepX
+	local startY = ((size.Y - box) / 2) % (2 * stepY) - 2 * stepY
 	local row = 0
-	local y = inset
-	while y + box <= size.Y - inset do
+	local y = startY
+	while y < size.Y do
 		local x = startX
 		if row % 2 == 1 then
 			x = x + stepX / 2
 		end
-		while x + box <= size.X - inset + 0.5 do
-			if x >= inset - 0.5 then
+		while x < size.X do
+			local visible = x + box > 0 and y + box > 0
+			if visible and not inCorner(x, y, box, size, radius) then
 				icon(holder, x, y, scale, style)
 			end
 			x = x + stepX

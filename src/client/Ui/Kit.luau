@@ -44,6 +44,23 @@ function Kit.stroke(parent, thickness, mode, color)
 	})
 end
 
+-- Krótkie potrząśnięcie w bok (np. przycisk, gdy brakuje L$). Wraca na swoje miejsce.
+function Kit.shake(guiObject)
+	if guiObject == nil or guiObject:GetAttribute("Shaking") then
+		return
+	end
+	guiObject:SetAttribute("Shaking", true)
+	local base = guiObject.Position
+	task.spawn(function()
+		for _, dx in ipairs({ -9, 8, -6, 4, -2, 0 }) do
+			guiObject.Position = base + UDim2.fromOffset(dx, 0)
+			task.wait(0.035)
+		end
+		guiObject.Position = base
+		guiObject:SetAttribute("Shaking", nil)
+	end)
+end
+
 -- Rozmiar napisu w czcionce gry (bez obrysu). Znaczniki RichText nie liczą się do szerokości.
 function Kit.measure(text, size)
 	local plain = string.gsub(text, "<[^>]+>", "")
