@@ -3,6 +3,7 @@
 
 local SoundService = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Settings = require(ReplicatedStorage:WaitForChild("Shared").Config.Settings)
@@ -12,6 +13,8 @@ local Sounds = {}
 local POOL_SIZE = 6
 local pools = {}
 local lastPlayed = {}
+local playTokens = {} -- [dźwięk] = numer odtworzenia (żeby stare wyciszanie nie ruszało nowego)
+local fades = {} -- [dźwięk] = trwające wyciszanie
 local streaks = {} -- [nazwa] = { count, time }: ile razy pod rząd (dla dźwięku, który rośnie)
 
 -- Dźwięk z ustawieniem Rise idzie w górę przy każdym kolejnym odtworzeniu pod rząd
@@ -86,6 +89,10 @@ function Sounds.play(name, opts)
 	lastPlayed[name] = now
 	p.index = p.index % #p.list + 1
 	local sound = p.list[p.index]
+	if fades[sound] ~= nil then
+		fades[sound]:Cancel()
+		fades[sound] = nil
+	end
 	local volume = p.info.Volume or 0.5
 	if opts ~= nil and opts.volume ~= nil then
 		volume = volume * opts.volume
@@ -100,6 +107,29 @@ function Sounds.play(name, opts)
 	end
 	sound.TimePosition = 0
 	sound:Play()
+
+	-- Length: dźwięk gra najwyżej tyle sekund, a przez ostatnie FadeOut sekund powoli cichnie.
+	local length = p.info.Length
+	if length ~= nil then
+		local token = (playTokens[sound] or 0) + 1
+		playTokens[sound] = token
+		local fade = p.info.FadeOut or 0
+		if fade > 0 then
+			task.delay(math.max(0, length - fade), function()
+				if playTokens[sound] == token then
+					local tween = TweenService:Create(sound, TweenInfo.new(fade, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = 0 })
+					fades[sound] = tween
+					tween:Play()
+				end
+			end)
+		end
+		task.delay(length, function()
+			if playTokens[sound] == token then
+				sound:Stop()
+				fades[sound] = nil
+			end
+		end)
+	end
 end
 
 return Sounds

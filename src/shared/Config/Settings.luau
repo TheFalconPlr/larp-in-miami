@@ -11,13 +11,14 @@ local Settings = {
 	},
 	Click = {
 		-- Limit serwera: najwyżej tyle kliknięć na sekundę (ręczne i Auto-Click razem).
-		MaxPerSecond = 50,
+		-- 10/s to mniej więcej szybki człowiek, więc autoclicker nie daje dużej przewagi.
+		MaxPerSecond = 10,
 		-- Ile kliknięć może przyjść naraz, np. po chwilowym lagu.
-		Burst = 50,
+		Burst = 10,
 		-- Klient wysyła kliknięcia paczkami co tyle sekund (mniej zdarzeń w sieci).
 		BatchInterval = 0.1,
 		-- Najwięcej kliknięć w jednej paczce.
-		MaxBatch = 50,
+		MaxBatch = 10,
 	},
 	Sell = {
 		-- Pole Sell to część (Part) z tym tagiem albo o tej nazwie. Bez niej serwer stawia tymczasowe pole.
@@ -59,10 +60,10 @@ local Settings = {
 		NotEnough = { Id = 87519554692663, Volume = 0.6, MinGap = 0.15 }, -- brak L$ na zakup
 		-- odblokowanie strefy (na razie ten sam dźwięk co sprzedaż; podmień, gdy znajdziesz lepszy)
 		Unlock = { Id = 111773238101465, Volume = 0.8, MinGap = 0.5 },
-		-- nagroda za aktywność, np. koniec sesji zdjęciowej (na razie dźwięk sprzedaży)
-		Reward = { Id = 111773238101465, Volume = 0.7, MinGap = 0.3 },
-		-- migawka aparatu w sesji zdjęciowej: wpisz Id = numer dźwięku z Toolboxa (bez Id jest cisza)
-		Photo = { Volume = 0.6, MinGap = 0.2 },
+		-- koniec aktywności: oklaski tłumu. Length = gra najwyżej tyle sekund, a przez ostatnie
+		-- FadeOut sekund powoli cichnie (cały plik trwa ok. 7 s).
+		Reward = { Id = 96549311151424, Volume = 0.7, MinGap = 0.3, Length = 3, FadeOut = 2 },
+		Photo = { Id = 135432517383409, Volume = 0.6, MinGap = 0.2 }, -- migawka aparatu przy fleszu
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

@@ -37,6 +37,7 @@ local TEXT = {
 	PerShoot = "per photoshoot",
 	Start = "START",
 	Upgrade = "UPGRADE",
+	Maxed = "MAXED",
 	Next = "Next:",
 	BestCar = "Best car unlocked!",
 	Photoshoot = "PHOTOSHOOT",
@@ -315,16 +316,22 @@ function Activities.start(hud)
 				{ text = Format.number(info.NextCost), size = 36, colors = Theme.Gradients.Gold },
 			})
 			priceLine.holder.Visible = true
-			upgradeButton.holder.Visible = true
+			upgradeButton.holder.AnchorPoint = Vector2.new(0, 0)
+			upgradeButton.holder.Position = UDim2.new(0.5, 12, 0, 233)
+			upgradeButton.setText(TEXT.Upgrade)
 			if view.Cash >= info.NextCost then
 				upgradeButton.setColors(Theme.Gradients.Yellow)
 			else
 				upgradeButton.setColors(Theme.Gradients.Gray)
 			end
 		else
+			-- najlepsze auto: szary przycisk MAXED na środku, bez ceny
 			nextLine.set({ { text = TEXT.BestCar, size = 28, colors = Theme.Gradients.Gold } })
 			priceLine.holder.Visible = false
-			upgradeButton.holder.Visible = false
+			upgradeButton.holder.AnchorPoint = Vector2.new(0.5, 0)
+			upgradeButton.holder.Position = UDim2.new(0.5, 0, 0, 233)
+			upgradeButton.setText(TEXT.Maxed)
+			upgradeButton.setColors(Theme.Gradients.Gray)
 		end
 	end
 
@@ -357,8 +364,10 @@ function Activities.start(hud)
 	end)
 
 	upgradeButton.Activated:Connect(function()
-		if requesting then
-			return
+		local view = State.view
+		local info = view and view.Activities and view.Activities.Car
+		if requesting or info == nil or info.NextCost == nil then
+			return -- MAXED: nie ma czego kupić
 		end
 		requesting = true
 		local ok, result = pcall(function()
