@@ -161,6 +161,43 @@ return function()
 	d.ZonesUnlocked = #Economy.Zones
 	check(Loop.nextZone(d) == nil, "po ostatniej strefie nie ma następnej")
 
+	----------------------------------------------------------------- Aktywność: zdjęcia z autem
+	local car = Economy.Activities.Car
+	d = fresh()
+	check(Loop.activityTier(d, "Car") == 1, "nowy gracz ma darmowe auto (tier 1)")
+	check(Loop.activityReward(d, {}, "Car") == car.Base, "sesja na poziomie 0 daje bazę (110 LP)")
+	check(near(Loop.activityReward(d, { zone = 5 }, "Car"), car.Base), "mnożnik strefy nie działa na aktywności")
+	check(near(Loop.activityReward(d, { passes = { TwoXLP = true } }, "Car"), car.Base * 2), "2x LP podwaja nagrodę")
+	d.ClickLevel = 10
+	check(near(Loop.activityReward(d, {}, "Car"), Formulas.clickValue(10) * car.Base), "nagroda rośnie z Click Multiplierem")
+	d.ClickLevel = 0
+	local started, reason = Loop.canStartActivity(d, {}, "Car")
+	check(not started and reason == "Zone", "bez strefy 2 nie ma zdjęć")
+	d.ZonesUnlocked = 2
+	check(Loop.canStartActivity(d, {}, "Car"), "w strefie 2 można zacząć")
+	d.Bag = Loop.capacity(d, {})
+	started, reason = Loop.canStartActivity(d, {}, "Car")
+	check(not started and reason == "BagFull", "z pełnym Bag najpierw Sell")
+	check(Loop.canStartActivity(d, { passes = { AutoSell = true } }, "Car"), "z Auto-Sell pełny Bag nie blokuje")
+	d.Bag = 90
+	local reward, added = Loop.finishActivity(d, {}, "Car")
+	check(reward == 110 and added == 110 and d.Bag == 200 and d.Stats.CarPhotos == 1, "nagroda wchodzi ponad pojemność Bag")
+	d.Cash = car.Tiers[2].Cost - 1
+	local boughtTier, whyTier = Loop.buyActivityTier(d, "Car")
+	check(not boughtTier and whyTier == "NotEnough", "za mało L$ na drugie auto")
+	d.Cash = car.Tiers[2].Cost
+	boughtTier = Loop.buyActivityTier(d, "Car")
+	check(boughtTier and Loop.activityTier(d, "Car") == 2 and d.Cash == 0, "drugie auto za 20K L$")
+	check(near(Loop.activityReward(d, {}, "Car"), car.Base * car.Tiers[2].Multiplier), "drugie auto mnoży nagrodę ×1,5")
+	local carView = Loop.view(d, {}).Activities.Car
+	check(carView.Tier == 2 and carView.NextCost == car.Tiers[3].Cost and near(carView.NextReward, car.Base * car.Tiers[3].Multiplier), "widok ma tier, nagrodę i następne auto")
+	d.ActivityTiers.Car = #car.Tiers
+	boughtTier, whyTier = Loop.buyActivityTier(d, "Car")
+	check(not boughtTier and whyTier == "Max" and Loop.view(d, {}).Activities.Car.NextCost == nil, "po najlepszym aucie nie ma następnego")
+	d.ZonesUnlocked = 1
+	boughtTier, whyTier = Loop.buyActivityTier(d, "Car")
+	check(not boughtTier and whyTier == "Zone", "auta kupuje się w kupionej strefie 2")
+
 	----------------------------------------------------------------- Limit kliknięć
 	local limiter = RateLimiter.new(10, 10)
 	local got = 0

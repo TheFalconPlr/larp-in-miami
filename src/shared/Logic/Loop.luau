@@ -1,4 +1,5 @@
--- Rdzeń pętli: LP za klik, Bag, Sell, ulepszenia i strefy za L$. Same obliczenia na danych gracza,
+-- Rdzeń pętli: LP za klik, Bag, Sell, ulepszenia i strefy za L$ oraz aktywności (nagroda, tiery).
+-- Same obliczenia na danych gracza,
 -- bez Roblox API, więc działają na serwerze, w UI i w testach (tools/test_luau.py).
 --
 -- data to zapis gracza (Shared/Data/Template). ctx opisuje to, czego nie ma w zapisie:
@@ -256,6 +257,131 @@ function Loop.buyZone(data, id)
 	return true, nil
 end
 
+----------------------------------------------------------------- Aktywności
+-- Aktywności, które już są w grze (reszta z arkusza dojdzie w kolejnych etapach).
+Loop.ActivityKinds = { "Car" }
+
+-- Licznik sesji w zapisie (pod zadania dzienne, Etap 7).
+local ACTIVITY_STAT = { Car = "CarPhotos" }
+
+-- Ile tierów aktywności gracz ma (1 = pierwszy). Pierwszy tier z ceną 0 jest za darmo.
+function Loop.activityTier(data, kind)
+	local owned = data.ActivityTiers and data.ActivityTiers[kind]
+	if owned ~= nil then
+		return owned
+	end
+	local activity = Economy.Activities[kind]
+	local first = activity and activity.Tiers and activity.Tiers[1]
+	if first ~= nil and first.Cost == 0 then
+		return 1
+	end
+	return 0
+end
+
+-- Mnożnik obecnego tieru (0, gdy gracz nie ma żadnego).
+local function tierMultiplier(kind, tier)
+	local activity = Economy.Activities[kind]
+	if activity.Tiers == nil then
+		return 1
+	end
+	local info = activity.Tiers[tier]
+	return (info and info.Multiplier) or 0
+end
+
+local function rewardWith(data, ctx, kind, multiplier)
+	return Formulas.clickValue(data.ClickLevel) * Economy.Activities[kind].Base * multiplier * Loop.lpMultiplier(data, ctx)
+end
+
+-- LP za jedną sesję: wartość kliku × baza aktywności × tier × mnożnik LP (bez mnożnika strefy).
+function Loop.activityReward(data, ctx, kind)
+	return rewardWith(data, ctx, kind, tierMultiplier(kind, Loop.activityTier(data, kind)))
+end
+
+-- Czy można zacząć sesję. Zwraca true albo false i powód: BadRequest, Zone (strefa niekupiona),
+-- Tier (brak tieru) albo BagFull (pełny Bag bez Auto-Sell: najpierw Sell; ostatnia sesja może
+-- przepełnić Bag, ale z pełnym już się nie zaczyna).
+function Loop.canStartActivity(data, ctx, kind)
+	local activity = Economy.Activities[kind]
+	if activity == nil then
+		return false, "BadRequest"
+	end
+	if data.ZonesUnlocked < activity.Zone then
+		return false, "Zone"
+	end
+	if Loop.activityTier(data, kind) < 1 then
+		return false, "Tier"
+	end
+	if Loop.isFull(data, ctx) then
+		return false, "BagFull"
+	end
+	return true, nil
+end
+
+-- Następny tier do kupienia: numer i tabela z arkusza, albo nil.
+function Loop.nextActivityTier(data, kind)
+	local activity = Economy.Activities[kind]
+	if activity == nil or activity.Tiers == nil then
+		return nil, nil
+	end
+	local n = Loop.activityTier(data, kind) + 1
+	local info = activity.Tiers[n]
+	if info == nil then
+		return nil, nil
+	end
+	return n, info
+end
+
+-- Kupuje następny tier. Zwraca true albo false i powód: BadRequest, Zone, Max, NotEnough.
+function Loop.buyActivityTier(data, kind)
+	local activity = Economy.Activities[kind]
+	if activity == nil or activity.Tiers == nil then
+		return false, "BadRequest"
+	end
+	if data.ZonesUnlocked < activity.Zone then
+		return false, "Zone"
+	end
+	local n, info = Loop.nextActivityTier(data, kind)
+	if n == nil then
+		return false, "Max"
+	end
+	if data.Cash < info.Cost then
+		return false, "NotEnough"
+	end
+	data.Cash = data.Cash - info.Cost
+	if data.ActivityTiers == nil then
+		data.ActivityTiers = {}
+	end
+	data.ActivityTiers[kind] = n
+	return true, nil
+end
+
+-- Koniec sesji: LP do Bag (także ponad pojemność, jak każda nagroda z aktywności) i licznik sesji.
+-- Zwraca: nagrodę, ile LP weszło do Bag i ile L$ dała automatyczna sprzedaż.
+function Loop.finishActivity(data, ctx, kind)
+	local reward = Loop.activityReward(data, ctx, kind)
+	local added, sold = Loop.collect(data, reward, ctx, true)
+	local field = ACTIVITY_STAT[kind]
+	if field ~= nil then
+		data.Stats[field] = (data.Stats[field] or 0) + 1
+	end
+	return reward, added, sold
+end
+
+-- Co HUD pokazuje o aktywności: tier, nagroda za sesję, koszt i nagroda następnego tieru.
+function Loop.activityView(data, ctx, kind)
+	local tier = Loop.activityTier(data, kind)
+	local view = {
+		Tier = tier,
+		Reward = Loop.activityReward(data, ctx, kind),
+	}
+	local n, info = Loop.nextActivityTier(data, kind)
+	if n ~= nil then
+		view.NextCost = info.Cost
+		view.NextReward = rewardWith(data, ctx, kind, info.Multiplier)
+	end
+	return view
+end
+
 ----------------------------------------------------------------- Widok dla HUD
 -- Wszystko, co pokazuje HUD, policzone w jednym miejscu (na serwerze).
 function Loop.view(data, ctx)
@@ -287,6 +413,10 @@ function Loop.view(data, ctx)
 	end
 	if bagCost ~= nil then
 		view.NextBagCapacity = Loop.capacityAt(data.BagLevel + 1, ctx)
+	end
+	view.Activities = {}
+	for _, kind in ipairs(Loop.ActivityKinds) do
+		view.Activities[kind] = Loop.activityView(data, ctx, kind)
 	end
 	return view
 end

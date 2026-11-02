@@ -7,6 +7,7 @@ local Net = require(ReplicatedStorage:WaitForChild("Shared").Net)
 
 local State = {
 	view = nil, -- ostatni stan od serwera (pola jak w Shared/Logic/Loop.view)
+	busy = false, -- true w czasie aktywności (np. sesji zdjęciowej): kliknięcia i okna stref nie działają
 }
 
 local changeListeners = {}

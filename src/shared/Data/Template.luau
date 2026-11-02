@@ -9,6 +9,9 @@ return {
 	ClickLevel = 0, -- poziom Click Multipliera
 	BagLevel = 0, -- poziom Bag
 	ZonesUnlocked = 1, -- najwyższa odblokowana strefa (Etap 3)
+	ActivityTiers = { -- najlepszy kupiony tier aktywności (Etap 4); 1 = pierwszy, darmowy
+		Car = 1,
+	},
 	RebirthLevel = 0, -- poziom Rebirth, czyli mnożnik LP (na premierę maks. 10)
 	RebirthCount = 0, -- wszystkie Rebirthy, także po R10 (ranking)
 	Aura = 0,
@@ -28,6 +31,7 @@ return {
 		Clicks = 0,
 		Sells = 0,
 		PlaySeconds = 0,
+		CarPhotos = 0, -- sesje zdjęciowe z autem (Etap 4)
 	},
 	FirstJoin = 0,
 	LastJoin = 0,

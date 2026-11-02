@@ -59,6 +59,10 @@ local Settings = {
 		NotEnough = { Id = 87519554692663, Volume = 0.6, MinGap = 0.15 }, -- brak L$ na zakup
 		-- odblokowanie strefy (na razie ten sam dźwięk co sprzedaż; podmień, gdy znajdziesz lepszy)
 		Unlock = { Id = 111773238101465, Volume = 0.8, MinGap = 0.5 },
+		-- nagroda za aktywność, np. koniec sesji zdjęciowej (na razie dźwięk sprzedaży)
+		Reward = { Id = 111773238101465, Volume = 0.7, MinGap = 0.3 },
+		-- migawka aparatu w sesji zdjęciowej: wpisz Id = numer dźwięku z Toolboxa (bez Id jest cisza)
+		Photo = { Volume = 0.6, MinGap = 0.2 },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

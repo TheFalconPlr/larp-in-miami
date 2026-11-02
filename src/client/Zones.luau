@@ -18,6 +18,7 @@ local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
 local Icons = require(script.Parent.Ui.Icons)
 local Sounds = require(script.Parent.Ui.Sounds)
+local LocalHide = require(script.Parent.LocalHide)
 
 local Zones = {}
 
@@ -25,7 +26,6 @@ local GATE_TAG = "LarpGate" -- ten sam tag co ZoneService.GateTag na serwerze
 local OPEN_DISTANCE = 12 -- tak blisko bramki otwiera się okno „Unlock” (studs)
 local CLOSE_DISTANCE = 20 -- tak daleko okno się zamyka
 local BANNER_COOLDOWN = 15 -- ta sama strefa pokazuje napis najwyżej raz na tyle sekund
-local FADE = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
 local TEXT = {
 	Perk = "LP per click",
@@ -41,9 +41,6 @@ end
 
 ----------------------------------------------------------------- Bramki
 local gates = {} -- [strefa] = { parts = { części }, sign = BillboardGui }
-local saved = setmetatable({}, { __mode = "k" }) -- [część] = kolizje sprzed otwarcia
-local savedEnabled = setmetatable({}, { __mode = "k" }) -- [efekt] = Enabled sprzed otwarcia
-local openState = setmetatable({}, { __mode = "k" }) -- [część] = true, gdy u nas otwarta
 local unlocked = 1 -- ostatnia kupiona strefa (ze stanu od serwera)
 local playerGui = nil
 
@@ -56,57 +53,9 @@ local function gateOf(zone)
 	return g
 end
 
--- Napisy, naklejki, światła i efekty na bramce znikają razem z nią.
-local function setDecorations(part, visible)
-	for _, d in ipairs(part:GetDescendants()) do
-		if d:IsA("Decal") then
-			if visible then
-				d.LocalTransparencyModifier = 0
-			else
-				d.LocalTransparencyModifier = 1
-			end
-		elseif d:IsA("LayerCollector") or d:IsA("ParticleEmitter") or d:IsA("Beam") or d:IsA("Trail") or d:IsA("Light") then
-			if savedEnabled[d] == nil then
-				savedEnabled[d] = d.Enabled
-			end
-			d.Enabled = visible and savedEnabled[d] or false
-		end
-	end
-end
-
 -- Otwarta bramka u tego gracza: przezroczysta i bez kolizji (dla innych dalej stoi).
 local function setPartOpen(part, open, animate)
-	if openState[part] == open then
-		return
-	end
-	openState[part] = open
-	if saved[part] == nil then
-		saved[part] = { part.CanCollide, part.CanTouch, part.CanQuery }
-	end
-	local s = saved[part]
-	if open then
-		part.CanCollide = false
-		part.CanTouch = false
-		part.CanQuery = false
-	else
-		part.CanCollide = s[1]
-		part.CanTouch = s[2]
-		part.CanQuery = s[3]
-	end
-	local target = 0
-	if open then
-		target = 1
-	end
-	local faded = false
-	if animate then
-		faded = pcall(function()
-			TweenService:Create(part, FADE, { LocalTransparencyModifier = target }):Play()
-		end)
-	end
-	if not faded then
-		part.LocalTransparencyModifier = target
-	end
-	setDecorations(part, not open)
+	LocalHide.set(part, open, { animate = animate })
 end
 
 local function biggestPart(parts)
@@ -409,7 +358,7 @@ function Zones.start(hud)
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local nextZone = unlocked + 1
-		if root == nil or Economy.Zones[nextZone] == nil then
+		if root == nil or Economy.Zones[nextZone] == nil or State.busy then
 			if popup.isOpen() then
 				popup.hide()
 			end

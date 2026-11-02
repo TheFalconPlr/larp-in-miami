@@ -272,6 +272,18 @@ local function update(player)
 end
 
 ----------------------------------------------------------------- Teleport (tryb testowy)
+-- Największa część strefy (zwykle podłoga): ta część albo nil.
+function ZoneService.floorPart(n)
+	local best, bestArea = nil, -1
+	for _, part in ipairs(areas[n] or {}) do
+		local footprint = part.Size.X * part.Size.Z
+		if part.Parent ~= nil and footprint > bestArea then
+			best, bestArea = part, footprint
+		end
+	end
+	return best
+end
+
 -- Miejsce w strefie: nad środkiem jej największej części, czyli zwykle podłogi (strefa 1: nad spawnem).
 function ZoneService.spawnPoint(n)
 	if n == 1 then
@@ -281,13 +293,7 @@ function ZoneService.spawnPoint(n)
 		end
 		return spawnPart.Position + Vector3.new(0, spawnPart.Size.Y / 2 + 4, 0)
 	end
-	local best, bestArea = nil, -1
-	for _, part in ipairs(areas[n] or {}) do
-		local footprint = part.Size.X * part.Size.Z
-		if part.Parent ~= nil and footprint > bestArea then
-			best, bestArea = part, footprint
-		end
-	end
+	local best = ZoneService.floorPart(n)
 	if best == nil then
 		return nil
 	end

@@ -1,6 +1,7 @@
 -- Larp in Miami — start serwera. Uruchamia systemy gry w ustalonej kolejności.
 -- Etap 2: zapis danych, klik z limitem, Bag, Sell, Click Multiplier i Bag za L$, tryb testowy.
 -- Etap 3: strefy (bramki za L$, mnożnik LP strefy, tymczasowe strefy, gdy nie ma ich na mapie).
+-- Etap 4: aktywności, na razie sesja zdjęciowa z autem w Luxury Cars (tiery aut za L$).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,6 +15,7 @@ local DataService = require(Services.DataService)
 local GamepassService = require(Services.GamepassService)
 local ZoneService = require(Services.ZoneService)
 local LoopService = require(Services.LoopService)
+local ActivityService = require(Services.ActivityService)
 local AdminService = require(Services.AdminService)
 
 print(string.format(
@@ -29,7 +31,8 @@ Net.setup()
 GamepassService.start()
 ZoneService.start()
 LoopService.start()
+ActivityService.start()
 AdminService.start()
 DataService.start()
 
-print("[Larp in Miami] Etap 3 gotowy: klik, Bag, Sell, ulepszenia, strefy za L$ i tryb testowy.")
+print("[Larp in Miami] Etap 4 gotowy: klik, Bag, Sell, ulepszenia, strefy, zdjęcia z autem i tryb testowy.")

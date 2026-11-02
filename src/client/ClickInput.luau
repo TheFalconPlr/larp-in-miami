@@ -48,7 +48,7 @@ function ClickInput.start(hud)
 
 	local function click(screenPosition)
 		local view = State.view
-		if view == nil then
+		if view == nil or State.busy then
 			return
 		end
 		if limiter:take(os.clock(), 1) < 1 then

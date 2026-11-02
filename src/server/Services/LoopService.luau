@@ -25,6 +25,7 @@ local LoopService = {}
 
 local sessions = {} -- [player] = stan sesji (limit kliknięć, Auto-Click, teleport, leaderstats)
 local viewHooks = {}
+local busyChecks = {}
 local pads = {} -- lista pól Sell
 local hookedPads = {}
 
@@ -57,6 +58,21 @@ end
 -- fn(player, view) może dopisać pola do stanu wysyłanego graczowi (np. IsAdmin).
 function LoopService.addViewHook(fn)
 	table.insert(viewHooks, fn)
+end
+
+-- fn(player) zwraca true, gdy gracz jest zajęty (np. w aktywności): wtedy kliknięcia, Auto-Click
+-- i teleport na Sell się nie liczą.
+function LoopService.addBusyCheck(fn)
+	table.insert(busyChecks, fn)
+end
+
+local function isBusy(player)
+	for _, check in ipairs(busyChecks) do
+		if check(player) then
+			return true
+		end
+	end
+	return false
 end
 
 local function notify(player, payload)
@@ -117,7 +133,7 @@ end
 -- count kliknięć naraz (paczka od klienta albo Auto-Click). Limit serwera decyduje, ile się liczy.
 local function doClicks(player, s, count)
 	local data = DataService.get(player)
-	if data == nil then
+	if data == nil or isBusy(player) then
 		return
 	end
 	local granted = s.limiter:take(os.clock(), count)
@@ -260,7 +276,7 @@ end
 
 local function teleportToSell(player)
 	local s = sessions[player]
-	if s == nil then
+	if s == nil or isBusy(player) then
 		return
 	end
 	local now = os.clock()

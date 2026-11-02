@@ -125,6 +125,29 @@ command("tp", "/tp [1–5]", "teleport do strefy (mnożnik działa tylko w kupio
 	return string.format("Teleport: strefa %d (%s)", n, Economy.Zones[n].Name)
 end)
 
+command("tier", "/tier [car] [poziom]", "ustaw tier aktywności, np. /tier car 3", function(_, data, args)
+	local wanted = string.lower(args[1] or "")
+	for _, kind in ipairs(Loop.ActivityKinds) do
+		if string.lower(kind) == wanted then
+			local tiers = Economy.Activities[kind].Tiers
+			local level = math.floor(needNumber(args[2]))
+			if level < 1 or level > #tiers then
+				error(string.format("podaj poziom od 1 do %d", #tiers), 0)
+			end
+			if data.ActivityTiers == nil then
+				data.ActivityTiers = {}
+			end
+			data.ActivityTiers[kind] = level
+			return string.format("%s: tier %d (%s, ×%s)", kind, level, tiers[level].WorkingName, tostring(tiers[level].Multiplier))
+		end
+	end
+	local names = {}
+	for _, kind in ipairs(Loop.ActivityKinds) do
+		table.insert(names, string.lower(kind))
+	end
+	error("aktywności: " .. table.concat(names, ", "), 0)
+end)
+
 command("rebirth", "/rebirth [ile]", "ustaw liczbę Rebirthów (poziom = najwyżej 10)", function(_, data, args)
 	local count = needLevel(args[1], 1000)
 	data.RebirthCount = count
@@ -162,12 +185,14 @@ end)
 
 command("stats", "/stats", "pokaż swój zapis", function(_, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto tier %d (zdjęcia: %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
 		data.BagLevel,
 		data.ZonesUnlocked,
+		Loop.activityTier(data, "Car"),
+		data.Stats.CarPhotos or 0,
 		data.RebirthCount,
 		data.RebirthLevel,
 		Format.number(data.Aura),

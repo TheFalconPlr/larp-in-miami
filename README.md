@@ -15,8 +15,8 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
 | `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService, AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (sesja zdjęciowa z autem), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -57,7 +57,7 @@ Po **Play** w oknie Output powinny być m.in. te linie:
 ```
 [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
 ConfigCheck: OK (64 testów zgodnych z arkuszem)
-LoopCheck: OK (48 testów pętli: klik, Bag, Sell, ulepszenia, strefy)
+LoopCheck: OK (64 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności)
 [Dane] TwojNick: zapis wczytany (DataStore: Access)
 ```
 
@@ -88,6 +88,22 @@ Co działa: 5 stref z arkusza. Downtown Miami jest za darmo, a kolejne kupujesz 
 
 Gdy na mapie jest choć jedna część `ZoneN`, tymczasowe strefy już się nie pojawiają. Jeśli którejś strefy albo bramki brakuje, w Output będzie ostrzeżenie `[Strefy]`.
 
+## Etap 4: sesja zdjęciowa z autem
+
+Co działa: w Luxury Cars stoi auto do zdjęć. Gdy podejdziesz, otworzy się okno „Car Photoshoot” z autem, nagrodą i przyciskiem START. Sesja trwa jak w arkuszu (8 s plus 3 s przejścia): ekran się ściemnia, stajesz przy aucie, kamera krąży wokół, błyskają flesze, a inni gracze są u Ciebie ukryci. W tym czasie kliknięcia nie działają. Na koniec LP trafiają do Bag, także ponad pojemność, ale z pełnym Bag sesji się nie zaczyna (najpierw Sell). Nagroda = wartość kliku × 110 × mnożnik auta × bonusy LP, bez mnożnika strefy. W tym samym oknie kupujesz lepsze auta za L$: German Sedan (20K, ×1,5), Muscle Car (50K, ×2,5), Italian Supercar (100K, ×4) i Hypercar (200K, ×6). Nazwy aut są robocze, zmienisz je w `src/client/Activities.luau` (`CarNames`).
+
+**Tymczasowe miejsce.** Dopóki na mapie nie ma `CarSpot`, serwer stawia w strefie 2 platformę z 5 prostymi autami z klocków. Każdy gracz widzi tylko auto ze swojego tieru.
+
+**Twoje miejsce.** Model `CarSpot` w strefie 2, a w nim:
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Auta | `Car1` … `Car5` | Po jednym modelu na tier, wszystkie w tym samym miejscu. Gracz widzi tylko swoje. |
+| Miejsce gracza | `Pose` | Cienka, niewidoczna część na podłodze. Gracz stoi na niej przodem tam, gdzie patrzy przód części. |
+| Reszta | dowolne | np. platforma, światła, dekoracje |
+
+Kamera krąży wokół punktu obrotu (pivot) modelu `CarSpot`, więc ustaw go na środku auta. Dźwięk migawki wpisz w `Settings.Sounds.Photo` (`Id`), bo na razie flesze są ciche.
+
 ### Tryb testowy (komendy na czacie)
 
 Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lewym górnym rogu widać wtedy „TEST MODE”. Odpowiedzi pojawiają się na czacie.
@@ -101,6 +117,7 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/bag 10` | ustawia poziom Bag (0–35) |
 | `/zone 3` | ustawia ostatnią kupioną strefę (1 = tylko start) |
 | `/tp 4` | teleportuje do strefy (mnożnik działa tylko w kupionej) |
+| `/tier car 3` | ustawia auto do zdjęć (tier 1–5) |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
 | `/aura 500` | ustawia Aurę |
 | `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`) |
@@ -116,7 +133,7 @@ Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wz
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
 - **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
-- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `Unlock` (kupno strefy, na razie ten sam co Sell). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
+- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `BagFull` (Bag się zapełnił), `BagFullClick` (klik przy pełnym Bag), `NotEnough` (brak L$), `Unlock` (kupno strefy albo auta), `Reward` (nagroda za aktywność), `Photo` (migawka w sesji zdjęciowej, na razie bez dźwięku). `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 
 Ikony bez własnego ID biorą się z arkusza `assets/icons/larp-icons.png` (16 ikon), a dopóki nie jest wgrany do Roblox, są emoji. Żeby go wgrać:
