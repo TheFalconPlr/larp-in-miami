@@ -46,7 +46,7 @@ local TEXT = {
 	HintZoneEnd = "at the gate!",
 	BagFull = "BAG FULL!",
 	BagFullPop = "BAG FULL",
-	LarpPop = "Larp", -- napis przy kursorze przy każdym kliknięciu
+	LarpPop = "Larp", -- napis wylatujący znad paska Bag przy każdym kliknięciu
 	Sold = "Sold", -- „Sold 34.35K LP for 💵 34.35K”: liczba LP na zielono, kwota L$ na złoto
 	SoldFor = "LP for",
 	NotEnough = "Not enough L$",
@@ -1015,7 +1015,7 @@ function Hud.start()
 		end
 	end
 
-	-- Klik: mały napis „Larp” przy kursorze, a „+X” wylatuje z paska Bag (widać, że LP wpadają
+	-- Klik: biały napis „+X” przy kursorze, a „Larp” wylatuje znad paska Bag (widać, że LP wpadają
 	-- do Bag). Z pełnym Bag jest napis „BAG FULL” i dźwięk pełnego Bag, razem, najwyżej co 0,5 s.
 	local lastFullPop = 0
 	function api.clickFeedback(screenPosition, view)
@@ -1030,9 +1030,9 @@ function Hud.start()
 		end
 		Sounds.play("Click")
 		local s = currentScale
-		pop(screenPosition + Vector2.new(math.random(-10, 10), -12 * s), TEXT.LarpPop, Theme.Gradients.LP, {
+		pop(screenPosition + Vector2.new(math.random(-10, 10), -12 * s), "+" .. Format.small(view.LPPerClick), Theme.Gradients.ClickPop, {
 			kind = "cursor",
-			size = Vector2.new(110, 34),
+			size = Vector2.new(120, 36),
 			rise = 50,
 			duration = 0.55,
 			rotation = 8,
@@ -1041,9 +1041,9 @@ function Hud.start()
 		local barPosition = bagTrack.AbsolutePosition
 		local barSize = bagTrack.AbsoluteSize
 		local x = barPosition.X + barSize.X * (0.12 + math.random() * 0.8)
-		pop(Vector2.new(x, barPosition.Y - 4 * s), "+" .. Format.small(view.LPPerClick), Theme.Gradients.LP, {
+		pop(Vector2.new(x, barPosition.Y - 4 * s), TEXT.LarpPop, Theme.Gradients.ClickPop, {
 			kind = "bar",
-			size = Vector2.new(140, 36),
+			size = Vector2.new(120, 34),
 			rise = 46,
 			driftX = math.random(-24, 24),
 			duration = 0.7,

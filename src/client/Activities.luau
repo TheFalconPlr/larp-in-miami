@@ -24,8 +24,8 @@ local LocalHide = require(script.Parent.LocalHide)
 local Activities = {}
 
 local SPOT_TAG = "LarpActivity" -- ten sam tag co ActivityService.SpotTag na serwerze
-local OPEN_DISTANCE = 14 -- tak blisko miejsca otwiera się okno (studs)
-local CLOSE_DISTANCE = 24 -- tak daleko okno się zamyka
+local OPEN_DISTANCE = 5.5 -- okno otwiera się, gdy stoisz przy aucie (tyle studs od auta albo bliżej)
+local CLOSE_DISTANCE = 10 -- tak daleko od auta okno się zamyka
 local FLASH_EVERY = 1.6 -- co tyle sekund błyska flesz
 
 local TEXT = {
@@ -187,26 +187,44 @@ function Activities.start(hud)
 		end
 	end
 
+	local function distanceToBox(part, position)
+		local p = part.CFrame:PointToObjectSpace(position)
+		local half = part.Size / 2
+		local dx = math.max(math.abs(p.X) - half.X, 0)
+		local dy = math.max(math.abs(p.Y) - half.Y, 0)
+		local dz = math.max(math.abs(p.Z) - half.Z, 0)
+		return math.sqrt(dx * dx + dy * dy + dz * dz)
+	end
+
+	-- Odległość do auta gracza (auto z jego tieru) na tym miejscu. Gdy auta nie ma (np. jeszcze się
+	-- nie wczytało), liczy się część Pose, a na końcu całe miejsce.
 	local function distanceToSpot(spot, position)
-		local best = math.huge
 		local parts = { spot }
 		if not spot:IsA("BasePart") then
 			parts = spot:GetDescendants()
 		end
+		local car, pose, any = math.huge, math.huge, math.huge
 		for _, part in ipairs(parts) do
-			if part:IsA("BasePart") and carNumber(part, spot) == nil then
-				local p = part.CFrame:PointToObjectSpace(position)
-				local half = part.Size / 2
-				local dx = math.max(math.abs(p.X) - half.X, 0)
-				local dy = math.max(math.abs(p.Y) - half.Y, 0)
-				local dz = math.max(math.abs(p.Z) - half.Z, 0)
-				local d = math.sqrt(dx * dx + dy * dy + dz * dz)
-				if d < best then
-					best = d
+			if part:IsA("BasePart") then
+				local d = distanceToBox(part, position)
+				local n = carNumber(part, spot)
+				if n == carTier then
+					car = math.min(car, d)
+				elseif n == nil then
+					if part.Name == "Pose" then
+						pose = math.min(pose, d)
+					end
+					any = math.min(any, d)
 				end
 			end
 		end
-		return best
+		if car < math.huge then
+			return car
+		end
+		if pose < math.huge then
+			return pose
+		end
+		return any
 	end
 
 	local function nearestSpot(position)
