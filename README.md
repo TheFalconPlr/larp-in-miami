@@ -14,9 +14,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (sesja zdjęciowa z autem), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService, PetService, AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (sesja zdjęciowa z autem), `Pets` (okno PETS i pety za graczami), `Eggs` (jajka: tablice, okno, otwieranie), `PetModels` (modele petów i jajek), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -57,7 +57,7 @@ Po **Play** w oknie Output powinny być m.in. te linie:
 ```
 [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
 ConfigCheck: OK (64 testów zgodnych z arkuszem)
-LoopCheck: OK (64 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności)
+LoopCheck: OK (84 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
 [Dane] TwojNick: zapis wczytany (DataStore: Access)
 ```
 
@@ -104,7 +104,35 @@ Co działa: w Luxury Cars stoi auto do zdjęć. Gdy podejdziesz, otworzy się ok
 
 Kamera krąży wokół punktu obrotu (pivot) modelu `CarSpot`, więc ustaw go na środku auta. Dźwięki sesji są w `Settings.Sounds`: `Photo` (migawka przy fleszu) i `Reward` (oklaski na koniec).
 
-### Tryb testowy (komendy na czacie)
+## Etap 5: jajka i pety
+
+Co działa: w każdej strefie stoją dwa jajka za L$: zwykłe i złote (droższe, z lepszymi szansami). Gdy podejdziesz do jajka, otworzy się okno z petami, które mogą z niego wypaść, ich szansami i ceną. OPEN (albo klawisz E) otwiera jajko: jajko się trzęsie, błyska i pojawia się pet z rzadkością i bonusem. Pierwsze jajko w grze (zwykłe w Downtown Miami) zawsze daje Rare. Nowy pet sam się zakłada, jeśli jest wolne miejsce.
+
+Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Sell. Bonus peta = moc strefy × mnożnik rzadkości, np. Rare z Downtown Miami daje +20% L$, a dwa takie pety dają ×1,4. Miejsca na pety: 3, po jednym więcej od Rebirth 3 i Rebirth 7, a gamepass Pet Slots daje +2. Kafelek PETS po lewej otwiera ekwipunek: kliknij peta, żeby go założyć albo zdjąć, a EQUIP BEST zakłada najmocniejsze. Czerwona kropka na PETS znaczy, że masz wolne miejsce i peta do założenia. Ekwipunek mieści 250 petów. Sprzedawanie i łączenie petów (Gold, Diamond) będzie w kolejnym etapie.
+
+| Strefa | Zwykłe jajko | Złote jajko | Common → Legendary |
+| --- | --- | --- | --- |
+| Downtown Miami | 400 L$ | 2K L$ | +5% → +80% L$ |
+| Luxury Cars | 6K L$ | 40K L$ | +12% → +192% L$ |
+| Luxury Mall | 1M L$ | 5M L$ | +30% → +480% L$ |
+| Miami Beach | 60M L$ | 400M L$ | +75% → +1200% L$ |
+| Private Airport | 30B L$ | 200B L$ | +200% → +3200% L$ |
+
+Zwykłe jajko: Common 60%, Uncommon 28%, Rare 10%, Epic 2%. Złote: Uncommon 50%, Rare 35%, Epic 13%, Legendary 2% i Secret 0,004% (×64). Ulepszenie Luck za Aurę (w późniejszym etapie) zwiększy szanse na rzadsze pety.
+
+**Tymczasowe stoiska.** Dopóki na mapie nie ma żadnego stoiska, serwer stawia je sam: w Downtown Miami z boku drogi od spawnu do bramki, a w strefach 2–5 na podłodze strefy.
+
+**Twoje stoiska i pety.**
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Zwykłe jajko | `EggA1` … `EggA5` | Model albo część; cyfra to strefa. Tablica z nazwą i ceną wisi nad najwyższym punktem stoiska. Okno otwiera się, gdy gracz stoi najwyżej 7 studs od stoiska. |
+| Złote jajko | `EggB1` … `EggB5` | jak wyżej |
+| Model peta | folder `PetModels` w ReplicatedStorage, a w nim modele nazwane jak pety (np. `Pigeon`, `Alley Cat`) | Wielkość ok. 2–3 studs. Pet patrzy tam, gdzie przód punktu obrotu (pivot) modelu. Bez modelu pet jest kolorową kulką z oczami w kolorze rzadkości. Nazwy wszystkich petów są w `src/shared/Config/Pets.luau`. |
+
+Dźwięk nowego peta to `Hatch` w `Settings.Sounds` (na razie ten sam co sprzedaż), a przy Legendary i Secret grają oklaski (`Reward`).
+
+## Tryb testowy (komendy na czacie)
 
 Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lewym górnym rogu widać wtedy „TEST MODE”. Odpowiedzi pojawiają się na czacie.
 
@@ -118,6 +146,7 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/zone 3` | ustawia ostatnią kupioną strefę (1 = tylko start) |
 | `/tp 4` | teleportuje do strefy (mnożnik działa tylko w kupionej) |
 | `/tier car 3` | ustawia auto do zdjęć (tier 1–5) |
+| `/pet Legendary 2` | daje peta (rzadkość i strefa, np. `/pet Secret 5`); załóż go w oknie PETS |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
 | `/aura 500` | ustawia Aurę |
 | `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`) |
@@ -133,7 +162,7 @@ Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wz
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
 - **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
-- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `BagFull` (Bag się zapełnił), `BagFullClick` (klik przy pełnym Bag), `NotEnough` (brak L$), `Unlock` (kupno strefy albo auta), `Reward` (oklaski na koniec sesji zdjęciowej), `Photo` (migawka przy fleszu). `Length` i `FadeOut` skracają dźwięk: gra najwyżej `Length` sekund i przez ostatnie `FadeOut` sekund cichnie. `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
+- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `BagFull` (Bag się zapełnił), `BagFullClick` (klik przy pełnym Bag), `NotEnough` (brak L$), `Unlock` (kupno strefy albo auta), `Reward` (oklaski na koniec sesji zdjęciowej i przy rzadkim pecie), `Photo` (migawka przy fleszu), `Hatch` (nowy pet z jajka). `Length` i `FadeOut` skracają dźwięk: gra najwyżej `Length` sekund i przez ostatnie `FadeOut` sekund cichnie. `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 
 Ikony bez własnego ID biorą się z arkusza `assets/icons/larp-icons.png` (16 ikon), a dopóki nie jest wgrany do Roblox, są emoji. Żeby go wgrać:

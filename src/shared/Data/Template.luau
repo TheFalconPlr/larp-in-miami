@@ -12,6 +12,9 @@ return {
 	ActivityTiers = { -- najlepszy kupiony tier aktywności (Etap 4); 1 = pierwszy, darmowy
 		Car = 1,
 	},
+	Pets = {}, -- [id jako tekst] = { Zone = strefa jajka, Rarity = "Rare", Level = 0 } (Etap 5)
+	Equipped = {}, -- lista id wyposażonych petów
+	NextPetId = 1, -- id następnego peta
 	RebirthLevel = 0, -- poziom Rebirth, czyli mnożnik LP (na premierę maks. 10)
 	RebirthCount = 0, -- wszystkie Rebirthy, także po R10 (ranking)
 	Aura = 0,
@@ -32,6 +35,7 @@ return {
 		Sells = 0,
 		PlaySeconds = 0,
 		CarPhotos = 0, -- sesje zdjęciowe z autem (Etap 4)
+		EggsOpened = 0, -- otwarte jajka (Etap 5; pierwsze jajko A w strefie 1 daje Rare)
 	},
 	FirstJoin = 0,
 	LastJoin = 0,

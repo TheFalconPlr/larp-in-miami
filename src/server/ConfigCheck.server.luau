@@ -27,4 +27,4 @@ local function report(name, what, passed, failed, messages)
 end
 
 report("ConfigCheck", "zgodnych z arkuszem", configSpec(Economy, Formulas, Format))
-report("LoopCheck", "pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności", loopSpec())
+report("LoopCheck", "pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety", loopSpec())

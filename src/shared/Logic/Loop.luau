@@ -400,6 +400,185 @@ function Loop.activityView(data, ctx, kind)
 	return view
 end
 
+----------------------------------------------------------------- Pety i jajka
+-- Pet w zapisie: data.Pets[id] = { Zone = strefa jajka, Rarity = "Rare", Level = 0 }
+-- (Level 0 zwykły, 1 złoty, 2 diamentowy). data.Equipped = lista id wyposażonych petów.
+
+-- Sloty na pety: 3, +1 od Rebirth 3, +1 od Rebirth 7, +2 z gamepassem Pet Slots.
+function Loop.petSlots(data, ctx)
+	local slots = Economy.Pets.Slots
+	local n = slots.Base
+	if data.RebirthLevel >= 3 then
+		n = n + slots.Rebirth3
+	end
+	if data.RebirthLevel >= 7 then
+		n = n + slots.Rebirth7
+	end
+	if passesOf(ctx).PetSlots then
+		n = n + slots.Gamepass
+	end
+	return n
+end
+
+-- Moc peta jako ułamek (+% L$ przy Sell), np. Rare ze strefy 1 = 0,05 × 4 = 0,2 (+20%).
+function Loop.petPower(pet)
+	return Formulas.petPower(pet.Zone, pet.Rarity, pet.Level or 0)
+end
+
+function Loop.petCount(data)
+	local n = 0
+	for _ in pairs(data.Pets) do
+		n = n + 1
+	end
+	return n
+end
+
+-- Ile wyposażonych petów naprawdę działa (najwyżej tyle, ile slotów, i tylko istniejące).
+function Loop.activePets(data, ctx)
+	local slots = Loop.petSlots(data, ctx)
+	local list = {}
+	for _, id in ipairs(data.Equipped) do
+		local pet = data.Pets[id]
+		if pet ~= nil and #list < slots then
+			table.insert(list, id)
+		end
+	end
+	return list
+end
+
+-- Warstwa petów: 1 + suma mocy wyposażonych petów (w warstwie dodajemy). Mnoży L$ przy Sell.
+function Loop.petLayer(data, ctx)
+	local layer = 1
+	for _, id in ipairs(Loop.activePets(data, ctx)) do
+		layer = layer + Loop.petPower(data.Pets[id])
+	end
+	return layer
+end
+
+local function isEquipped(data, id)
+	for i, existing in ipairs(data.Equipped) do
+		if existing == id then
+			return i
+		end
+	end
+	return nil
+end
+
+-- Wyposaża peta. Zwraca true albo false i powód: Missing (nie ma go), Already, SlotsFull.
+-- Najpierw czyści listę z petów, które nie działają (np. po utracie slotów z gamepassa).
+function Loop.equipPet(data, ctx, id)
+	if data.Pets[id] == nil then
+		return false, "Missing"
+	end
+	data.Equipped = Loop.activePets(data, ctx)
+	if isEquipped(data, id) ~= nil then
+		return false, "Already"
+	end
+	if #Loop.activePets(data, ctx) >= Loop.petSlots(data, ctx) then
+		return false, "SlotsFull"
+	end
+	table.insert(data.Equipped, id)
+	return true, nil
+end
+
+function Loop.unequipPet(data, id)
+	local index = isEquipped(data, id)
+	if index == nil then
+		return false, "NotEquipped"
+	end
+	table.remove(data.Equipped, index)
+	return true, nil
+end
+
+-- Pety posortowane od najmocniejszego (przy równej mocy starsze pierwsze). Zwraca listę id.
+function Loop.petsByPower(data)
+	local ids = {}
+	for id in pairs(data.Pets) do
+		table.insert(ids, id)
+	end
+	table.sort(ids, function(a, b)
+		local pa, pb = Loop.petPower(data.Pets[a]), Loop.petPower(data.Pets[b])
+		if pa ~= pb then
+			return pa > pb
+		end
+		return (tonumber(a) or 0) < (tonumber(b) or 0)
+	end)
+	return ids
+end
+
+-- Wyposaża najmocniejsze pety na wszystkie sloty.
+function Loop.equipBest(data, ctx)
+	local slots = Loop.petSlots(data, ctx)
+	local best = {}
+	for _, id in ipairs(Loop.petsByPower(data)) do
+		if #best >= slots then
+			break
+		end
+		table.insert(best, id)
+	end
+	data.Equipped = best
+	return best
+end
+
+-- Jajko z arkusza (Price i Odds) albo nil. Jajka premium (za Robux) dojdą z produktami w Creator Hub.
+function Loop.eggInfo(zone, egg)
+	local eggs = Economy.Pets.Eggs[zone]
+	local info = eggs and eggs[egg]
+	if info == nil or info.Price == nil then
+		return nil
+	end
+	return info
+end
+
+-- Czy można kupić jajko. Zwraca true albo false i powód: BadRequest, Zone, Inventory, NotEnough.
+function Loop.canBuyEgg(data, zone, egg, maxPets)
+	local info = Loop.eggInfo(zone, egg)
+	if info == nil then
+		return false, "BadRequest"
+	end
+	if data.ZonesUnlocked < zone then
+		return false, "Zone"
+	end
+	if maxPets ~= nil and Loop.petCount(data) >= maxPets then
+		return false, "Inventory"
+	end
+	if data.Cash < info.Price then
+		return false, "NotEnough"
+	end
+	return true, nil
+end
+
+-- Kupuje i otwiera jajko. random01 = funkcja losująca liczbę z [0, 1). Pierwsze jajko A w strefie 1
+-- zawsze daje Rare (dobry start). Szczęście z Aury działa na jajka za L$. Nowy pet trafia na wolny
+-- slot. Zwraca id i peta albo nil i powód (jak canBuyEgg).
+function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
+	local ok, reason = Loop.canBuyEgg(data, zone, egg, maxPets)
+	if not ok then
+		return nil, reason
+	end
+	local info = Loop.eggInfo(zone, egg)
+	data.Cash = data.Cash - info.Price
+	local rarity
+	if data.Stats.EggsOpened == 0 and zone == 1 and egg == "A" then
+		rarity = Economy.Pets.FirstEggRarity
+	else
+		local luck = 1
+		if info.LuckApplies ~= false then
+			luck = Formulas.luck(data.AuraUpgrades.Luck)
+		end
+		rarity = Formulas.roll(info.Odds, luck, random01)
+	end
+	local id = tostring(data.NextPetId)
+	data.NextPetId = data.NextPetId + 1
+	local pet = { Zone = zone, Rarity = rarity, Level = 0 }
+	data.Pets[id] = pet
+	data.Stats.EggsOpened = data.Stats.EggsOpened + 1
+	if #Loop.activePets(data, ctx) < Loop.petSlots(data, ctx) then
+		table.insert(data.Equipped, id)
+	end
+	return id, pet
+end
+
 ----------------------------------------------------------------- Widok dla HUD
 -- Wszystko, co pokazuje HUD, policzone w jednym miejscu (na serwerze).
 function Loop.view(data, ctx)
@@ -436,6 +615,11 @@ function Loop.view(data, ctx)
 	for _, kind in ipairs(Loop.ActivityKinds) do
 		view.Activities[kind] = Loop.activityView(data, ctx, kind)
 	end
+	view.PetLayer = Loop.petLayer(data, ctx)
+	view.PetSlots = Loop.petSlots(data, ctx)
+	view.PetsEquipped = #Loop.activePets(data, ctx)
+	view.PetCount = Loop.petCount(data)
+	view.EggsOpened = data.Stats.EggsOpened
 	return view
 end
 

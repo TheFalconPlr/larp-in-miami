@@ -203,6 +203,51 @@ return function()
 	boughtTier, whyTier = Loop.buyActivityTier(d, "Car")
 	check(not boughtTier and whyTier == "Zone", "auta kupuje się w kupionej strefie 2")
 
+	----------------------------------------------------------------- Pety i jajka
+	local function always(x)
+		return function()
+			return x
+		end
+	end
+	local eggA1 = Economy.Pets.Eggs[1].A
+	d = fresh()
+	check(Loop.petSlots(d, {}) == 3, "3 sloty na pety na start")
+	d.RebirthLevel = 7
+	check(Loop.petSlots(d, { passes = { PetSlots = true } }) == 7, "sloty: +1 R3, +1 R7, +2 gamepass")
+	d = fresh()
+	local petId, why2 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	check(petId == nil and why2 == "NotEnough", "jajko bez L$ się nie otwiera")
+	d.Cash = eggA1.Price * 10
+	local firstId, firstPet = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	check(firstPet.Rarity == "Rare" and d.Cash == eggA1.Price * 9 and d.Stats.EggsOpened == 1, "pierwsze jajko A daje Rare")
+	check(d.Equipped[1] == firstId and near(Loop.petLayer(d, {}), 1 + 0.05 * 4), "nowy pet od razu działa: Rare ze strefy 1 = +20% L$")
+	local _, secondPet = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	check(secondPet.Rarity == "Common", "losowanie 0 daje najczęstszą rzadkość")
+	local _, thirdPet = Loop.openEgg(d, {}, 1, "A", always(0.9999), 250)
+	check(thirdPet.Rarity == "Epic", "losowanie bliskie 1 daje najrzadszą rzadkość jajka A")
+	local fourthId = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	check(#d.Equipped == 3 and Loop.petCount(d) == 4 and d.Equipped[4] == nil, "czwarty pet nie wchodzi na pełne sloty")
+	local equipped, whyEquip = Loop.equipPet(d, {}, fourthId)
+	check(not equipped and whyEquip == "SlotsFull", "nie ma wolnego slotu")
+	check(Loop.unequipPet(d, d.Equipped[2]) and Loop.equipPet(d, {}, fourthId), "zdejmij jednego, załóż innego")
+	Loop.equipBest(d, {})
+	check(near(Loop.petLayer(d, {}), 1 + 0.05 * 8 + 0.05 * 4 + 0.05 * 1), "Equip Best: Epic, Rare i Common")
+	d.Bag = 100
+	check(near(Loop.sell(d, { petLayer = Loop.petLayer(d, {}) }), 100 * Loop.petLayer(d, {})), "pety mnożą L$ przy Sell")
+	local nope, whyZone = Loop.openEgg(d, {}, 2, "A", always(0), 250)
+	check(nope == nil and whyZone == "Zone", "jajka strefy 2 dopiero po jej kupnie")
+	d.Cash = 1e12
+	local full, whyFull = Loop.openEgg(d, {}, 1, "A", always(0), 4)
+	check(full == nil and whyFull == "Inventory", "pełny ekwipunek")
+	check(Loop.eggInfo(1, "Premium") == nil, "jajko premium (za Robux) nie idzie za L$")
+	local v = Loop.view(d, {})
+	check(v.PetSlots == 3 and v.PetsEquipped == 3 and v.PetCount == 4 and near(v.PetLayer, Loop.petLayer(d, {})), "widok ma pety")
+	local withPass = { passes = { PetSlots = true } }
+	Loop.equipBest(d, withPass)
+	check(#d.Equipped == 4 and #Loop.activePets(d, {}) == 3, "bez gamepassa działają tylko 3 pety")
+	local extraOk, extraWhy = Loop.equipPet(d, {}, d.Equipped[4])
+	check(not extraOk and extraWhy == "SlotsFull" and #d.Equipped == 3, "nadmiarowy pet spada z listy, sloty pełne")
+
 	----------------------------------------------------------------- Limit kliknięć
 	local limiter = RateLimiter.new(10, 10)
 	local got = 0

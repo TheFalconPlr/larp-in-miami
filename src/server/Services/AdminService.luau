@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
+local PetsConfig = require(Shared.Config.Pets)
 local Settings = require(Shared.Config.Settings)
 local Format = require(Shared.Format)
 local Formulas = require(Shared.Formulas)
@@ -125,6 +126,36 @@ command("tp", "/tp [1–5]", "teleport do strefy (mnożnik działa tylko w kupio
 	return string.format("Teleport: strefa %d (%s)", n, Economy.Zones[n].Name)
 end)
 
+command("pet", "/pet [rzadkość] [strefa]", "daj peta, np. /pet Legendary 2", function(_, data, args)
+	local wanted = string.lower(args[1] or "")
+	local rarity = nil
+	for _, name in ipairs(Economy.Pets.RarityOrder) do
+		if string.lower(name) == wanted then
+			rarity = name
+		end
+	end
+	if rarity == nil then
+		error("rzadkości: " .. table.concat(Economy.Pets.RarityOrder, ", "), 0)
+	end
+	local zone = 1
+	if args[2] ~= nil then
+		zone = needZone(args[2])
+	end
+	if Loop.petCount(data) >= PetsConfig.MaxInventory then
+		error(string.format("ekwipunek pełny (%d petów)", PetsConfig.MaxInventory), 0)
+	end
+	local id = tostring(data.NextPetId)
+	data.NextPetId = data.NextPetId + 1
+	data.Pets[id] = { Zone = zone, Rarity = rarity, Level = 0 }
+	return string.format(
+		"Nowy pet: %s (%s, strefa %d, +%s%% L$). Wyposaż go w oknie PETS.",
+		PetsConfig.name(zone, rarity),
+		rarity,
+		zone,
+		Format.small(Formulas.petPower(zone, rarity, 0) * 100)
+	)
+end)
+
 command("tier", "/tier [car] [poziom]", "ustaw tier aktywności, np. /tier car 3", function(_, data, args)
 	local wanted = string.lower(args[1] or "")
 	for _, kind in ipairs(Loop.ActivityKinds) do
@@ -185,7 +216,7 @@ end)
 
 command("stats", "/stats", "pokaż swój zapis", function(_, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto tier %d (zdjęcia: %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto tier %d (zdjęcia: %d) · pety %d (wyposażone %d, jajka: %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
@@ -193,6 +224,9 @@ command("stats", "/stats", "pokaż swój zapis", function(_, data)
 		data.ZonesUnlocked,
 		Loop.activityTier(data, "Car"),
 		data.Stats.CarPhotos or 0,
+		Loop.petCount(data),
+		#data.Equipped,
+		data.Stats.EggsOpened or 0,
 		data.RebirthCount,
 		data.RebirthLevel,
 		Format.number(data.Aura),

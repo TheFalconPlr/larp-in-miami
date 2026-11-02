@@ -252,6 +252,7 @@ function Activities.start(hud)
 		bottom = 26,
 	})
 	hud.registerScale(popup.holder)
+	hud.addPopup(popup)
 	local content = popup.content
 	local carLine = Kit.line(content, { anchor = Vector2.new(0.5, 0), position = UDim2.new(0.5, 0, 0, 0), height = 46 })
 	local rewardLine = Kit.line(content, { anchor = Vector2.new(0.5, 0), position = UDim2.new(0.5, 0, 0, 46), height = 42 })
@@ -615,7 +616,7 @@ function Activities.start(hud)
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local unlocked = view ~= nil and (view.ZonesUnlocked or 1) >= Economy.Activities.Car.Zone
-		if root == nil or not unlocked or State.busy then
+		if root == nil or not unlocked or State.busy or hud.windowOpen() then
 			if popup.isOpen() then
 				popup.hide()
 			end

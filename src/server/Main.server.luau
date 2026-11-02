@@ -2,6 +2,7 @@
 -- Etap 2: zapis danych, klik z limitem, Bag, Sell, Click Multiplier i Bag za L$, tryb testowy.
 -- Etap 3: strefy (bramki za L$, mnożnik LP strefy, tymczasowe strefy, gdy nie ma ich na mapie).
 -- Etap 4: aktywności, na razie sesja zdjęciowa z autem w Luxury Cars (tiery aut za L$).
+-- Etap 5: jajka i pety (stoiska w strefach, otwieranie za L$, ekwipunek, bonus petów do L$ przy Sell).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -16,6 +17,7 @@ local GamepassService = require(Services.GamepassService)
 local ZoneService = require(Services.ZoneService)
 local LoopService = require(Services.LoopService)
 local ActivityService = require(Services.ActivityService)
+local PetService = require(Services.PetService)
 local AdminService = require(Services.AdminService)
 
 print(string.format(
@@ -32,7 +34,8 @@ GamepassService.start()
 ZoneService.start()
 LoopService.start()
 ActivityService.start()
+PetService.start()
 AdminService.start()
 DataService.start()
 
-print("[Larp in Miami] Etap 4 gotowy: klik, Bag, Sell, ulepszenia, strefy, zdjęcia z autem i tryb testowy.")
+print("[Larp in Miami] Etap 5 gotowy: klik, Bag, Sell, ulepszenia, strefy, zdjęcia z autem, jajka i pety, tryb testowy.")

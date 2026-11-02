@@ -38,13 +38,18 @@ local function contextFor(player)
 		-- strefa, w której gracz stoi, ale najwyżej ostatnia kupiona
 		zone = Loop.effectiveZone(data, ZoneService.standing(player))
 	end
-	return {
+	local ctx = {
 		zone = zone,
 		passes = GamepassService.passes(player),
 		inGroup = false, -- Etap 7: bonus za grupę
 		friends = 0, -- Etap 7: bonus za znajomych
 		boost = false, -- Etap 6: boost 2x LP
+		petLayer = 1,
 	}
+	if data ~= nil then
+		ctx.petLayer = Loop.petLayer(data, ctx) -- wyposażone pety mnożą L$ przy Sell
+	end
+	return ctx
 end
 LoopService.contextFor = contextFor
 

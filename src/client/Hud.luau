@@ -340,7 +340,7 @@ function Hud.start()
 		edge = 4,
 		textSize = 16,
 		textStroke = 2.5,
-		order = 3,
+		order = 10,
 	})
 	autoClickButton.holder.Visible = false
 	local autoSellButton = Kit.button(left, {
@@ -352,7 +352,7 @@ function Hud.start()
 		edge = 4,
 		textSize = 16,
 		textStroke = 2.5,
-		order = 4,
+		order = 11,
 	})
 	autoSellButton.holder.Visible = false
 
@@ -934,7 +934,11 @@ function Hud.start()
 	end)
 
 	upgradesTile.Activated:Connect(function()
-		panel.toggle()
+		if panel.isOpen() then
+			panel.hide()
+		else
+			api.openWindow(panel)
+		end
 	end)
 
 	local lastSellPress = -math.huge
@@ -1004,6 +1008,45 @@ function Hud.start()
 	-- Inne okna (np. odblokowanie strefy) zamykają okno Upgrades, żeby się nie nakładały.
 	function api.closeUpgrades()
 		panel.hide()
+	end
+
+	-- Okna. Główne (Upgrades, Pets) otwiera kafelek, a okienka przy obiektach (bramka, auto, jajko)
+	-- otwierają się same, gdy podejdziesz. Otwarte główne okno ma pierwszeństwo: okienka przy
+	-- obiektach chowają się i nie otwierają, dopóki go nie zamkniesz (windowOpen).
+	local mainWindows = { panel }
+	local popups = {}
+	function api.addWindow(window)
+		table.insert(mainWindows, window)
+	end
+	function api.addPopup(popup)
+		table.insert(popups, popup)
+	end
+	function api.windowOpen()
+		for _, window in ipairs(mainWindows) do
+			if window.isOpen() then
+				return true
+			end
+		end
+		return false
+	end
+	-- Otwiera główne okno i chowa wszystkie inne okna.
+	function api.openWindow(window)
+		for _, other in ipairs(mainWindows) do
+			if other ~= window and other.isOpen() then
+				other.hide()
+			end
+		end
+		for _, popup in ipairs(popups) do
+			if popup.isOpen() then
+				popup.hide()
+			end
+		end
+		window.open()
+	end
+
+	-- Kafelek w menu po lewej (pod SELL i UPGRADES), np. PETS. opts jak Kit.tile; order od 3.
+	function api.addTile(opts)
+		return Kit.tile(left, opts)
 	end
 
 	-- Brak L$ na zakup: dźwięk, czerwony komunikat (jeden, nie kilka naraz) i potrząśnięty przycisk.

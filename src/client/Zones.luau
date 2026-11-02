@@ -264,6 +264,7 @@ function Zones.start(hud)
 		bottom = 28,
 	})
 	hud.registerScale(popup.holder)
+	hud.addPopup(popup)
 	local perkLine = Kit.line(popup.content, {
 		anchor = Vector2.new(0.5, 0),
 		position = UDim2.new(0.5, 0, 0, 0),
@@ -358,7 +359,7 @@ function Zones.start(hud)
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local nextZone = unlocked + 1
-		if root == nil or Economy.Zones[nextZone] == nil or State.busy then
+		if root == nil or Economy.Zones[nextZone] == nil or State.busy or hud.windowOpen() then
 			if popup.isOpen() then
 				popup.hide()
 			end

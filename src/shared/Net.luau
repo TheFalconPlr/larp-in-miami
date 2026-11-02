@@ -9,8 +9,9 @@ local Net = {}
 -- klient → serwer: Click, TeleportToSell, SetSetting, Admin
 -- serwer → klient: Sync (stan gracza), Notify (komunikaty)
 local EVENTS = { "Click", "TeleportToSell", "SetSetting", "Admin", "Sync", "Notify" }
--- klient → serwer z odpowiedzią: BuyUpgrade, BuyZone, StartActivity, BuyActivityTier
-local FUNCTIONS = { "BuyUpgrade", "BuyZone", "StartActivity", "BuyActivityTier" }
+-- klient → serwer z odpowiedzią: BuyUpgrade, BuyZone, StartActivity, BuyActivityTier, BuyEgg,
+-- EquipPet, EquipBest
+local FUNCTIONS = { "BuyUpgrade", "BuyZone", "StartActivity", "BuyActivityTier", "BuyEgg", "EquipPet", "EquipBest" }
 
 local FOLDER_NAME = "Remotes"
 

@@ -64,6 +64,9 @@ local Settings = {
 		-- FadeOut sekund powoli cichnie (cały plik trwa ok. 7 s).
 		Reward = { Id = 96549311151424, Volume = 0.7, MinGap = 0.3, Length = 3, FadeOut = 2 },
 		Photo = { Id = 135432517383409, Volume = 0.6, MinGap = 0.2 }, -- migawka aparatu przy fleszu
+		-- nowy pet z jajka (na razie ten sam dźwięk co sprzedaż; podmień, gdy znajdziesz lepszy).
+		-- Przy Legendary, Mythic i Secret gra Reward (oklaski).
+		Hatch = { Id = 111773238101465, Volume = 0.8, MinGap = 0.3 },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.
