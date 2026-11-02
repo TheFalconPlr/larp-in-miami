@@ -179,9 +179,14 @@ return function()
 	started, reason = Loop.canStartActivity(d, {}, "Car")
 	check(not started and reason == "BagFull", "z pełnym Bag najpierw Sell")
 	check(Loop.canStartActivity(d, { passes = { AutoSell = true } }, "Car"), "z Auto-Sell pełny Bag nie blokuje")
+	d.Bag = 40
+	check(Loop.view(d, {}).Activities.Car.RewardFits == 60, "widok: z nagrody 110 LP zmieści się 60")
 	d.Bag = 90
 	local reward, added = Loop.finishActivity(d, {}, "Car")
-	check(reward == 110 and added == 110 and d.Bag == 200 and d.Stats.CarPhotos == 1, "nagroda wchodzi ponad pojemność Bag")
+	check(reward == 110 and added == 10 and d.Bag == 100 and d.Stats.CarPhotos == 1, "nagroda wchodzi tylko do pełna Bag")
+	d.Bag = 90
+	local autoReward, autoAdded, autoSold = Loop.finishActivity(d, { passes = { AutoSell = true } }, "Car")
+	check(autoReward == 110 and autoAdded == 110 and autoSold == 200 and d.Bag == 0, "z Auto-Sell cała nagroda się sprzedaje")
 	d.Cash = car.Tiers[2].Cost - 1
 	local boughtTier, whyTier = Loop.buyActivityTier(d, "Car")
 	check(not boughtTier and whyTier == "NotEnough", "za mało L$ na drugie auto")

@@ -355,11 +355,26 @@ function Loop.buyActivityTier(data, kind)
 	return true, nil
 end
 
--- Koniec sesji: LP do Bag (także ponad pojemność, jak każda nagroda z aktywności) i licznik sesji.
--- Zwraca: nagrodę, ile LP weszło do Bag i ile L$ dała automatyczna sprzedaż.
+-- Ile LP z nagrody `amount` zmieści się teraz w Bag (z Auto-Sell całość, bo pełny Bag sprzedaje się sam).
+function Loop.fitsInBag(data, ctx, amount)
+	if Loop.autoSellOn(data, ctx) then
+		return amount
+	end
+	local space = Loop.capacity(data, ctx) - data.Bag
+	if space < 0 then
+		space = 0
+	end
+	if amount > space then
+		return space
+	end
+	return amount
+end
+
+-- Koniec sesji: LP do Bag, ale tylko tyle, ile się zmieści (jak przy klikaniu; z Auto-Sell całość),
+-- i licznik sesji. Zwraca: pełną nagrodę, ile LP weszło do Bag i ile L$ dała automatyczna sprzedaż.
 function Loop.finishActivity(data, ctx, kind)
 	local reward = Loop.activityReward(data, ctx, kind)
-	local added, sold = Loop.collect(data, reward, ctx, true)
+	local added, sold = Loop.collect(data, reward, ctx, false)
 	local field = ACTIVITY_STAT[kind]
 	if field ~= nil then
 		data.Stats[field] = (data.Stats[field] or 0) + 1
@@ -367,12 +382,15 @@ function Loop.finishActivity(data, ctx, kind)
 	return reward, added, sold
 end
 
--- Co HUD pokazuje o aktywności: tier, nagroda za sesję, koszt i nagroda następnego tieru.
+-- Co HUD pokazuje o aktywności: tier, pełna nagroda za sesję i ile z niej zmieści się teraz w Bag
+-- (RewardFits), koszt i nagroda następnego tieru.
 function Loop.activityView(data, ctx, kind)
 	local tier = Loop.activityTier(data, kind)
+	local reward = Loop.activityReward(data, ctx, kind)
 	local view = {
 		Tier = tier,
-		Reward = Loop.activityReward(data, ctx, kind),
+		Reward = reward,
+		RewardFits = Loop.fitsInBag(data, ctx, reward),
 	}
 	local n, info = Loop.nextActivityTier(data, kind)
 	if n ~= nil then

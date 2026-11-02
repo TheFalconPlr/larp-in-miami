@@ -289,9 +289,10 @@ local function finish(player, kind)
 	if data == nil then
 		return
 	end
-	local reward, _, sold = Loop.finishActivity(data, LoopService.contextFor(player), kind)
+	local reward, added, sold = Loop.finishActivity(data, LoopService.contextFor(player), kind)
 	LoopService.markDirty(player)
-	LoopService.notify(player, { Kind = "ActivityEnd", Activity = kind, LP = reward })
+	-- LP = ile naprawdę weszło do Bag (najwyżej do pełna), Reward = pełna nagroda za sesję
+	LoopService.notify(player, { Kind = "ActivityEnd", Activity = kind, LP = added, Reward = reward })
 	if sold > 0 then
 		LoopService.notify(player, { Kind = "Sold", Cash = sold, Auto = true })
 	end

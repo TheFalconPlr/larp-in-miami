@@ -43,6 +43,7 @@ local TEXT = {
 	Photoshoot = "PHOTOSHOOT",
 	Done = "Photoshoot done!",
 	BagFull = "Bag full! Sell first",
+	BagLimit = "(Bag limit)", -- nagroda większa niż wolne miejsce w Bag
 	TooFar = "Get closer to the car",
 	NewCar = "New car:",
 }
@@ -295,10 +296,16 @@ function Activities.start(hud)
 			{ text = carName(info.Tier), size = 32 },
 			{ text = carMultiplier(info.Tier), size = 32, colors = Theme.Gradients.Gold },
 		})
-		rewardLine.set({
+		-- nagroda, która zmieści się teraz w Bag (reszta by przepadła, więc pokazujemy limit)
+		local fits = info.RewardFits or info.Reward
+		local rewardItems = {
 			{ text = TEXT.Reward, size = 26 },
-			{ text = "+" .. Format.number(info.Reward) .. " LP", size = 28, colors = Theme.Gradients.LP },
-		})
+			{ text = "+" .. Format.number(fits) .. " LP", size = 28, colors = Theme.Gradients.LP },
+		}
+		if fits < info.Reward then
+			table.insert(rewardItems, { text = TEXT.BagLimit, size = 22, colors = Theme.Gradients.Red })
+		end
+		rewardLine.set(rewardItems)
 		if view.BagFull then
 			startButton.setColors(Theme.Gradients.Gray)
 		else
@@ -577,10 +584,14 @@ function Activities.start(hud)
 		shooting = false
 		if endPayload ~= nil then
 			Sounds.play("Reward")
-			hud.toast({
+			local items = {
 				{ text = TEXT.Done, size = 26 },
 				{ text = "+" .. Format.number(endPayload.LP or 0) .. " LP", size = 30, colors = Theme.Gradients.LP },
-			})
+			}
+			if (endPayload.LP or 0) < (endPayload.Reward or 0) then
+				table.insert(items, { text = TEXT.BagLimit, size = 24, colors = Theme.Gradients.Red })
+			end
+			hud.toast(items)
 		end
 	end
 
