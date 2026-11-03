@@ -9,8 +9,8 @@
 --   friends     liczba znajomych na serwerze (+10% LP każdy, maks. 3)
 --   boost       aktywny boost 2x LP
 --   autoSellBoost  aktywny boost Auto-Sell
---   clothLayer  warstwa ubrań (Etap 4), domyślnie 1
---   petLayer    warstwa petów, mnoży L$ przy Sell (Etap 4), domyślnie 1
+--   clothLayer  warstwa ubrań (Etap 8), domyślnie 1
+--   petLayer    warstwa petów, mnoży L$ przy Sell (Etap 5), domyślnie 1
 
 local Economy = require(script.Parent.Parent.Config.Economy)
 local Formulas = require(script.Parent.Parent.Formulas)
@@ -64,7 +64,7 @@ function Loop.lpBonus(ctx)
 end
 
 -- Mnożnik LP bez wartości kliku i strefy. Między warstwami mnożymy:
--- Click Boost (Aura) × Rebirth × ubrania × bonusy × boost. Ten sam mnożnik dostaną aktywności (Etap 3).
+-- Click Boost (Aura) × Rebirth × ubrania × bonusy × boost. Ten sam mnożnik mają aktywności.
 function Loop.lpMultiplier(data, ctx)
 	local m = Formulas.clickBoost(data.AuraUpgrades.ClickBoost)
 	m = m * Economy.Rebirth.LPMultiplier[data.RebirthLevel]
@@ -261,7 +261,7 @@ end
 -- Aktywności, które już są w grze (reszta z arkusza dojdzie w kolejnych etapach).
 Loop.ActivityKinds = { "Car" }
 
--- Licznik sesji w zapisie (pod zadania dzienne, Etap 7).
+-- Licznik sesji w zapisie (pod zadania dzienne, Etap 10).
 local ACTIVITY_STAT = { Car = "CarPhotos" }
 
 -- Ile tierów aktywności gracz ma (1 = pierwszy). Pierwszy tier z ceną 0 jest za darmo.
@@ -530,22 +530,27 @@ function Loop.eggInfo(zone, egg)
 	return info
 end
 
--- Czy można kupić jajko. Zwraca true albo false i powód: BadRequest, Zone, Inventory, NotEnough.
-function Loop.canBuyEgg(data, zone, egg, maxPets)
+-- Czy można kupić count jajek naraz (1 albo 3 z Triple Open). Zwraca true albo false i powód:
+-- BadRequest, Zone, Inventory (nie zmieszczą się wszystkie), NotEnough (nie stać na wszystkie).
+function Loop.canBuyEggs(data, zone, egg, count, maxPets)
 	local info = Loop.eggInfo(zone, egg)
-	if info == nil then
+	if info == nil or type(count) ~= "number" or count < 1 or count ~= math.floor(count) then
 		return false, "BadRequest"
 	end
 	if data.ZonesUnlocked < zone then
 		return false, "Zone"
 	end
-	if maxPets ~= nil and Loop.petCount(data) >= maxPets then
+	if maxPets ~= nil and Loop.petCount(data) + count > maxPets then
 		return false, "Inventory"
 	end
-	if data.Cash < info.Price then
+	if data.Cash < info.Price * count then
 		return false, "NotEnough"
 	end
 	return true, nil
+end
+
+function Loop.canBuyEgg(data, zone, egg, maxPets)
+	return Loop.canBuyEggs(data, zone, egg, 1, maxPets)
 end
 
 -- Kupuje i otwiera jajko. random01 = funkcja losująca liczbę z [0, 1). Pierwsze jajko A w strefie 1
@@ -577,6 +582,34 @@ function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
 		table.insert(data.Equipped, id)
 	end
 	return id, pet
+end
+
+-- Otwiera count jajek naraz (Triple Open). Najpierw sprawdza, czy stać na wszystkie i czy wszystkie
+-- się zmieszczą. Zwraca listę { id, pet } albo nil i powód (jak canBuyEggs).
+function Loop.openEggs(data, ctx, zone, egg, count, random01, maxPets)
+	local ok, reason = Loop.canBuyEggs(data, zone, egg, count, maxPets)
+	if not ok then
+		return nil, reason
+	end
+	local list = {}
+	for _ = 1, count do
+		local id, pet = Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
+		if id == nil then
+			break
+		end
+		table.insert(list, { id = id, pet = pet })
+	end
+	return list
+end
+
+-- Czy pet jest na liście wyposażonych.
+function Loop.isEquipped(data, id)
+	for _, existing in ipairs(data.Equipped) do
+		if existing == id then
+			return true
+		end
+	end
+	return false
 end
 
 ----------------------------------------------------------------- Widok dla HUD

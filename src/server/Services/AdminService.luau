@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -91,6 +92,19 @@ command("lp", "/lp [ile]", "dodaj LP do Bag, także ponad pojemność", function
 	return "Bag: " .. Format.number(data.Bag) .. " LP"
 end)
 
+command("fill", "/fill", "napełnij Bag do pełna", function(player, data)
+	data.Bag = Loop.capacity(data, LoopService.contextFor(player))
+	return "Bag: " .. Format.number(data.Bag) .. " LP (pełny)"
+end)
+
+command("sell", "/sell", "sprzedaj Bag od razu, bez chodzenia na Sell", function(player, data)
+	if data.Bag <= 0 then
+		error("Bag jest pusty", 0)
+	end
+	local gained = LoopService.sellNow(player)
+	return "Sprzedane za " .. Format.number(gained) .. " L$ (L$: " .. Format.number(data.Cash) .. ")"
+end)
+
 command("click", "/click [poziom]", "ustaw Click Multiplier (0–150)", function(_, data, args)
 	data.ClickLevel = needLevel(args[1], Loop.MaxLevel.Click)
 	return string.format(
@@ -103,6 +117,25 @@ end)
 command("bag", "/bag [poziom]", "ustaw poziom Bag (0–35)", function(_, data, args)
 	data.BagLevel = needLevel(args[1], Loop.MaxLevel.Bag)
 	return string.format("Bag: poziom %d (%s LP)", data.BagLevel, Format.number(Formulas.bagCapacity(data.BagLevel, false)))
+end)
+
+command("max", "/max", "wszystko na maksa: strefy 1–5, Click, Bag i najlepsze auto (L$ bez zmian)", function(_, data)
+	data.ZonesUnlocked = #Economy.Zones
+	data.ClickLevel = Loop.MaxLevel.Click
+	data.BagLevel = Loop.MaxLevel.Bag
+	if data.ActivityTiers == nil then
+		data.ActivityTiers = {}
+	end
+	for _, kind in ipairs(Loop.ActivityKinds) do
+		data.ActivityTiers[kind] = #Economy.Activities[kind].Tiers
+	end
+	return string.format(
+		"Na maksa: strefy 1–%d, Click Lv %d, Bag Lv %d, auto tier %d",
+		data.ZonesUnlocked,
+		data.ClickLevel,
+		data.BagLevel,
+		Loop.activityTier(data, "Car")
+	)
 end)
 
 local function needZone(arg)
@@ -118,7 +151,17 @@ command("zone", "/zone [1–5]", "ustaw ostatnią kupioną strefę (1 = tylko st
 	return string.format("Kupione strefy: 1–%d (ostatnia: %s)", data.ZonesUnlocked, Economy.Zones[data.ZonesUnlocked].Name)
 end)
 
-command("tp", "/tp [1–5]", "teleport do strefy (mnożnik działa tylko w kupionej)", function(player, _, args)
+command("tp", "/tp [1–5|sell]", "teleport do strefy albo na pole Sell (mnożnik działa tylko w kupionej strefie)", function(player, _, args)
+	if string.lower(args[1] or "") == "sell" then
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local position = root and LoopService.sellPadPosition(root.Position)
+		if position == nil then
+			error("nie ma pola Sell albo nie masz postaci", 0)
+		end
+		character:PivotTo(CFrame.new(position))
+		return "Teleport: pole Sell"
+	end
 	local n = needZone(args[1])
 	if not ZoneService.teleport(player, n) then
 		error("ta strefa nie ma części na mapie albo nie masz postaci", 0)
@@ -126,8 +169,51 @@ command("tp", "/tp [1–5]", "teleport do strefy (mnożnik działa tylko w kupio
 	return string.format("Teleport: strefa %d (%s)", n, Economy.Zones[n].Name)
 end)
 
-command("pet", "/pet [rzadkość] [strefa]", "daj peta, np. /pet Legendary 2", function(_, data, args)
+command("speed", "/speed [ile]", "prędkość chodzenia, np. /speed 60 (16 = normalnie, po odrodzeniu wraca)", function(player, _, args)
+	local n = needNumber(args[1])
+	if n < 0 or n > 300 then
+		error("podaj liczbę od 0 do 300", 0)
+	end
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if humanoid == nil then
+		error("nie masz postaci", 0)
+	end
+	humanoid.WalkSpeed = n
+	return "Prędkość: " .. Format.small(n) .. " (normalnie " .. tostring(Economy.WalkSpeed) .. ")"
+end)
+
+command("time", "/time [0–24]", "pora dnia dla wszystkich, np. /time 14 (dzień) albo /time 0 (noc)", function(_, _, args)
+	local hour = needNumber(args[1])
+	if hour < 0 or hour > 24 then
+		error("podaj godzinę od 0 do 24", 0)
+	end
+	Lighting.ClockTime = hour
+	return "Godzina: " .. Format.small(hour)
+end)
+
+local function givePet(data, zone, rarity)
+	local id = tostring(data.NextPetId)
+	data.NextPetId = data.NextPetId + 1
+	data.Pets[id] = { Zone = zone, Rarity = rarity, Level = 0 }
+	return id
+end
+
+command("pet", "/pet [rzadkość|all] [strefa]", "daj peta, np. /pet Legendary 2; /pet all = po jednym z każdej rzadkości", function(_, data, args)
 	local wanted = string.lower(args[1] or "")
+	if wanted == "all" then
+		local zone = 1
+		if args[2] ~= nil then
+			zone = needZone(args[2])
+		end
+		local order = Economy.Pets.RarityOrder
+		if Loop.petCount(data) + #order > PetsConfig.MaxInventory then
+			error(string.format("nie zmieści się %d petów (najwyżej %d)", #order, PetsConfig.MaxInventory), 0)
+		end
+		for _, rarity in ipairs(order) do
+			givePet(data, zone, rarity)
+		end
+		return string.format("Nowe pety: po jednym z każdej rzadkości ze strefy %d (%d). Załóż je w oknie PETS.", zone, #order)
+	end
 	local rarity = nil
 	for _, name in ipairs(Economy.Pets.RarityOrder) do
 		if string.lower(name) == wanted then
@@ -144,15 +230,71 @@ command("pet", "/pet [rzadkość] [strefa]", "daj peta, np. /pet Legendary 2", f
 	if Loop.petCount(data) >= PetsConfig.MaxInventory then
 		error(string.format("ekwipunek pełny (%d petów)", PetsConfig.MaxInventory), 0)
 	end
-	local id = tostring(data.NextPetId)
-	data.NextPetId = data.NextPetId + 1
-	data.Pets[id] = { Zone = zone, Rarity = rarity, Level = 0 }
+	givePet(data, zone, rarity)
 	return string.format(
 		"Nowy pet: %s (%s, strefa %d, +%s%% L$). Wyposaż go w oknie PETS.",
 		PetsConfig.name(zone, rarity),
 		rarity,
 		zone,
 		Format.small(Formulas.petPower(zone, rarity, 0) * 100)
+	)
+end)
+
+command("clearpets", "/clearpets", "usuń wszystkie pety", function(_, data)
+	local n = Loop.petCount(data)
+	data.Pets = {}
+	data.Equipped = {}
+	return string.format("Usunięte pety: %d", n)
+end)
+
+command("odds", "/odds [ile] [strefa] [A|B]", "losuje jajka na próbę (bez L$ i bez petów), np. /odds 10000 1 B", function(_, data, args)
+	local count = 1000
+	if args[1] ~= nil then
+		count = math.floor(needNumber(args[1]))
+	end
+	if count < 1 or count > 100000 then
+		error("podaj od 1 do 100000 jajek", 0)
+	end
+	local zone = 1
+	if args[2] ~= nil then
+		zone = needZone(args[2])
+	end
+	local egg = string.upper(args[3] or "A")
+	local info = Loop.eggInfo(zone, egg)
+	if info == nil then
+		error("jajko A (zwykłe) albo B (złote)", 0)
+	end
+	local luck = 1
+	if info.LuckApplies ~= false then
+		luck = Formulas.luck(data.AuraUpgrades.Luck)
+	end
+	local counts = {}
+	for _ = 1, count do
+		local rarity = Formulas.roll(info.Odds, luck, math.random)
+		counts[rarity] = (counts[rarity] or 0) + 1
+	end
+	local parts = {}
+	for _, rarity in ipairs(Economy.Pets.RarityOrder) do
+		if counts[rarity] ~= nil then
+			table.insert(parts, string.format("%s %d (%s)", rarity, counts[rarity], Format.percent(counts[rarity] / count)))
+		end
+	end
+	return string.format(
+		"%s × %d, szczęście ×%s: %s",
+		string.format(PetsConfig.EggNames[egg] or "%s Egg", Economy.Zones[zone].Name),
+		count,
+		tostring(math.floor(luck * 100 + 0.5) / 100),
+		table.concat(parts, ", ")
+	)
+end)
+
+command("luck", "/luck [poziom]", "ustaw ulepszenie Luck z Aury (szczęście w jajkach), np. /luck 20", function(_, data, args)
+	data.AuraUpgrades.Luck = needLevel(args[1], 1000)
+	local luck = Formulas.luck(data.AuraUpgrades.Luck)
+	return string.format(
+		"Luck: poziom %d, szczęście ×%s (tyle losowań na jajko, wygrywa najrzadszy pet)",
+		data.AuraUpgrades.Luck,
+		tostring(math.floor(luck * 100 + 0.5) / 100)
 	)
 end)
 

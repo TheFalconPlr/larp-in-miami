@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -55,6 +56,28 @@ local function rarityItem(rarity, size)
 end
 Pets.rarityItem = rarityItem
 Pets.powerText = powerText
+
+----------------------------------------------------------------- Kafelek PETS dla innych modułów
+local tileRef = nil
+local tileScale = nil
+
+-- Środek kafelka PETS (AbsolutePosition w HUD, bez wcięcia na górny pasek) albo nil.
+function Pets.tileCenter()
+	if tileRef == nil then
+		return nil
+	end
+	local holder = tileRef.holder
+	return holder.AbsolutePosition + holder.AbsoluteSize / 2
+end
+
+-- Kafelek PETS podskakuje (np. gdy nowy pet do niego wleci).
+function Pets.bump()
+	if tileScale == nil then
+		return
+	end
+	tileScale.Scale = 1.22
+	TweenService:Create(tileScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
 
 ----------------------------------------------------------------- Pety latające za graczami
 local followers = {} -- [gracz] = { text, list = { { model, cframe, phase, hidden } } }
@@ -163,6 +186,8 @@ function Pets.start(hud)
 		colors = Theme.Gradients.Yellow,
 		order = 3,
 	})
+	tileRef = tile
+	tileScale = Kit.new("UIScale", { Parent = tile.holder })
 	local panel = Kit.panel(hud.gui, {
 		name = "PetsPanel",
 		size = Vector2.new(720, 480),

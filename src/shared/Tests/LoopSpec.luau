@@ -248,6 +248,21 @@ return function()
 	local extraOk, extraWhy = Loop.equipPet(d, {}, d.Equipped[4])
 	check(not extraOk and extraWhy == "SlotsFull" and #d.Equipped == 3, "nadmiarowy pet spada z listy, sloty pełne")
 
+	-- Triple Open: 3 jajka naraz, tylko gdy stać na wszystkie i wszystkie się zmieszczą
+	d = fresh()
+	d.Cash = eggA1.Price * 3 - 1
+	local none, whyCash = Loop.openEggs(d, {}, 1, "A", 3, always(0), 250)
+	check(none == nil and whyCash == "NotEnough" and d.Cash == eggA1.Price * 3 - 1 and Loop.petCount(d) == 0, "3 jajka: brakuje L$ na trzecie, nic się nie dzieje")
+	d.Cash = eggA1.Price * 3
+	local three = Loop.openEggs(d, {}, 1, "A", 3, always(0), 250)
+	check(#three == 3 and d.Cash == 0 and d.Stats.EggsOpened == 3 and three[1].pet.Rarity == "Rare" and three[2].pet.Rarity == "Common", "3 jajka naraz: 3 pety, pierwsze jajko dalej daje Rare")
+	check(#d.Equipped == 3 and Loop.isEquipped(d, three[3].id), "3 nowe pety same wchodzą na wolne sloty")
+	d.Cash = 1e12
+	local noRoom, whyRoom = Loop.openEggs(d, {}, 1, "A", 3, always(0), 5)
+	check(noRoom == nil and whyRoom == "Inventory" and Loop.petCount(d) == 3, "3 jajka: brak miejsca na wszystkie")
+	local bad, whyBad = Loop.openEggs(d, {}, 1, "A", 1.5, always(0), 250)
+	check(bad == nil and whyBad == "BadRequest", "zła liczba jajek")
+
 	----------------------------------------------------------------- Limit kliknięć
 	local limiter = RateLimiter.new(10, 10)
 	local got = 0

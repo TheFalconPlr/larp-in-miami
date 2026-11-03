@@ -42,12 +42,14 @@ local Settings = {
 			Upgrades = 108527921987826,
 			Cash = 15040641396, -- raczej tymczasowa
 			Sell = 131296908597094, -- raczej tymczasowa
+			Pets = 16697439145,
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",
 	},
 	-- Dźwięki (ID z Toolboxa). Volume: 0.5 = normalnie, 1 = głośno (cichy plik może mieć więcej, do 10).
-	-- MinGap = najmniejszy odstęp między odtworzeniami (s).
+	-- MinGap = najmniejszy odstęp między odtworzeniami (s). Length = gra najwyżej tyle sekund, a przez
+	-- ostatnie FadeOut sekund powoli cichnie. Start = od której sekundy pliku zacząć (pomija ciszę na początku).
 	Sounds = {
 		Button = { Id = 100809160609628, Volume = 0.5, MinGap = 0.05 }, -- domyślny dźwięk przycisków
 		-- klikanie na LP (cichy dźwięk „hover”, dlatego głośność 1). Rise: klikanie pod rząd podnosi
@@ -60,13 +62,14 @@ local Settings = {
 		NotEnough = { Id = 87519554692663, Volume = 0.6, MinGap = 0.15 }, -- brak L$ na zakup
 		-- odblokowanie strefy (na razie ten sam dźwięk co sprzedaż; podmień, gdy znajdziesz lepszy)
 		Unlock = { Id = 111773238101465, Volume = 0.8, MinGap = 0.5 },
-		-- koniec aktywności: oklaski tłumu. Length = gra najwyżej tyle sekund, a przez ostatnie
-		-- FadeOut sekund powoli cichnie (cały plik trwa ok. 7 s).
-		Reward = { Id = 96549311151424, Volume = 0.7, MinGap = 0.3, Length = 3, FadeOut = 2 },
+		-- koniec aktywności i rzadki pet: oklaski tłumu (cały plik trwa ok. 7 s, gra 4,5 s i cichnie przez 2,5 s)
+		Reward = { Id = 96549311151424, Volume = 0.7, MinGap = 0.3, Length = 4.5, FadeOut = 2.5 },
 		Photo = { Id = 135432517383409, Volume = 0.6, MinGap = 0.2 }, -- migawka aparatu przy fleszu
-		-- nowy pet z jajka (na razie ten sam dźwięk co sprzedaż; podmień, gdy znajdziesz lepszy).
-		-- Przy Legendary, Mythic i Secret gra Reward (oklaski).
-		Hatch = { Id = 111773238101465, Volume = 0.8, MinGap = 0.3 },
+		-- nowy pet z jajka (przy Legendary, Mythic i Secret dochodzą oklaski Reward)
+		Hatch = { Id = 99608180022223, Volume = 0.7, MinGap = 0.3 },
+		-- pojedyncze pęknięcie jajka: gra 3 razy, coraz wyżej, a przy rozbiciu dwa razy naraz (nisko i wysoko).
+		-- Plik trwa 1,1 s, więc gra tylko początek, żeby pęknięcia się nie zlewały.
+		Crack = { Id = 9113959343, Volume = 0.9, MinGap = 0.03, Length = 0.6, FadeOut = 0.25 },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

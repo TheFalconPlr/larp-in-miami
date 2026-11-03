@@ -1005,6 +1005,10 @@ function Hud.start()
 	api.gui = gui
 	api.registerScale = registerScale
 	api.toast = toast
+	-- Chowa cały HUD (np. na czas otwierania jajka, jak w Pet Simulator 99).
+	function api.setVisible(visible)
+		gui.Enabled = visible
+	end
 	-- Inne okna (np. odblokowanie strefy) zamykają okno Upgrades, żeby się nie nakładały.
 	function api.closeUpgrades()
 		panel.hide()

@@ -105,7 +105,7 @@ function Sounds.play(name, opts)
 	else
 		sound.PlaybackSpeed = 0.96 + math.random() * 0.08
 	end
-	sound.TimePosition = 0
+	sound.TimePosition = p.info.Start or 0
 	sound:Play()
 
 	-- Length: dźwięk gra najwyżej tyle sekund, a przez ostatnie FadeOut sekund powoli cichnie.

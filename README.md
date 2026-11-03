@@ -47,19 +47,56 @@ Wszystkie komendy wpisujesz w PowerShell.
    Jeśli `rojo` zgłasza „Aftman error”, masz starsze narzędzie Aftman: zmień nazwę folderu `$HOME\.aftman` (np. na `.aftman-stary`) i otwórz PowerShell od nowa.
 5. Opcjonalnie: VS Code z rozszerzeniami **Rojo** i **Luau Language Server**, jeśli chcesz zaglądać w kod.
 
-## Codzienna praca
+## Codzienna praca (krok po kroku)
 
-1. `git pull`, żeby pobrać nowy kod.
-2. `rojo serve` i w Studio Rojo → Connect.
-3. Budujesz i testujesz w Studio, a grę zapisujesz normalnie (Ctrl+S albo Publish).
+Za każdym razem, gdy włączasz laptopa i chcesz popracować:
 
-Po **Play** w oknie Output powinny być m.in. te linie:
 ```
-[Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
-ConfigCheck: OK (64 testów zgodnych z arkuszem)
-LoopCheck: OK (84 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
-[Dane] TwojNick: zapis wczytany (DataStore: Access)
+PowerShell:  cd do projektu  →  git pull  →  rojo serve (to okno zostaje otwarte)
+Studio:      otwórz grę  →  Plugins → Rojo → Connect  →  Play (F5)
+Koniec:      Stop  →  Ctrl+S  →  w oknie z Rojo Ctrl+C
 ```
+
+1. **Otwórz PowerShell:** Start → wpisz `PowerShell` → Enter.
+2. **Wejdź do folderu projektu:**
+   ```powershell
+   cd $HOME\Documents\larp-in-miami
+   ```
+3. **Pobierz nowy kod od Claude:**
+   ```powershell
+   git pull
+   ```
+   Dobrze, gdy widzisz listę zmienionych plików albo `Already up to date.` (nic nowego).
+4. **Uruchom Rojo:**
+   ```powershell
+   rojo serve
+   ```
+   Dobrze, gdy widzisz `Rojo server listening` i `Port: 34872`. Nie zamykaj tego okna, dopóki pracujesz: bez niego Studio nie dostaje kodu.
+5. **Otwórz Roblox Studio** i grę `[NEW] Larp in Miami!` (z ostatnich gier albo z grupy Larping Studio$).
+6. **Połącz Studio z Rojo:** zakładka **Plugins** → **Rojo** → **Connect**. Po chwili plugin pokazuje „Connected”, a skrypty z plików są już w Studio.
+7. **Testuj:** **Play** (F5). W oknie **Output** (View → Output) powinny być m.in. te linie:
+   ```
+   [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
+   ConfigCheck: OK (64 testów zgodnych z arkuszem)
+   LoopCheck: OK (89 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
+   [Dane] TwojNick: zapis wczytany (DataStore: Access)
+   ```
+   Komendy testowe wpisujesz na czacie (zacznij od `/cmds`). **Stop** (Shift+F5) kończy test.
+8. **Zapisz grę:** Ctrl+S (File → Save to Roblox). Gdy gracze mają zobaczyć zmiany: File → Publish to Roblox (Alt+P).
+9. **Koniec pracy:** kliknij okno PowerShell z Rojo i naciśnij **Ctrl+C** (Rojo się zatrzymuje), potem zamknij Studio.
+
+**Nowy kod w trakcie pracy.** Nie trzeba niczego wyłączać: otwórz drugie okno PowerShell i wpisz `cd $HOME\Documents\larp-in-miami`, a potem `git pull`. Rojo sam przeniesie zmiany do Studio, a Ty zrób Stop i Play.
+
+**Gdy coś nie działa:**
+
+| Problem | Co zrobić |
+| --- | --- |
+| `git pull` pisze `Your local changes ... would be overwritten` | W folderze ktoś zmienił pliki. `git stash` odkłada te zmiany na bok, potem znowu `git pull`. |
+| `rojo` „is not recognized” | `rokit install`, potem zamknij PowerShell i otwórz go od nowa. |
+| `rojo serve` pisze, że port jest zajęty | Rojo już działa w innym oknie PowerShell. Użyj tamtego albo je zamknij i uruchom `rojo serve` jeszcze raz. |
+| Plugin Rojo się nie łączy | Sprawdź, czy okno z `rojo serve` jest otwarte, i kliknij Connect jeszcze raz (adres `localhost`, port `34872`). |
+| W Studio jest stary kod | W pluginie Rojo: Disconnect, potem Connect. Potem Stop i Play. |
+| W Output są czerwone błędy | Zrób zrzut ekranu okna Output i wyślij go Claude. |
 
 ## Etap 2: rdzeń pętli
 
@@ -106,7 +143,9 @@ Kamera krąży wokół punktu obrotu (pivot) modelu `CarSpot`, więc ustaw go na
 
 ## Etap 5: jajka i pety
 
-Co działa: w każdej strefie stoją dwa jajka za L$: zwykłe i złote (droższe, z lepszymi szansami). Gdy podejdziesz do jajka, otworzy się okno z petami, które mogą z niego wypaść, ich szansami i ceną. OPEN (albo klawisz E) otwiera jajko: jajko się trzęsie, błyska i pojawia się pet z rzadkością i bonusem. Pierwsze jajko w grze (zwykłe w Downtown Miami) zawsze daje Rare. Nowy pet sam się zakłada, jeśli jest wolne miejsce.
+Co działa: w każdej strefie stoją dwa jajka za L$: zwykłe i złote (droższe, z lepszymi szansami). Przy każdym jajku jest żółta pigułka z ceną. Jak w Pet Simulator 99: gdy podejdziesz, nad jajkiem pojawia się biały panel z petami, które mogą wypaść, i ich szansami, a przed jajkiem duże E. Klawisz E (albo kliknięcie w E, na telefonie dotknięcie) otwiera okno kupna „Would you like to buy a … Egg?” z Buy 1 i Buy 3. Buy 3 otwiera trzy jajka naraz i działa z gamepassem Triple Open (w teście `/pass TripleOpen`).
+
+Animacja otwierania: jajko pęka 3 razy (dźwięk coraz wyżej, rysy i odpryski), skorupka się rozpryskuje, a pet wkręca się i odbija na tle promieni i poświaty w kolorze rzadkości. Przy Legendary i Secret są jeszcze iskry, drżenie ekranu i oklaski. Napisy (nazwa, rzadkość z bonusem, „Equipped!”) wskakują po kolei, a na koniec pet leci do kafelka PETS. W czasie animacji HUD jest schowany. Pierwsze jajko w grze (zwykłe w Downtown Miami) zawsze daje Rare. Nowy pet sam się zakłada, jeśli jest wolne miejsce.
 
 Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Sell. Bonus peta = moc strefy × mnożnik rzadkości, np. Rare z Downtown Miami daje +20% L$, a dwa takie pety dają ×1,4. Miejsca na pety: 3, po jednym więcej od Rebirth 3 i Rebirth 7, a gamepass Pet Slots daje +2. Kafelek PETS po lewej otwiera ekwipunek: kliknij peta, żeby go założyć albo zdjąć, a EQUIP BEST zakłada najmocniejsze. Czerwona kropka na PETS znaczy, że masz wolne miejsce i peta do założenia. Ekwipunek mieści 250 petów. Sprzedawanie i łączenie petów (Gold, Diamond) będzie w kolejnym etapie.
 
@@ -126,11 +165,23 @@ Zwykłe jajko: Common 60%, Uncommon 28%, Rare 10%, Epic 2%. Złote: Uncommon 50%
 
 | Co | Nazwa | Uwagi |
 | --- | --- | --- |
-| Zwykłe jajko | `EggA1` … `EggA5` | Model albo część; cyfra to strefa. Tablica z nazwą i ceną wisi nad najwyższym punktem stoiska. Okno otwiera się, gdy gracz stoi najwyżej 7 studs od stoiska. |
+| Zwykłe jajko | `EggA1` … `EggA5` | Model albo część; cyfra to strefa. Panel z petami wisi nad najwyższym punktem stoiska, a pigułka z ceną przy jego spodzie. Panel i E pokazują się, gdy gracz stoi najwyżej 8 studs od stoiska. |
 | Złote jajko | `EggB1` … `EggB5` | jak wyżej |
 | Model peta | folder `PetModels` w ReplicatedStorage, a w nim modele nazwane jak pety (np. `Pigeon`, `Alley Cat`) | Wielkość ok. 2–3 studs. Pet patrzy tam, gdzie przód punktu obrotu (pivot) modelu. Bez modelu pet jest kolorową kulką z oczami w kolorze rzadkości. Nazwy wszystkich petów są w `src/shared/Config/Pets.luau`. |
 
-Dźwięk nowego peta to `Hatch` w `Settings.Sounds` (na razie ten sam co sprzedaż), a przy Legendary i Secret grają oklaski (`Reward`).
+Dźwięki są w `Settings.Sounds`: `Crack` (pojedyncze pęknięcie: gra 3 razy, coraz wyżej, a przy rozbiciu dwa razy naraz, nisko i wysoko), `Hatch` (nowy pet) i `Reward` (oklaski przy Legendary, Mythic i Secret).
+
+## Co dalej (plan etapów)
+
+| Etap | Co |
+| --- | --- |
+| 6 | Aktywności w strefach 3–5, jak zdjęcia z autem w strefie 2: wywiad w Luxury Mall (losowa ocena Flop, Solid, Viral albo Mega viral), jacht w Miami Beach (5 jachtów do kupienia) i odrzutowiec na Private Airport (3 odrzutowce). |
+| 7 | Rebirth i Aura: reset postępu za stały mnożnik LP, Aura za Rebirthy i ulepszenia za Aurę (Click Boost, Luck do jajek, Aura Gain). |
+| 8 | Sprzedawanie i łączenie petów (Gold, Diamond) oraz ubrania (skrzynki, sloty i bonusy). |
+| 9 | Robux: gamepassy, produkty, boosty i Premium Egg (ID tworzysz w Creator Hub). |
+| 10 | Nagrody dzienne i zadania, bonus za grupę i znajomych, poprawki przed premierą. |
+
+Kolejność może się zmienić, jeśli coś będzie pilniejsze.
 
 ## Tryb testowy (komendy na czacie)
 
@@ -141,15 +192,24 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/cmds` | lista komend |
 | `/cash 1.5M` | dodaje L$ (`/cash -100` odejmuje) |
 | `/lp 500` | dodaje LP do Bag, także ponad pojemność |
+| `/fill` | napełnia Bag do pełna |
+| `/sell` | sprzedaje Bag od razu, bez chodzenia na Sell |
 | `/click 20` | ustawia poziom Click Multipliera (0–150) |
 | `/bag 10` | ustawia poziom Bag (0–35) |
+| `/max` | wszystko na maksa: strefy 1–5, Click 150, Bag 35 i najlepsze auto (L$ bez zmian) |
 | `/zone 3` | ustawia ostatnią kupioną strefę (1 = tylko start) |
-| `/tp 4` | teleportuje do strefy (mnożnik działa tylko w kupionej) |
+| `/tp 4` | teleportuje do strefy (mnożnik działa tylko w kupionej); `/tp sell` na pole Sell |
+| `/speed 60` | prędkość chodzenia (16 = normalnie, po odrodzeniu wraca) |
+| `/time 0` | pora dnia dla wszystkich (0 = noc, 14 = dzień) |
 | `/tier car 3` | ustawia auto do zdjęć (tier 1–5) |
 | `/pet Legendary 2` | daje peta (rzadkość i strefa, np. `/pet Secret 5`); załóż go w oknie PETS |
+| `/pet all 3` | daje po jednym pecie z każdej rzadkości ze strefy 3 |
+| `/clearpets` | usuwa wszystkie pety |
+| `/odds 10000 1 B` | losuje na próbę 10 000 złotych jajek ze strefy 1 i pokazuje, co wypadło (bez L$ i bez petów) |
+| `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
 | `/aura 500` | ustawia Aurę |
-| `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`) |
+| `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`), np. `/pass TripleOpen` dla Buy 3 |
 | `/stats` | pokazuje zapis |
 | `/reset` | czyści zapis, jak u nowego gracza |
 
@@ -162,7 +222,7 @@ Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wz
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
 - **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
-- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `BagFull` (Bag się zapełnił), `BagFullClick` (klik przy pełnym Bag), `NotEnough` (brak L$), `Unlock` (kupno strefy albo auta), `Reward` (oklaski na koniec sesji zdjęciowej i przy rzadkim pecie), `Photo` (migawka przy fleszu), `Hatch` (nowy pet z jajka). `Length` i `FadeOut` skracają dźwięk: gra najwyżej `Length` sekund i przez ostatnie `FadeOut` sekund cichnie. `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
+- **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `BagFull` (Bag się zapełnił), `BagFullClick` (klik przy pełnym Bag), `NotEnough` (brak L$), `Unlock` (kupno strefy albo auta), `Reward` (oklaski na koniec sesji zdjęciowej i przy rzadkim pecie), `Photo` (migawka przy fleszu), `Hatch` (nowy pet z jajka), `Crack` (pęknięcie jajka). `Start` pomija ciszę na początku pliku (od której sekundy grać). `Length` i `FadeOut` skracają dźwięk: gra najwyżej `Length` sekund i przez ostatnie `FadeOut` sekund cichnie. `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 
 Ikony bez własnego ID biorą się z arkusza `assets/icons/larp-icons.png` (16 ikon), a dopóki nie jest wgrany do Roblox, są emoji. Żeby go wgrać:

@@ -87,24 +87,110 @@ function PetModels.pet(zone, rarity)
 	return model
 end
 
--- Jajko do animacji otwierania (A białe, B złote).
+local EGG_SIZE = Vector3.new(4.4, 5.6, 4.4)
+local EGG_COLORS = {
+	A = Color3.fromRGB(245, 247, 250),
+	B = Color3.fromRGB(255, 196, 60),
+}
+local CRACK_COLORS = {
+	A = Color3.fromRGB(70, 72, 92),
+	B = Color3.fromRGB(110, 62, 18),
+}
+-- Rysa na przodzie jajka: zygzak w poprzek (x, y w studs od środka). Pojawia się w 3 etapach,
+-- po 2 odcinki na każde pęknięcie.
+local CRACK_POINTS = {
+	{ -1.8, 0.3 },
+	{ -1.2, -0.1 },
+	{ -0.62, 0.42 },
+	{ 0, -0.02 },
+	{ 0.6, 0.48 },
+	{ 1.18, 0.02 },
+	{ 1.8, 0.38 },
+}
+
+function PetModels.eggColor(egg)
+	return EGG_COLORS[egg] or EGG_COLORS.A
+end
+
+-- Punkt na powierzchni jajka (elipsoida) od strony kamery (-Z), trochę nad skorupką.
+local function surfacePoint(x, y)
+	local half = EGG_SIZE / 2
+	local k = 1 - (x / half.X) ^ 2 - (y / half.Y) ^ 2
+	local z = -half.Z * math.sqrt(math.max(0, k))
+	return Vector3.new(x, y, z) * 1.03
+end
+
+-- Jajko do animacji otwierania (A białe, B złote) z ukrytymi rysami (PetModels.crack).
 function PetModels.egg(egg)
 	local model = Instance.new("Model")
 	local shell = Instance.new("Part")
 	shell.Name = "Egg"
-	shell.Size = Vector3.new(4.4, 5.6, 4.4)
+	shell.Size = EGG_SIZE
 	shell.CFrame = CFrame.new()
 	shell.Material = Enum.Material.SmoothPlastic
-	if egg == "B" then
-		shell.Color = Color3.fromRGB(255, 196, 60)
-	else
-		shell.Color = Color3.fromRGB(245, 247, 250)
-	end
+	shell.Color = PetModels.eggColor(egg)
 	local mesh = Instance.new("SpecialMesh")
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Parent = shell
 	shell.Parent = model
+	for i = 1, #CRACK_POINTS - 1 do
+		local a = surfacePoint(CRACK_POINTS[i][1], CRACK_POINTS[i][2])
+		local b = surfacePoint(CRACK_POINTS[i + 1][1], CRACK_POINTS[i + 1][2])
+		local crack = Instance.new("Part")
+		crack.Name = "Crack"
+		crack.Size = Vector3.new(0.17, 0.17, (b - a).Magnitude + 0.14)
+		crack.CFrame = CFrame.lookAt((a + b) / 2, b)
+		crack.Color = CRACK_COLORS[egg] or CRACK_COLORS.A
+		crack.Material = Enum.Material.SmoothPlastic
+		crack.Transparency = 1
+		crack:SetAttribute("CrackStage", math.ceil(i / 2))
+		crack.Parent = model
+	end
 	model.PrimaryPart = shell
+	return prepare(model)
+end
+
+-- Pokazuje rysy do danego pęknięcia (1–3; 0 = całe jajko).
+function PetModels.crack(model, stage)
+	for _, d in ipairs(model:GetDescendants()) do
+		local crackStage = d:GetAttribute("CrackStage")
+		if crackStage ~= nil and d:IsA("BasePart") then
+			if crackStage <= stage then
+				d.Transparency = 0
+			else
+				d.Transparency = 1
+			end
+		end
+	end
+end
+
+-- Jajko na kupce monet (okno kupna).
+local COINS = {
+	-- x, z, ile monet w stosie
+	{ -2.3, -0.7, 3 },
+	{ 2.1, -1.0, 2 },
+	{ -1.0, -2.1, 1 },
+	{ 1.0, -2.3, 2 },
+	{ 2.9, 0.7, 1 },
+	{ -2.9, 1.0, 2 },
+}
+
+function PetModels.eggWithCoins(egg)
+	local model = PetModels.egg(egg)
+	local bottom = -EGG_SIZE.Y / 2
+	for _, stack in ipairs(COINS) do
+		for n = 1, stack[3] do
+			local coin = Instance.new("Part")
+			coin.Name = "Coin"
+			coin.Shape = Enum.PartType.Cylinder
+			coin.Size = Vector3.new(0.32, 1.7, 1.7)
+			coin.CFrame = CFrame.new(stack[1], bottom + 0.16 + (n - 1) * 0.33, stack[2])
+				* CFrame.Angles(0, math.rad(n * 17), math.rad(90))
+			coin.Color = Color3.fromRGB(255, 200, 50)
+			coin.Material = Enum.Material.SmoothPlastic
+			coin.Parent = model
+		end
+	end
 	return prepare(model)
 end
 

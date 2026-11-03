@@ -41,9 +41,9 @@ local function contextFor(player)
 	local ctx = {
 		zone = zone,
 		passes = GamepassService.passes(player),
-		inGroup = false, -- Etap 7: bonus za grupę
-		friends = 0, -- Etap 7: bonus za znajomych
-		boost = false, -- Etap 6: boost 2x LP
+		inGroup = false, -- Etap 10: bonus za grupę
+		friends = 0, -- Etap 10: bonus za znajomych
+		boost = false, -- Etap 9: boost 2x LP
 		petLayer = 1,
 	}
 	if data ~= nil then
@@ -303,6 +303,23 @@ local function teleportToSell(player)
 	character:PivotTo(CFrame.new(pad.Position + offset))
 	s.lastPadSell = now
 	sellFor(player, s)
+end
+
+-- Dla trybu testowego: /sell sprzedaje od razu, /tp sell przenosi nad najbliższe pole Sell.
+function LoopService.sellNow(player)
+	local s = sessions[player]
+	if s == nil then
+		return 0
+	end
+	return sellFor(player, s)
+end
+
+function LoopService.sellPadPosition(position)
+	local pad = nearestPad(position)
+	if pad == nil then
+		return nil
+	end
+	return pad.Position + Vector3.new(0, pad.Size.Y / 2 + 3, 0)
 end
 
 ----------------------------------------------------------------- Ulepszenia

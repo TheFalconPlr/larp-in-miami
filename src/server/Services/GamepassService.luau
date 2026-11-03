@@ -1,4 +1,4 @@
--- Gamepassy: kto co ma. Produkty tworzymy w Etapie 6. Do tego czasu (Id = 0 w Economy) działają
+-- Gamepassy: kto co ma. Gamepassy i produkty za Robux tworzymy w Etapie 9. Do tego czasu (Id = 0 w Economy) działają
 -- tylko testowe przełączniki z trybu testowego (/pass), ważne do końca sesji.
 
 local Players = game:GetService("Players")

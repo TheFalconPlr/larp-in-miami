@@ -239,9 +239,20 @@ local function openCooldown(player)
 	return math.max(0.5, openTime(player) - 0.25)
 end
 
-local function buyEgg(player, zone, egg)
-	if type(zone) ~= "number" or type(egg) ~= "string" then
+-- count: 1 albo 3 (Triple Open, tylko z gamepassem).
+local function buyEgg(player, zone, egg, count)
+	if count == nil then
+		count = 1
+	end
+	if type(zone) ~= "number" or type(egg) ~= "string" or type(count) ~= "number" then
 		return { Ok = false, Reason = "BadRequest" }
+	end
+	local triple = Economy.Robux.Gamepasses.TripleOpen.OpenCount
+	if count ~= 1 and count ~= triple then
+		return { Ok = false, Reason = "BadRequest" }
+	end
+	if count > 1 and not GamepassService.owns(player, "TripleOpen") then
+		return { Ok = false, Reason = "NoPass" }
 	end
 	local data = DataService.get(player)
 	if data == nil then
@@ -254,25 +265,23 @@ local function buyEgg(player, zone, egg)
 	if not nearStand(player, zone, egg) then
 		return { Ok = false, Reason = "TooFar" }
 	end
-	local id, result = Loop.openEgg(data, LoopService.contextFor(player), zone, egg, random01, PetsConfig.MaxInventory)
-	if id == nil then
-		return { Ok = false, Reason = result }
+	local list, reason = Loop.openEggs(data, LoopService.contextFor(player), zone, egg, count, random01, PetsConfig.MaxInventory)
+	if list == nil then
+		return { Ok = false, Reason = reason }
 	end
 	lastOpen[player] = now
 	LoopService.markDirty(player)
-	local equipped = false
-	for _, equippedId in ipairs(data.Equipped) do
-		if equippedId == id then
-			equipped = true
-		end
+	local pets = {}
+	for _, entry in ipairs(list) do
+		table.insert(pets, {
+			Id = entry.id,
+			Zone = entry.pet.Zone,
+			Rarity = entry.pet.Rarity,
+			Level = entry.pet.Level,
+			Equipped = Loop.isEquipped(data, entry.id),
+		})
 	end
-	return {
-		Ok = true,
-		Id = id,
-		Pet = { Zone = result.Zone, Rarity = result.Rarity, Level = result.Level },
-		Equipped = equipped,
-		OpenTime = openTime(player),
-	}
+	return { Ok = true, Pets = pets, OpenTime = openTime(player) }
 end
 
 local function equipPet(player, id, on)
