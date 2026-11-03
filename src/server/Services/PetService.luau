@@ -305,6 +305,25 @@ local function equipPet(player, id, on)
 	return { Ok = true }
 end
 
+-- Usuwanie petów z okna PETS (tryb DELETE). Założonych serwer nie usuwa.
+local function deletePets(player, ids)
+	if type(ids) ~= "table" or #ids == 0 or #ids > PetsConfig.MaxInventory then
+		return { Ok = false, Reason = "BadRequest" }
+	end
+	for _, id in ipairs(ids) do
+		if type(id) ~= "string" then
+			return { Ok = false, Reason = "BadRequest" }
+		end
+	end
+	local data = DataService.get(player)
+	if data == nil then
+		return { Ok = false, Reason = "NotLoaded" }
+	end
+	local count = Loop.deletePets(data, LoopService.contextFor(player), ids)
+	LoopService.markDirty(player)
+	return { Ok = true, Count = count }
+end
+
 local function equipBest(player)
 	local data = DataService.get(player)
 	if data == nil then
@@ -334,6 +353,7 @@ function PetService.start()
 	Net.func("BuyEgg").OnServerInvoke = buyEgg
 	Net.func("EquipPet").OnServerInvoke = equipPet
 	Net.func("EquipBest").OnServerInvoke = equipBest
+	Net.func("DeletePets").OnServerInvoke = deletePets
 end
 
 return PetService

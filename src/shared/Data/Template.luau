@@ -28,6 +28,7 @@ return {
 		AutoClick = true, -- działa tylko z gamepassem Auto-Click
 		AutoSell = true, -- działa tylko z gamepassem Auto-Sell
 	},
+	TestPasses = {}, -- tryb testowy: gamepassy z /pass ([klucz] = true/false); działają tylko u adminów
 	Stats = {
 		LifetimeLP = 0,
 		LifetimeCash = 0,

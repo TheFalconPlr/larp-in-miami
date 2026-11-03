@@ -202,7 +202,13 @@ function Zones.start(hud)
 		Parent = hud.gui,
 	})
 	hud.registerScale(bannerHolder)
-	local bannerInner = Kit.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = bannerHolder })
+	local bannerInner = Kit.new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = bannerHolder,
+	})
 	local bannerScale = Kit.new("UIScale", { Parent = bannerInner })
 	local bannerName = Kit.line(bannerInner, {
 		anchor = Vector2.new(0.5, 0),

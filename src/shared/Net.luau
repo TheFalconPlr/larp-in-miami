@@ -11,7 +11,7 @@ local Net = {}
 local EVENTS = { "Click", "TeleportToSell", "SetSetting", "Admin", "Sync", "Notify" }
 -- klient → serwer z odpowiedzią: BuyUpgrade, BuyZone, StartActivity, BuyActivityTier, BuyEgg,
 -- EquipPet, EquipBest
-local FUNCTIONS = { "BuyUpgrade", "BuyZone", "StartActivity", "BuyActivityTier", "BuyEgg", "EquipPet", "EquipBest" }
+local FUNCTIONS = { "BuyUpgrade", "BuyZone", "StartActivity", "BuyActivityTier", "BuyEgg", "EquipPet", "EquipBest", "DeletePets" }
 
 local FOLDER_NAME = "Remotes"
 

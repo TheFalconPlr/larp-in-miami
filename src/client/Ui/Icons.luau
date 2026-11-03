@@ -33,6 +33,7 @@ local EMOJI = {
 	Trophy = "🏆",
 	Clock = "⏱️",
 	Camera = "📸",
+	SellCash = "💵",
 }
 
 local CELL = 256

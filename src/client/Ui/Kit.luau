@@ -106,7 +106,8 @@ end
 ----------------------------------------------------------------- Przycisk z wypukłą krawędzią
 -- opts: size (Vector2), text, colors, radius, edge, border, textSize, textStroke, name, order,
 -- anchor, position, sound (nazwa z Settings.Sounds, domyślnie "Button"; false = bez dźwięku).
--- Zwraca { holder, face, label, Activated, setColors, setText }.
+-- Zwraca { holder, body, face, label, Activated, setColors, setText }. body to cały przycisk
+-- (środek w środku holdera), więc UIScale na body powiększa przycisk od środka (np. pulsowanie).
 function Kit.button(parent, opts)
 	local edge = opts.edge or 5
 	local radius = opts.radius or 18
@@ -119,6 +120,14 @@ function Kit.button(parent, opts)
 		LayoutOrder = opts.order or 0,
 		Parent = parent,
 	})
+	local body = Kit.new("Frame", {
+		Name = "Body",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = holder,
+	})
 	local shadow = Kit.new("Frame", {
 		Name = "Edge",
 		Position = UDim2.fromOffset(0, edge),
@@ -126,7 +135,7 @@ function Kit.button(parent, opts)
 		BackgroundColor3 = Theme.Outline,
 		BorderSizePixel = 0,
 		ZIndex = 1,
-		Parent = holder,
+		Parent = body,
 	})
 	Kit.corner(shadow, radius)
 	local face = Kit.new("TextButton", {
@@ -137,7 +146,7 @@ function Kit.button(parent, opts)
 		AutoButtonColor = false,
 		Text = "",
 		ZIndex = 2,
-		Parent = holder,
+		Parent = body,
 	})
 	Kit.corner(face, radius)
 	Kit.stroke(face, opts.border or 4, Enum.ApplyStrokeMode.Border)
@@ -199,7 +208,7 @@ function Kit.button(parent, opts)
 		end)
 	end
 
-	local api = { holder = holder, face = face, label = label, Activated = face.Activated }
+	local api = { holder = holder, body = body, face = face, label = label, Activated = face.Activated }
 	function api.setColors(colors)
 		gradient.Color = ColorSequence.new(colors[1], colors[2])
 	end
@@ -480,8 +489,11 @@ function Kit.panel(parent, opts)
 		Visible = false,
 		Parent = parent,
 	})
+	-- środek inner w środku okna: animacja otwierania (UIScale) powiększa okno od środka
 	local inner = Kit.new("Frame", {
 		Name = "Inner",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Parent = holder,

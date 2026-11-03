@@ -338,18 +338,27 @@ command("aura", "/aura [ile]", "ustaw Aurę", function(_, data, args)
 	return "Aura: " .. Format.number(data.Aura)
 end)
 
-command("pass", "/pass [nazwa|all|none]", "włącz albo wyłącz gamepass do końca testu", function(player, _, args)
+-- Gamepassy z /pass zapisują się w danych gracza (TestPasses), więc są też w następnym teście.
+local function setTestPass(player, data, key, on)
+	GamepassService.setOverride(player, key, on)
+	if type(data.TestPasses) ~= "table" then
+		data.TestPasses = {}
+	end
+	data.TestPasses[key] = on
+end
+
+command("pass", "/pass [nazwa|all|none]", "włącz albo wyłącz gamepass (zostaje na kolejne testy, /reset czyści)", function(player, data, args)
 	local wanted = string.lower(args[1] or "")
 	if wanted == "all" or wanted == "none" then
 		for _, key in ipairs(GamepassService.Keys) do
-			GamepassService.setOverride(player, key, wanted == "all")
+			setTestPass(player, data, key, wanted == "all")
 		end
 		return wanted == "all" and "Wszystkie gamepassy włączone." or "Wszystkie gamepassy wyłączone."
 	end
 	for _, key in ipairs(GamepassService.Keys) do
 		if string.lower(key) == wanted then
 			local on = not GamepassService.owns(player, key)
-			GamepassService.setOverride(player, key, on)
+			setTestPass(player, data, key, on)
 			return key .. (on and ": włączony" or ": wyłączony")
 		end
 	end
@@ -426,10 +435,18 @@ local function onAdminMessage(player, text)
 end
 
 function AdminService.start()
-	DataService.onLoaded(function(player)
+	DataService.onLoaded(function(player, data)
 		local isAdmin = checkAdmin(player)
 		adminCache[player] = isAdmin
 		if isAdmin then
+			-- gamepassy z poprzedniego testu (tylko u adminów: zwykły gracz nic z nich nie ma)
+			if type(data) == "table" and type(data.TestPasses) == "table" then
+				for _, key in ipairs(GamepassService.Keys) do
+					if data.TestPasses[key] ~= nil then
+						GamepassService.setOverride(player, key, data.TestPasses[key] == true)
+					end
+				end
+			end
 			Net.event("Notify"):FireClient(player, { Kind = "AdminCommands", Commands = ORDER })
 			LoopService.markDirty(player)
 		end

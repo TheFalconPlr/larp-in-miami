@@ -40,9 +40,10 @@ local Settings = {
 			Bag = 15507676003,
 			Click = 17293879645,
 			Upgrades = 108527921987826,
-			Cash = 15040641396, -- raczej tymczasowa
+			Cash = 17368058560,
 			Sell = 131296908597094, -- raczej tymczasowa
 			Pets = 16697439145,
+			SellCash = 120428722694490, -- banknoty lecące z paska Bag do licznika L$ przy sprzedaży
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",

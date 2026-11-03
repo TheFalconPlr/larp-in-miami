@@ -263,6 +263,18 @@ return function()
 	local bad, whyBad = Loop.openEggs(d, {}, 1, "A", 1.5, always(0), 250)
 	check(bad == nil and whyBad == "BadRequest", "zła liczba jajek")
 
+	-- usuwanie petów: tylko niezałożone i tylko te, które są
+	Loop.openEggs(d, {}, 1, "A", 1, always(0), 250)
+	Loop.openEggs(d, {}, 1, "A", 1, always(0), 250)
+	local loose = {}
+	for id in pairs(d.Pets) do
+		if not Loop.isEquipped(d, id) then
+			table.insert(loose, id)
+		end
+	end
+	local deleted = Loop.deletePets(d, {}, { loose[1], loose[2], d.Equipped[1], "nie-ma" })
+	check(deleted == 2 and Loop.petCount(d) == 3 and #d.Equipped == 3, "usuwanie: 2 niezałożone tak, założony i nieistniejący nie")
+
 	----------------------------------------------------------------- Limit kliknięć
 	local limiter = RateLimiter.new(10, 10)
 	local got = 0

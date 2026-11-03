@@ -5,6 +5,7 @@
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -321,7 +322,7 @@ function Hud.start()
 		colors = Theme.Gradients.Green,
 		order = 1,
 	})
-	local sellPulse = makePulser(Kit.new("UIScale", { Parent = sellTile.holder }))
+	local sellPulse = makePulser(Kit.new("UIScale", { Parent = sellTile.body }))
 	local upgradesTile = Kit.tile(left, {
 		name = "Upgrades",
 		icon = "Upgrades",
@@ -330,7 +331,7 @@ function Hud.start()
 		order = 2,
 		textSize = 21,
 	})
-	local upgradesPulse = makePulser(Kit.new("UIScale", { Parent = upgradesTile.holder }))
+	local upgradesPulse = makePulser(Kit.new("UIScale", { Parent = upgradesTile.body }))
 	local autoClickButton = Kit.button(left, {
 		name = "AutoClick",
 		size = Vector2.new(116, 40),
@@ -366,7 +367,14 @@ function Hud.start()
 		Parent = gui,
 	})
 	registerScale(cashGroup)
-	local cashInner = Kit.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = cashGroup })
+	-- środek po lewej na wysokości ikony: podskok licznika rośnie od ikony, a nie od rogu
+	local cashInner = Kit.new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = cashGroup,
+	})
 	local cashBounce = Kit.new("UIScale", { Parent = cashInner })
 	local cashIcon = Icons.make("Cash", { Size = UDim2.fromOffset(74, 74), Parent = cashInner })
 	local cashLabel = Kit.text(cashInner, {
@@ -672,31 +680,73 @@ function Hud.start()
 		TweenService:Create(uiScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 	end
 
-	-- Monety lecą z Bag do licznika L$.
-	local function flyCoins(count)
-		local from = center(bagIcon)
-		local to = center(cashIcon)
+	-- Sprzedaż: banknoty wyskakują z paska Bag (jak napis „Larp”), a potem lecą łukiem do licznika L$.
+	-- Lot liczymy co klatkę (krzywa Béziera), a licznik podskakuje przy każdym banknocie.
+	local flying = {}
+	RunService.RenderStepped:Connect(function()
+		if #flying == 0 then
+			return
+		end
+		local now = os.clock()
+		for i = #flying, 1, -1 do
+			local f = flying[i]
+			local t = (now - f.start) / f.duration
+			if t >= 1 then
+				f.icon:Destroy()
+				table.remove(flying, i)
+				bounce(cashBounce)
+			elseif t >= 0 then
+				local k = t * t -- przyspiesza w drodze do licznika
+				local a = f.from:Lerp(f.control, k)
+				local b = f.control:Lerp(f.to, k)
+				local p = a:Lerp(b, k)
+				local size = f.size0 + (f.size1 - f.size0) * k
+				f.icon.Position = UDim2.fromOffset(p.X, p.Y)
+				f.icon.Size = UDim2.fromOffset(size, size)
+			end
+		end
+	end)
+
+	local lastFly = 0
+	local function flyCash(count)
+		local now = os.clock()
+		if now - lastFly < 0.35 then
+			return
+		end
+		lastFly = now
 		local s = currentScale
+		local barPosition, barSize = bagTrack.AbsolutePosition, bagTrack.AbsoluteSize
+		local to = center(cashIcon)
 		for i = 1, count do
-			local coin = Icons.make("Cash", {
+			local start = Vector2.new(barPosition.X + barSize.X * (0.1 + math.random() * 0.82), barPosition.Y + barSize.Y * 0.3)
+			local risen = start + Vector2.new(math.random(-18, 18) * s, -math.random(46, 84) * s)
+			local size = 46 * s
+			local icon = Icons.make("SellCash", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromOffset(from.X + math.random(-40, 40) * s, from.Y + math.random(-20, 10) * s),
-				Size = UDim2.fromOffset(44 * s, 44 * s),
+				Position = UDim2.fromOffset(start.X, start.Y),
+				Size = UDim2.fromOffset(0, 0),
+				Rotation = math.random(-15, 15),
+				ZIndex = 5,
 				Parent = popsGui,
 			})
-			local delay = (i - 1) * 0.05
+			local delay = (i - 1) * 0.04
 			task.delay(delay, function()
-				local tween = TweenService:Create(
-					coin,
-					TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-					{ Position = UDim2.fromOffset(to.X, to.Y), Size = UDim2.fromOffset(30 * s, 30 * s) }
-				)
-				tween.Completed:Connect(function()
-					coin:Destroy()
-					bounce(cashBounce)
-				end)
-				tween:Play()
+				TweenService:Create(icon, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+					Position = UDim2.fromOffset(risen.X, risen.Y),
+					Size = UDim2.fromOffset(size, size),
+				}):Play()
 			end)
+			-- łuk: punkt kontrolny wysoko nad drogą do licznika (jak strzałka na szkicu)
+			table.insert(flying, {
+				icon = icon,
+				from = risen,
+				control = Vector2.new((risen.X + to.X) / 2, math.min(risen.Y, to.Y) - 120 * s),
+				to = to,
+				start = now + delay + 0.34 + math.random() * 0.14,
+				duration = 0.55 + math.random() * 0.15,
+				size0 = size,
+				size1 = 30 * s,
+			})
 		end
 	end
 
@@ -976,6 +1026,7 @@ function Hud.start()
 		if payload.Auto then
 			Sounds.play("Sell", { volume = 0.4 })
 			pop(center(cashIcon) + Vector2.new(60 * currentScale, -54 * currentScale), "+" .. Format.number(payload.Cash or 0), Theme.Gradients.Gold)
+			flyCash(4)
 		else
 			Sounds.play("Sell")
 			toast({
@@ -986,7 +1037,7 @@ function Hud.start()
 				{ icon = "Cash", size = 38 },
 				{ text = Format.number(payload.Cash or 0), size = 28, colors = Theme.Gradients.Gold },
 			})
-			flyCoins(7)
+			flyCash(10)
 		end
 	end)
 

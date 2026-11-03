@@ -34,7 +34,22 @@ local TEXT = {
 	On = "ON",
 	SlotsFull = "All pet slots are full",
 	PowerSuffix = "% L$",
+	Delete = "DELETE",
+	Cancel = "CANCEL",
+	All = "ALL",
+	DeleteCount = "DELETE (%d)",
+	SelectHint = "Tap pets to delete them",
+	Unequip = "Unequip this pet first to delete it",
+	DeletedOne = "Deleted 1 pet",
+	DeletedMany = "Deleted %d pets",
+	Count = "%d/%d",
 }
+
+local PANEL_SIZE = Vector2.new(860, 500)
+local PANEL_TOP = 34 -- treść okna zaczyna się tak nisko pod górną krawędzią (nad nią jest łapka i tytuł)
+local HEADER_LEFT = 54 -- napis w nagłówku zaczyna się za łapką, która wystaje do 50 px w dół
+local GREEN = Color3.fromRGB(70, 200, 60)
+local RED = Color3.fromRGB(235, 50, 70)
 
 local inventory = {} -- lista { Id, Zone, Rarity, Level } od serwera
 local equipped = {} -- [id] = true
@@ -183,40 +198,57 @@ function Pets.start(hud)
 		name = "Pets",
 		icon = "Pets",
 		text = TEXT.Tile,
-		colors = Theme.Gradients.Yellow,
+		colors = Theme.Gradients.Cyan,
 		order = 3,
 	})
 	tileRef = tile
-	tileScale = Kit.new("UIScale", { Parent = tile.holder })
+	tileScale = Kit.new("UIScale", { Parent = tile.body })
 	local panel = Kit.panel(hud.gui, {
 		name = "PetsPanel",
-		size = Vector2.new(720, 480),
+		size = PANEL_SIZE,
 		title = TEXT.Title,
 		icon = "Pets",
 		padding = 30,
-		top = 60,
+		top = PANEL_TOP,
 		bottom = 26,
 	})
 	hud.registerScale(panel.holder)
 	hud.addWindow(panel)
+	-- licznik petów obok tytułu, np. 37/250
+	local countLine = Kit.line(panel.title.Parent, {
+		name = "PetCount",
+		anchor = Vector2.new(0, 0.5),
+		position = UDim2.fromOffset(80 + Kit.measure(TEXT.Title, 56).X + 16, -2),
+		height = 40,
+	})
+	countLine.holder.ZIndex = 6
 	local header = Kit.line(panel.content, {
 		anchor = Vector2.new(0, 0),
-		position = UDim2.fromOffset(4, 2),
+		position = UDim2.fromOffset(HEADER_LEFT, 0),
 		height = 46,
 	})
-	local bestButton = Kit.button(panel.content, {
-		name = "EquipBest",
-		size = Vector2.new(190, 46),
-		text = TEXT.EquipBest,
-		colors = Theme.Gradients.Green,
-		anchor = Vector2.new(1, 0),
-		position = UDim2.new(1, 0, 0, 0),
-		textSize = 22,
-	})
+	-- przyciski po prawej: zwykle DELETE i EQUIP BEST, a przy usuwaniu ALL, CANCEL i DELETE (N)
+	local function headerButton(name, width, text, colors, right)
+		return Kit.button(panel.content, {
+			name = name,
+			size = Vector2.new(width, 46),
+			text = text,
+			colors = colors,
+			anchor = Vector2.new(1, 0),
+			position = UDim2.new(1, -right, 0, 0),
+			textSize = 22,
+		})
+	end
+	local bestButton = headerButton("EquipBest", 190, TEXT.EquipBest, Theme.Gradients.Green, 0)
+	local confirmButton = headerButton("ConfirmDelete", 190, string.format(TEXT.DeleteCount, 0), Theme.Gradients.Gray, 0)
+	local deleteButton = headerButton("Delete", 150, TEXT.Delete, Theme.Gradients.Red, 202)
+	local allButton = headerButton("All", 90, TEXT.All, Theme.Gradients.Cyan, 364)
+	confirmButton.holder.Visible = false
+	allButton.holder.Visible = false
 	local grid = Kit.new("ScrollingFrame", {
 		Name = "Grid",
-		Position = UDim2.fromOffset(0, 62),
-		Size = UDim2.new(1, 0, 1, -62),
+		Position = UDim2.fromOffset(0, 58),
+		Size = UDim2.new(1, 0, 1, -58),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollBarThickness = 8,
@@ -251,6 +283,93 @@ function Pets.start(hud)
 	}, { maxSize = 28, stroke = 3 })
 
 	local busy = false
+	local deleteMode = false
+	local selected = {} -- [id] = true (zaznaczone do usunięcia)
+	local cards = {} -- [id] = { stroke, mark, dim }
+
+	local function selectedCount()
+		local n = 0
+		for _ in pairs(selected) do
+			n = n + 1
+		end
+		return n
+	end
+
+	-- Wygląd karty: zielona ramka i ON (założony), czerwona ramka i X (do usunięcia),
+	-- przy usuwaniu założone są przygaszone.
+	local function paintCard(id)
+		local card = cards[id]
+		if card == nil then
+			return
+		end
+		local on = equipped[id] == true
+		local marked = deleteMode and selected[id] == true
+		if marked then
+			card.stroke.Color = RED
+			card.stroke.Thickness = 5
+		elseif on then
+			card.stroke.Color = GREEN
+			card.stroke.Thickness = 5
+		else
+			card.stroke.Color = Theme.Outline
+			card.stroke.Thickness = 3
+		end
+		card.mark.Visible = marked
+		card.dim.Visible = deleteMode and on
+	end
+
+	local function renderButtons()
+		bestButton.holder.Visible = not deleteMode
+		confirmButton.holder.Visible = deleteMode
+		allButton.holder.Visible = deleteMode
+		if deleteMode then
+			local n = selectedCount()
+			deleteButton.setText(TEXT.Cancel)
+			deleteButton.setColors(Theme.Gradients.Gray)
+			confirmButton.setText(string.format(TEXT.DeleteCount, n))
+			if n > 0 then
+				confirmButton.setColors(Theme.Gradients.Red)
+			else
+				confirmButton.setColors(Theme.Gradients.Gray)
+			end
+		else
+			deleteButton.setText(TEXT.Delete)
+			deleteButton.setColors(Theme.Gradients.Red)
+		end
+	end
+
+	local function renderHeader()
+		local view = State.view
+		if view == nil then
+			return
+		end
+		if deleteMode then
+			header.set({ { text = TEXT.SelectHint, size = 24 } })
+		else
+			header.set({
+				{ text = string.format(TEXT.Equipped, view.PetsEquipped or 0, view.PetSlots or 3), size = 26 },
+				{ text = TEXT.Bonus, size = 24 },
+				{ text = "×" .. Format.small(view.PetLayer or 1), size = 28, colors = Theme.Gradients.Gold },
+			})
+		end
+		local count = view.PetCount or #inventory
+		local colors = Theme.Gradients.Gold
+		if count >= PetsConfig.MaxInventory then
+			colors = Theme.Gradients.Red
+		end
+		countLine.set({ { text = string.format(TEXT.Count, count, PetsConfig.MaxInventory), size = 30, colors = colors } })
+	end
+
+	local function setDeleteMode(on)
+		deleteMode = on
+		selected = {}
+		for id in pairs(cards) do
+			paintCard(id)
+		end
+		renderButtons()
+		renderHeader()
+	end
+
 	local function toggle(pet)
 		if busy then
 			return
@@ -268,8 +387,27 @@ function Pets.start(hud)
 		end
 	end
 
+	local function onCardClicked(pet)
+		if not deleteMode then
+			toggle(pet)
+			return
+		end
+		if equipped[pet.Id] then
+			Sounds.play("NotEnough")
+			hud.toast({ { text = TEXT.Unequip, size = 26, colors = Theme.Gradients.Red } }, "PetUnequipFirst")
+			return
+		end
+		if selected[pet.Id] then
+			selected[pet.Id] = nil
+		else
+			selected[pet.Id] = true
+		end
+		Sounds.play("Button")
+		paintCard(pet.Id)
+		renderButtons()
+	end
+
 	local function makeCard(pet, order)
-		local on = equipped[pet.Id] == true
 		local card = Kit.new("TextButton", {
 			Name = "Pet" .. pet.Id,
 			LayoutOrder = order,
@@ -281,10 +419,6 @@ function Pets.start(hud)
 		})
 		Kit.corner(card, 18)
 		local stroke = Kit.stroke(card, 3, Enum.ApplyStrokeMode.Border)
-		if on then
-			stroke.Color = Color3.fromRGB(70, 200, 60)
-			stroke.Thickness = 5
-		end
 		local viewport = Kit.new("ViewportFrame", {
 			Position = UDim2.fromOffset(6, 4),
 			Size = UDim2.new(1, -12, 0, 78),
@@ -315,12 +449,12 @@ function Pets.start(hud)
 			Text = powerText(pet),
 			ZIndex = 5,
 		}, { maxSize = 16, stroke = 2.5, gradient = Theme.Gradients.Gold })
-		if on then
+		if equipped[pet.Id] then
 			local badge = Kit.new("Frame", {
 				AnchorPoint = Vector2.new(1, 0),
 				Position = UDim2.new(1, -4, 0, 4),
 				Size = UDim2.fromOffset(38, 22),
-				BackgroundColor3 = Color3.fromRGB(70, 200, 60),
+				BackgroundColor3 = GREEN,
 				ZIndex = 6,
 				Parent = card,
 			})
@@ -328,8 +462,35 @@ function Pets.start(hud)
 			Kit.stroke(badge, 2.5, Enum.ApplyStrokeMode.Border)
 			Kit.text(badge, { Size = UDim2.fromScale(1, 1), Text = TEXT.On, ZIndex = 7 }, { maxSize = 14, stroke = 2 })
 		end
+		-- czerwony X: zaznaczony do usunięcia
+		local mark = Kit.new("Frame", {
+			Name = "DeleteMark",
+			AnchorPoint = Vector2.new(1, 0),
+			Position = UDim2.new(1, -4, 0, 4),
+			Size = UDim2.fromOffset(28, 28),
+			BackgroundColor3 = RED,
+			Visible = false,
+			ZIndex = 8,
+			Parent = card,
+		})
+		Kit.corner(mark, 14)
+		Kit.stroke(mark, 2.5, Enum.ApplyStrokeMode.Border)
+		Kit.text(mark, { Size = UDim2.fromScale(1, 1), Text = "X", ZIndex = 9 }, { maxSize = 18, stroke = 2 })
+		-- przygaszenie założonych w trybie usuwania (ich nie można usunąć)
+		local dim = Kit.new("Frame", {
+			Name = "Dim",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundColor3 = Theme.White,
+			BackgroundTransparency = 0.4,
+			Visible = false,
+			ZIndex = 10,
+			Parent = card,
+		})
+		Kit.corner(dim, 18)
+		cards[pet.Id] = { stroke = stroke, mark = mark, dim = dim }
+		paintCard(pet.Id)
 		card.Activated:Connect(function()
-			toggle(pet)
+			onCardClicked(pet)
 		end)
 	end
 
@@ -339,6 +500,15 @@ function Pets.start(hud)
 				child:Destroy()
 			end
 		end
+		cards = {}
+		-- zaznaczenie zostaje tylko dla petów, które dalej są w ekwipunku
+		local still = {}
+		for _, pet in ipairs(inventory) do
+			if selected[pet.Id] and not equipped[pet.Id] then
+				still[pet.Id] = true
+			end
+		end
+		selected = still
 		-- wyposażone najpierw, potem od najmocniejszego
 		local sorted = {}
 		for _, pet in ipairs(inventory) do
@@ -359,24 +529,15 @@ function Pets.start(hud)
 			makeCard(pet, i)
 		end
 		emptyLabel.Visible = #sorted == 0
-	end
-
-	local function renderHeader()
-		local view = State.view
-		if view == nil then
-			return
-		end
-		header.set({
-			{ text = string.format(TEXT.Equipped, view.PetsEquipped or 0, view.PetSlots or 3), size = 26 },
-			{ text = TEXT.Bonus, size = 24 },
-			{ text = "×" .. Format.small(view.PetLayer or 1), size = 28, colors = Theme.Gradients.Gold },
-		})
+		renderButtons()
 	end
 
 	tile.Activated:Connect(function()
 		if panel.isOpen() then
 			panel.hide()
 		else
+			deleteMode = false
+			selected = {}
 			renderHeader()
 			renderGrid()
 			hud.openWindow(panel)
@@ -394,6 +555,65 @@ function Pets.start(hud)
 		busy = false
 	end)
 
+	deleteButton.Activated:Connect(function()
+		setDeleteMode(not deleteMode)
+	end)
+
+	-- ALL: zaznacza wszystkie niezałożone pety (drugi raz odznacza)
+	allButton.Activated:Connect(function()
+		local all = {}
+		local everything = true
+		for _, pet in ipairs(inventory) do
+			if not equipped[pet.Id] then
+				all[pet.Id] = true
+				if not selected[pet.Id] then
+					everything = false
+				end
+			end
+		end
+		if everything then
+			selected = {}
+		else
+			selected = all
+		end
+		for id in pairs(cards) do
+			paintCard(id)
+		end
+		renderButtons()
+	end)
+
+	confirmButton.Activated:Connect(function()
+		if busy then
+			return
+		end
+		local ids = {}
+		for id in pairs(selected) do
+			table.insert(ids, id)
+		end
+		if #ids == 0 then
+			Sounds.play("NotEnough")
+			return
+		end
+		busy = true
+		local ok, result = pcall(function()
+			return Net.func("DeletePets"):InvokeServer(ids)
+		end)
+		busy = false
+		if ok and type(result) == "table" and result.Ok then
+			local text = string.format(TEXT.DeletedMany, result.Count or #ids)
+			if result.Count == 1 then
+				text = TEXT.DeletedOne
+			end
+			hud.toast({ { text = text, size = 26 } }, "PetsDeleted")
+			setDeleteMode(false)
+		end
+	end)
+
+	panel.close.Activated:Connect(function()
+		deleteMode = false
+		selected = {}
+	end)
+
 	State.onNotify(function(payload)
 		if payload.Kind ~= "Pets" or type(payload.Pets) ~= "table" then
 			return
@@ -405,6 +625,7 @@ function Pets.start(hud)
 		end
 		if panel.isOpen() then
 			renderGrid()
+			renderHeader()
 		end
 	end)
 

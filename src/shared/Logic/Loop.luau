@@ -612,6 +612,20 @@ function Loop.isEquipped(data, id)
 	return false
 end
 
+-- Usuwa pety z ekwipunku (bez zwrotu L$; sprzedawanie dojdzie w Etapie 8). Założonych nie usuwa.
+-- Zwraca, ile usunął.
+function Loop.deletePets(data, ctx, ids)
+	data.Equipped = Loop.activePets(data, ctx)
+	local count = 0
+	for _, id in ipairs(ids) do
+		if data.Pets[id] ~= nil and not Loop.isEquipped(data, id) then
+			data.Pets[id] = nil
+			count = count + 1
+		end
+	end
+	return count
+end
+
 ----------------------------------------------------------------- Widok dla HUD
 -- Wszystko, co pokazuje HUD, policzone w jednym miejscu (na serwerze).
 function Loop.view(data, ctx)

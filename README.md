@@ -78,7 +78,7 @@ Koniec:      Stop  →  Ctrl+S  →  w oknie z Rojo Ctrl+C
    ```
    [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
    ConfigCheck: OK (64 testów zgodnych z arkuszem)
-   LoopCheck: OK (89 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
+   LoopCheck: OK (90 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
    [Dane] TwojNick: zapis wczytany (DataStore: Access)
    ```
    Komendy testowe wpisujesz na czacie (zacznij od `/cmds`). **Stop** (Shift+F5) kończy test.
@@ -101,6 +101,8 @@ Koniec:      Stop  →  Ctrl+S  →  w oknie z Rojo Ctrl+C
 ## Etap 2: rdzeń pętli
 
 Co działa: klikanie (myszą albo krótkim dotknięciem ekranu), LP trafiają do Bag, pole Sell zamienia LP na L$, przycisk SELL przenosi na pole Sell, ulepszenia Click Multiplier i Bag (Kup 1 i Kup max), zapis postępu, leaderstats (L$ i Rebirthy), podpowiedzi dla nowego gracza i tryb testowy.
+
+**Sprzedaż.** Przy każdej sprzedaży banknoty wyskakują z paska Bag i lecą łukiem do licznika L$ (przy Auto-Sell mniej banknotów).
 
 **Pole Sell.** Jeśli na mapie nie ma pola Sell, serwer stawia tymczasowe zielone pole obok spawnu. Gdy zbudujesz prawdziwe, nazwij część (Part) podłogi pola `SellPad` albo dodaj jej tag `SellPad` (Properties → Tags). Wtedy tymczasowe pole przestanie się pojawiać.
 
@@ -147,7 +149,7 @@ Co działa: w każdej strefie stoją dwa jajka za L$: zwykłe i złote (droższe
 
 Animacja otwierania: jajko pęka 3 razy (dźwięk coraz wyżej, rysy i odpryski), skorupka się rozpryskuje, a pet wkręca się i odbija na tle promieni i poświaty w kolorze rzadkości. Przy Legendary i Secret są jeszcze iskry, drżenie ekranu i oklaski. Napisy (nazwa, rzadkość z bonusem, „Equipped!”) wskakują po kolei, a na koniec pet leci do kafelka PETS. W czasie animacji HUD jest schowany. Pierwsze jajko w grze (zwykłe w Downtown Miami) zawsze daje Rare. Nowy pet sam się zakłada, jeśli jest wolne miejsce.
 
-Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Sell. Bonus peta = moc strefy × mnożnik rzadkości, np. Rare z Downtown Miami daje +20% L$, a dwa takie pety dają ×1,4. Miejsca na pety: 3, po jednym więcej od Rebirth 3 i Rebirth 7, a gamepass Pet Slots daje +2. Kafelek PETS po lewej otwiera ekwipunek: kliknij peta, żeby go założyć albo zdjąć, a EQUIP BEST zakłada najmocniejsze. Czerwona kropka na PETS znaczy, że masz wolne miejsce i peta do założenia. Ekwipunek mieści 250 petów. Sprzedawanie i łączenie petów (Gold, Diamond) będzie w kolejnym etapie.
+Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Sell. Bonus peta = moc strefy × mnożnik rzadkości, np. Rare z Downtown Miami daje +20% L$, a dwa takie pety dają ×1,4. Miejsca na pety: 3, po jednym więcej od Rebirth 3 i Rebirth 7, a gamepass Pet Slots daje +2. Kafelek PETS po lewej otwiera ekwipunek: kliknij peta, żeby go założyć albo zdjąć, a EQUIP BEST zakłada najmocniejsze. Obok tytułu widać, ile masz petów (np. 37/250; ekwipunek mieści 250). DELETE włącza usuwanie: klikasz pety do usunięcia (dostają czerwony X), ALL zaznacza wszystkie niezałożone, a DELETE (N) je usuwa; CANCEL wraca. Założonych petów nie da się usunąć. Czerwona kropka na PETS znaczy, że masz wolne miejsce i peta do założenia. Sprzedawanie i łączenie petów (Gold, Diamond) będzie w Etapie 8.
 
 | Strefa | Zwykłe jajko | Złote jajko | Common → Legendary |
 | --- | --- | --- | --- |
@@ -209,7 +211,7 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
 | `/aura 500` | ustawia Aurę |
-| `/pass AutoSell` | włącza albo wyłącza gamepass do końca testu (`all`, `none`), np. `/pass TripleOpen` dla Buy 3 |
+| `/pass AutoSell` | włącza albo wyłącza gamepass (`all`, `none`), np. `/pass TripleOpen` dla Buy 3. Zostaje na kolejne testy, a `/reset` go czyści |
 | `/stats` | pokazuje zapis |
 | `/reset` | czyści zapis, jak u nowego gracza |
 
@@ -221,7 +223,7 @@ Styl jak w Pet Simulator 99: nasycone kolory, białe okna z delikatnym szarym wz
 
 Wszystko, co podmieniasz bez programowania, jest w `src/shared/Config/Settings.luau`:
 
-- **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek.
+- **Własne ikony z Toolboxa** (`Ui.Icons`): ID Decala albo obrazka, np. `Bag = 112098959943734`. Gra pokazuje je przez miniaturę Roblox, więc działa i Decal, i obrazek. `SellCash` to banknot z animacji sprzedaży.
 - **Dźwięki** (`Sounds`): `Button` (domyślny dźwięk przycisków), `Click` (klikanie na LP), `Sell` (sprzedaż), `BagFull` (Bag się zapełnił), `BagFullClick` (klik przy pełnym Bag), `NotEnough` (brak L$), `Unlock` (kupno strefy albo auta), `Reward` (oklaski na koniec sesji zdjęciowej i przy rzadkim pecie), `Photo` (migawka przy fleszu), `Hatch` (nowy pet z jajka), `Crack` (pęknięcie jajka). `Start` pomija ciszę na początku pliku (od której sekundy grać). `Length` i `FadeOut` skracają dźwięk: gra najwyżej `Length` sekund i przez ostatnie `FadeOut` sekund cichnie. `Volume` 0.5 to normalna głośność, 1 to głośno, a cichy plik może dostać więcej (do 10). `Rise` przy `Click` sprawia, że klikanie pod rząd brzmi coraz wyżej: `Step` to ile półtonów w górę na klik, `Max` to sufit (12 = oktawa), a `Reset` to ile sekund przerwy wraca dźwięk do normy.
 - **Wzór w tle** (`Ui.Pattern`): puste = wzór z kształtów; ID obrazka = kafelkowany obrazek.
 

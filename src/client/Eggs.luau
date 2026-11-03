@@ -40,20 +40,20 @@ local BIG_RARITY = { Legendary = true, Mythic = true, Secret = true } -- iskry, 
 
 -- Wygląd przy jajku (studs)
 local PILL_SIZE = Vector2.new(4.6, 1.4)
-local PILL_HEIGHT = 1.7 -- środek pigułki z ceną nad spodem stoiska
-local PILL_FORWARD = 3.8 -- pigułka wysunięta w stronę kamery, przed cokół
+local PILL_HEIGHT = 1.7 -- środek pigułki z ceną nad spodem stoiska, na osi jajka
 local PANEL_CARD = 2.1 -- miejsce na jednego peta w panelu
 local PANEL_PAD = 0.35
 local PANEL_BODY = 2.7
 local PANEL_TIP = 0.45 -- dzióbek pod panelem
 local PANEL_LIFT = 0.6 -- odstęp panelu od czubka jajka
 local PANEL_EDGE = Color3.fromRGB(205, 210, 222)
-local PROMPT_FORWARD = 3.2
 
--- Animacja (piksele bazowe 1280×720)
-local STAGE_SIZE = Vector2.new(960, 600)
-local STAGE_Y = 0.48
-local SLOT_TOP = 66
+-- Animacja (piksele bazowe 1280×720). Jajka i pety stoją na środku ekranu, napisy pod nimi.
+local STAGE_SIZE = Vector2.new(1200, 700)
+local STAGE_Y = 0.5
+local SLOT_BIG = 420 -- jedno jajko
+local SLOT_SMALL = 330 -- trzy jajka obok siebie
+local SLOT_SPACING = 370
 local BEATS = { 0.27, 0.42, 0.57 } -- pęknięcia (jako część czasu otwierania)
 local BURST_AT = 0.66 -- skorupka pęka
 local GRAVITY = 1100
@@ -203,12 +203,14 @@ function Eggs.start(hud)
 		if info == nil then
 			return
 		end
+		-- zawsze na wierzchu i bez przesunięcia od kamery: pigułka stoi w tym samym miejscu przy jajku
+		-- z każdej strony (wcześniej przesuwała się zależnie od kąta kamery i chowała za jajkiem)
 		local gui = Kit.new("BillboardGui", {
 			Name = "EggPrice",
 			Size = UDim2.fromScale(PILL_SIZE.X, PILL_SIZE.Y),
-			StudsOffset = Vector3.new(0, 0, PILL_FORWARD),
 			LightInfluence = 0,
-			MaxDistance = 90,
+			AlwaysOnTop = true,
+			MaxDistance = 70,
 			ResetOnSpawn = false,
 			Enabled = false,
 			Parent = playerGui,
@@ -334,7 +336,6 @@ function Eggs.start(hud)
 	local promptGui = Kit.new("BillboardGui", {
 		Name = "EggPrompt",
 		Size = UDim2.fromOffset(190, 190),
-		StudsOffset = Vector3.new(0, 0, PROMPT_FORWARD),
 		LightInfluence = 0,
 		AlwaysOnTop = true,
 		Active = true,
@@ -351,7 +352,14 @@ function Eggs.start(hud)
 		Parent = promptGui,
 	})
 	hud.registerScale(promptHolder)
-	local promptInner = Kit.new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Parent = promptHolder })
+	-- środek w środku: pulsowanie E rośnie od środka, a nie od lewego górnego rogu
+	local promptInner = Kit.new("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = promptHolder,
+	})
 	local promptBob = Kit.new("UIScale", { Parent = promptInner })
 	local promptEdge = Kit.new("Frame", {
 		Position = UDim2.fromOffset(0, 6),
@@ -590,7 +598,7 @@ function Eggs.start(hud)
 		ZIndex = 20,
 		Parent = hatchGui,
 	})
-	local banner = Kit.line(stage, { name = "Banner", anchor = Vector2.new(0.5, 0), position = UDim2.new(0.5, 0, 0, 0), height = 60 })
+	local banner = Kit.line(stage, { name = "Banner", anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 96), height = 60 })
 	banner.holder.ZIndex = 8
 	local bannerScale = Kit.new("UIScale", { Scale = 0, Parent = banner.holder })
 
@@ -680,20 +688,20 @@ function Eggs.start(hud)
 		end
 	end
 
-	-- Miejsce na jedno jajko i peta (1 na środku albo 3 obok siebie).
+	-- Miejsce na jedno jajko i peta (1 na środku albo 3 obok siebie). Wszystko skaluje się od środka.
 	local function makeSlot(index, count, pet)
 		local big = count == 1
-		local size, spacing = 250, 300
+		local size, spacing = SLOT_SMALL, SLOT_SPACING
 		if big then
-			size, spacing = 340, 0
+			size, spacing = SLOT_BIG, 0
 		end
 		local x = (index - (count + 1) / 2) * spacing
 		local color = PetsConfig.RarityColors[pet.Rarity] or Theme.White
 		local holder = Kit.new("Frame", {
 			Name = "Slot" .. index,
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, x, 0, SLOT_TOP),
-			Size = UDim2.fromOffset(size, size + 150),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, x, 0.5, 0),
+			Size = UDim2.fromOffset(size, size),
 			BackgroundTransparency = 1,
 			ZIndex = 2,
 			Parent = stage,
@@ -704,7 +712,7 @@ function Eggs.start(hud)
 		local rays = Kit.new("Frame", {
 			Name = "Rays",
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0, size / 2),
+			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromOffset(rayLength, rayLength),
 			BackgroundTransparency = 1,
 			Visible = false,
@@ -731,7 +739,7 @@ function Eggs.start(hud)
 		local glow = Kit.new("Frame", {
 			Name = "Glow",
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, 0, 0, size / 2),
+			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromOffset(size * 0.84, size * 0.84),
 			BackgroundColor3 = color,
 			BackgroundTransparency = 0.5,
@@ -747,15 +755,17 @@ function Eggs.start(hud)
 		-- jajko, a potem pet (jolt = podskok przy pęknięciu, pop = pojawienie się)
 		local jolt = Kit.new("Frame", {
 			Name = "Jolt",
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 0),
-			Size = UDim2.fromOffset(size, size),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			ZIndex = 4,
 			Parent = holder,
 		})
 		local joltScale = Kit.new("UIScale", { Parent = jolt })
 		local viewport = Kit.new("ViewportFrame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Ambient = Color3.fromRGB(210, 210, 220),
@@ -764,8 +774,13 @@ function Eggs.start(hud)
 			Parent = jolt,
 		})
 		local pop = Kit.new("UIScale", { Parent = viewport })
+		-- napisy pod jajkiem (poza ramką slotu), każdy wskakuje od swojego środka
 		local function line(y, height)
-			local l = Kit.line(holder, { anchor = Vector2.new(0.5, 0), position = UDim2.new(0.5, 0, 0, y), height = height })
+			local l = Kit.line(holder, {
+				anchor = Vector2.new(0.5, 0.5),
+				position = UDim2.new(0.5, 0, 0, y + height / 2),
+				height = height,
+			})
 			l.holder.ZIndex = 6
 			l.scale = Kit.new("UIScale", { Scale = 0, Parent = l.holder })
 			return l
@@ -780,7 +795,7 @@ function Eggs.start(hud)
 			pet = pet,
 			color = color,
 			sparkColor = rarityColors(pet.Rarity)[1],
-			center = Vector2.new(STAGE_SIZE.X / 2 + x, SLOT_TOP + size / 2),
+			center = Vector2.new(STAGE_SIZE.X / 2 + x, STAGE_SIZE.Y / 2),
 			holder = holder,
 			holderScale = holderScale,
 			rays = rays,
@@ -792,9 +807,9 @@ function Eggs.start(hud)
 			joltScale = joltScale,
 			viewport = viewport,
 			pop = pop,
-			nameLine = line(size + 2, nameH),
-			infoLine = line(size + 2 + nameH, infoH),
-			equippedLine = line(size + 4 + nameH + infoH, equippedH),
+			nameLine = line(size + 4, nameH),
+			infoLine = line(size + 4 + nameH, infoH),
+			equippedLine = line(size + 6 + nameH + infoH, equippedH),
 			wobble = math.random() * 6.28,
 			nextSpark = 0,
 		}
@@ -812,7 +827,7 @@ function Eggs.start(hud)
 						+ kickDir * impulse * math.rad(13)
 					slot.eggModel:PivotTo(CFrame.Angles(0, 0, angle))
 				end
-				slot.jolt.Position = UDim2.new(0.5, 0, 0, -20 * impulse)
+				slot.jolt.Position = UDim2.new(0.5, 0, 0.5, -20 * impulse)
 				slot.joltScale.Scale = 1 + 0.1 * impulse
 			end
 		elseif phase == "reveal" or phase == "exit" then
@@ -900,7 +915,7 @@ function Eggs.start(hud)
 			end)
 		end
 		for i, slot in ipairs(slots) do
-			slot.jolt.Position = UDim2.new(0.5, 0, 0, 0)
+			slot.jolt.Position = UDim2.fromScale(0.5, 0.5)
 			slot.joltScale.Scale = 1
 			for n = 1, 12 do
 				local angle = math.rad(n * 30 + math.random(-12, 12))
@@ -1018,6 +1033,11 @@ function Eggs.start(hud)
 		end
 		banner.set({})
 		bannerScale.Scale = 0
+		local slotSize = SLOT_SMALL
+		if #pets == 1 then
+			slotSize = SLOT_BIG
+		end
+		banner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 - 44)
 		stage.Position = UDim2.fromScale(0.5, STAGE_Y)
 		dim.BackgroundTransparency = 1
 		hatchGui.Enabled = true

@@ -120,7 +120,53 @@ local function surfacePoint(x, y)
 	return Vector3.new(x, y, z) * 1.03
 end
 
--- Jajko do animacji otwierania (A białe, B złote) z ukrytymi rysami (PetModels.crack).
+-- Połysk: kilka ukośnych pasków różnej szerokości od góry do dołu po lewej stronie jajka
+-- (od kamery patrząc), z cienkich kawałków przy samej skorupce.
+local SHINE = {
+	-- x na środku wysokości, szerokość, przezroczystość
+	{ 1.0, 0.42, 0.45 },
+	{ 0.42, 0.2, 0.5 },
+	{ 1.52, 0.13, 0.55 },
+}
+local SHINE_TILT = 0.33 -- przechylenie pasków (x zmienia się o tyle na każdy stud wysokości)
+local SHINE_COLORS = {
+	A = Color3.fromRGB(205, 225, 255), -- na białym jajku lekko niebieski, żeby było go widać
+	B = Color3.fromRGB(255, 255, 255),
+}
+
+local function ellipsoidNormal(point)
+	local half = EGG_SIZE / 2
+	return Vector3.new(point.X / (half.X * half.X), point.Y / (half.Y * half.Y), point.Z / (half.Z * half.Z)).Unit
+end
+
+local function addShine(model, egg)
+	local half = EGG_SIZE / 2
+	for _, stripe in ipairs(SHINE) do
+		local points = {}
+		local y = -half.Y * 0.85
+		while y <= half.Y * 0.85 do
+			local x = stripe[1] - y * SHINE_TILT
+			if 1 - (x / half.X) ^ 2 - (y / half.Y) ^ 2 > 0.1 then
+				table.insert(points, surfacePoint(x, y) / 1.03 * 1.015)
+			end
+			y = y + 0.3
+		end
+		for i = 1, #points - 1 do
+			local a, b = points[i], points[i + 1]
+			local middle = (a + b) / 2
+			local piece = Instance.new("Part")
+			piece.Name = "Shine"
+			piece.Size = Vector3.new(stripe[2], 0.05, (b - a).Magnitude + 0.04)
+			piece.CFrame = CFrame.lookAt(middle, b, ellipsoidNormal(middle))
+			piece.Color = SHINE_COLORS[egg] or SHINE_COLORS.B
+			piece.Material = Enum.Material.SmoothPlastic
+			piece.Transparency = stripe[3]
+			piece.Parent = model
+		end
+	end
+end
+
+-- Jajko do animacji otwierania (A białe, B złote) z połyskiem i ukrytymi rysami (PetModels.crack).
 function PetModels.egg(egg)
 	local model = Instance.new("Model")
 	local shell = Instance.new("Part")
@@ -133,6 +179,7 @@ function PetModels.egg(egg)
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Parent = shell
 	shell.Parent = model
+	addShine(model, egg)
 	for i = 1, #CRACK_POINTS - 1 do
 		local a = surfacePoint(CRACK_POINTS[i][1], CRACK_POINTS[i][2])
 		local b = surfacePoint(CRACK_POINTS[i + 1][1], CRACK_POINTS[i + 1][2])
