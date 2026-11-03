@@ -119,7 +119,7 @@ command("bag", "/bag [poziom]", "ustaw poziom Bag (0–35)", function(_, data, a
 	return string.format("Bag: poziom %d (%s LP)", data.BagLevel, Format.number(Formulas.bagCapacity(data.BagLevel, false)))
 end)
 
-command("max", "/max", "wszystko na maksa: strefy 1–5, Click, Bag i najlepsze auto (L$ bez zmian)", function(_, data)
+command("max", "/max", "wszystko na maksa: strefy 1–5, Click, Bag i najlepsze auto, jacht i odrzutowiec (L$ bez zmian)", function(_, data)
 	data.ZonesUnlocked = #Economy.Zones
 	data.ClickLevel = Loop.MaxLevel.Click
 	data.BagLevel = Loop.MaxLevel.Bag
@@ -127,14 +127,19 @@ command("max", "/max", "wszystko na maksa: strefy 1–5, Click, Bag i najlepsze 
 		data.ActivityTiers = {}
 	end
 	for _, kind in ipairs(Loop.ActivityKinds) do
-		data.ActivityTiers[kind] = #Economy.Activities[kind].Tiers
+		local tiers = Economy.Activities[kind].Tiers
+		if tiers ~= nil then
+			data.ActivityTiers[kind] = #tiers
+		end
 	end
 	return string.format(
-		"Na maksa: strefy 1–%d, Click Lv %d, Bag Lv %d, auto tier %d",
+		"Na maksa: strefy 1–%d, Click Lv %d, Bag Lv %d, auto %d, jacht %d, odrzutowiec %d",
 		data.ZonesUnlocked,
 		data.ClickLevel,
 		data.BagLevel,
-		Loop.activityTier(data, "Car")
+		Loop.activityTier(data, "Car"),
+		Loop.activityTier(data, "Yacht"),
+		Loop.activityTier(data, "Jet")
 	)
 end)
 
@@ -298,27 +303,34 @@ command("luck", "/luck [poziom]", "ustaw ulepszenie Luck z Aury (szczęście w j
 	)
 end)
 
-command("tier", "/tier [car] [poziom]", "ustaw tier aktywności, np. /tier car 3", function(_, data, args)
+command("tier", "/tier [car|yacht|jet] [poziom]", "ustaw tier aktywności, np. /tier yacht 3 (/tier jet 0 = bez odrzutowca)", function(_, data, args)
 	local wanted = string.lower(args[1] or "")
-	for _, kind in ipairs(Loop.ActivityKinds) do
-		if string.lower(kind) == wanted then
-			local tiers = Economy.Activities[kind].Tiers
-			local level = math.floor(needNumber(args[2]))
-			if level < 1 or level > #tiers then
-				error(string.format("podaj poziom od 1 do %d", #tiers), 0)
-			end
-			if data.ActivityTiers == nil then
-				data.ActivityTiers = {}
-			end
-			data.ActivityTiers[kind] = level
-			return string.format("%s: tier %d (%s, ×%s)", kind, level, tiers[level].WorkingName, tostring(tiers[level].Multiplier))
-		end
-	end
 	local names = {}
 	for _, kind in ipairs(Loop.ActivityKinds) do
-		table.insert(names, string.lower(kind))
+		local tiers = Economy.Activities[kind].Tiers
+		if tiers ~= nil then
+			table.insert(names, string.lower(kind))
+			if string.lower(kind) == wanted then
+				local level = math.floor(needNumber(args[2]))
+				local lowest = 1
+				if tiers[1].Cost > 0 then
+					lowest = 0 -- pierwszy odrzutowiec jest płatny, więc można go „nie mieć”
+				end
+				if level < lowest or level > #tiers then
+					error(string.format("podaj poziom od %d do %d", lowest, #tiers), 0)
+				end
+				if data.ActivityTiers == nil then
+					data.ActivityTiers = {}
+				end
+				data.ActivityTiers[kind] = level
+				if level == 0 then
+					return kind .. ": brak (trzeba kupić pierwszy)"
+				end
+				return string.format("%s: tier %d (%s, ×%s)", kind, level, tiers[level].WorkingName, tostring(tiers[level].Multiplier))
+			end
+		end
 	end
-	error("aktywności: " .. table.concat(names, ", "), 0)
+	error("aktywności z tierami: " .. table.concat(names, ", "), 0)
 end)
 
 command("rebirth", "/rebirth [ile]", "ustaw liczbę Rebirthów (poziom = najwyżej 10)", function(_, data, args)
@@ -367,14 +379,19 @@ end)
 
 command("stats", "/stats", "pokaż swój zapis", function(_, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto tier %d (zdjęcia: %d) · pety %d (wyposażone %d, jajka: %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
 		data.BagLevel,
 		data.ZonesUnlocked,
 		Loop.activityTier(data, "Car"),
+		Loop.activityTier(data, "Yacht"),
+		Loop.activityTier(data, "Jet"),
 		data.Stats.CarPhotos or 0,
+		data.Stats.Interviews or 0,
+		data.Stats.YachtParties or 0,
+		data.Stats.JetFlights or 0,
 		Loop.petCount(data),
 		#data.Equipped,
 		data.Stats.EggsOpened or 0,

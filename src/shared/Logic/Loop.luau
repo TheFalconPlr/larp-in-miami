@@ -258,19 +258,23 @@ function Loop.buyZone(data, id)
 end
 
 ----------------------------------------------------------------- Aktywności
--- Aktywności, które już są w grze (reszta z arkusza dojdzie w kolejnych etapach).
-Loop.ActivityKinds = { "Car" }
+-- Aktywności w strefach 2–5: zdjęcia z autem, wywiad (losowa ocena), impreza na jachcie, lot odrzutowcem.
+Loop.ActivityKinds = { "Car", "Interview", "Yacht", "Jet" }
 
 -- Licznik sesji w zapisie (pod zadania dzienne, Etap 10).
-local ACTIVITY_STAT = { Car = "CarPhotos" }
+local ACTIVITY_STAT = { Car = "CarPhotos", Interview = "Interviews", Yacht = "YachtParties", Jet = "JetFlights" }
 
--- Ile tierów aktywności gracz ma (1 = pierwszy). Pierwszy tier z ceną 0 jest za darmo.
+-- Ile tierów aktywności gracz ma (1 = pierwszy). Pierwszy tier z ceną 0 jest za darmo, a aktywność
+-- bez tierów (wywiad) jest zawsze dostępna (tier 1). Pierwszy odrzutowiec trzeba kupić (tier 0).
 function Loop.activityTier(data, kind)
+	local activity = Economy.Activities[kind]
+	if activity ~= nil and activity.Tiers == nil then
+		return 1
+	end
 	local owned = data.ActivityTiers and data.ActivityTiers[kind]
 	if owned ~= nil then
 		return owned
 	end
-	local activity = Economy.Activities[kind]
 	local first = activity and activity.Tiers and activity.Tiers[1]
 	if first ~= nil and first.Cost == 0 then
 		return 1
@@ -288,18 +292,62 @@ local function tierMultiplier(kind, tier)
 	return (info and info.Multiplier) or 0
 end
 
+-- Mnożnik oceny (wywiad: Flop ×0,5 … Mega viral ×4); bez ocen 1.
+local function gradeMultiplier(kind, grade)
+	local grades = Economy.Activities[kind].Grades
+	if grades == nil then
+		return 1
+	end
+	local info = grades[grade]
+	return (info and info.Multiplier) or 1
+end
+
+-- Losuje ocenę aktywności z szans w arkuszu (random01 = liczba z [0, 1)). Bez ocen nil.
+function Loop.rollGrade(kind, random01)
+	local grades = Economy.Activities[kind] and Economy.Activities[kind].Grades
+	if grades == nil then
+		return nil
+	end
+	local r = random01()
+	local acc = 0
+	for i, grade in ipairs(grades) do
+		acc = acc + grade.Chance
+		if r < acc then
+			return i
+		end
+	end
+	return #grades
+end
+
+-- Ocena „średnia” (mnożnik 1, np. Solid) do pokazywania nagrody przed sesją.
+local function baseGrade(kind)
+	local grades = Economy.Activities[kind].Grades
+	if grades == nil then
+		return nil
+	end
+	for i, grade in ipairs(grades) do
+		if grade.Multiplier == 1 then
+			return i
+		end
+	end
+	return 1
+end
+
 local function rewardWith(data, ctx, kind, multiplier)
 	return Formulas.clickValue(data.ClickLevel) * Economy.Activities[kind].Base * multiplier * Loop.lpMultiplier(data, ctx)
 end
 
--- LP za jedną sesję: wartość kliku × baza aktywności × tier × mnożnik LP (bez mnożnika strefy).
-function Loop.activityReward(data, ctx, kind)
-	return rewardWith(data, ctx, kind, tierMultiplier(kind, Loop.activityTier(data, kind)))
+-- LP za jedną sesję: wartość kliku × baza aktywności × tier × ocena × mnożnik LP (bez mnożnika strefy).
+-- grade = numer oceny (wywiad); bez niego liczy się ocena z mnożnikiem 1.
+function Loop.activityReward(data, ctx, kind, grade)
+	local multiplier = tierMultiplier(kind, Loop.activityTier(data, kind))
+	multiplier = multiplier * gradeMultiplier(kind, grade or baseGrade(kind))
+	return rewardWith(data, ctx, kind, multiplier)
 end
 
 -- Czy można zacząć sesję. Zwraca true albo false i powód: BadRequest, Zone (strefa niekupiona),
--- Tier (brak tieru) albo BagFull (pełny Bag bez Auto-Sell: najpierw Sell; ostatnia sesja może
--- przepełnić Bag, ale z pełnym już się nie zaczyna).
+-- Tier (brak tieru, np. pierwszy odrzutowiec niekupiony) albo BagFull (pełny Bag bez Auto-Sell:
+-- najpierw Sell; ostatnia sesja może przepełnić Bag, ale z pełnym już się nie zaczyna).
 function Loop.canStartActivity(data, ctx, kind)
 	local activity = Economy.Activities[kind]
 	if activity == nil then
@@ -371,9 +419,10 @@ function Loop.fitsInBag(data, ctx, amount)
 end
 
 -- Koniec sesji: LP do Bag, ale tylko tyle, ile się zmieści (jak przy klikaniu; z Auto-Sell całość),
--- i licznik sesji. Zwraca: pełną nagrodę, ile LP weszło do Bag i ile L$ dała automatyczna sprzedaż.
-function Loop.finishActivity(data, ctx, kind)
-	local reward = Loop.activityReward(data, ctx, kind)
+-- i licznik sesji. grade = wylosowana ocena (wywiad). Zwraca: pełną nagrodę, ile LP weszło do Bag
+-- i ile L$ dała automatyczna sprzedaż.
+function Loop.finishActivity(data, ctx, kind, grade)
+	local reward = Loop.activityReward(data, ctx, kind, grade)
 	local added, sold = Loop.collect(data, reward, ctx, false)
 	local field = ACTIVITY_STAT[kind]
 	if field ~= nil then
@@ -396,6 +445,13 @@ function Loop.activityView(data, ctx, kind)
 	if n ~= nil then
 		view.NextCost = info.Cost
 		view.NextReward = rewardWith(data, ctx, kind, info.Multiplier)
+	end
+	-- wywiad: nagroda zależy od oceny, więc okno pokazuje od–do (a limit Bag liczy dla najlepszej)
+	local grades = Economy.Activities[kind].Grades
+	if grades ~= nil then
+		view.MinReward = Loop.activityReward(data, ctx, kind, 1)
+		view.MaxReward = Loop.activityReward(data, ctx, kind, #grades)
+		view.RewardFits = Loop.fitsInBag(data, ctx, view.MaxReward)
 	end
 	return view
 end

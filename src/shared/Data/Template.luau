@@ -9,8 +9,10 @@ return {
 	ClickLevel = 0, -- poziom Click Multipliera
 	BagLevel = 0, -- poziom Bag
 	ZonesUnlocked = 1, -- najwyższa odblokowana strefa (Etap 3)
-	ActivityTiers = { -- najlepszy kupiony tier aktywności (Etap 4); 1 = pierwszy, darmowy
+	ActivityTiers = { -- najlepszy kupiony tier aktywności (Etap 4 i 6); 1 = pierwszy, darmowy
 		Car = 1,
+		Yacht = 1,
+		Jet = 0, -- pierwszy odrzutowiec trzeba kupić
 	},
 	Pets = {}, -- [id jako tekst] = { Zone = strefa jajka, Rarity = "Rare", Level = 0 } (Etap 5)
 	Equipped = {}, -- lista id wyposażonych petów
@@ -36,6 +38,9 @@ return {
 		Sells = 0,
 		PlaySeconds = 0,
 		CarPhotos = 0, -- sesje zdjęciowe z autem (Etap 4)
+		Interviews = 0, -- wywiady (Etap 6)
+		YachtParties = 0, -- imprezy na jachcie (Etap 6)
+		JetFlights = 0, -- loty odrzutowcem (Etap 6)
 		EggsOpened = 0, -- otwarte jajka (Etap 5; pierwsze jajko A w strefie 1 daje Rare)
 	},
 	FirstJoin = 0,

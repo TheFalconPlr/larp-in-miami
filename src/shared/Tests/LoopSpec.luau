@@ -203,6 +203,40 @@ return function()
 	boughtTier, whyTier = Loop.buyActivityTier(d, "Car")
 	check(not boughtTier and whyTier == "Zone", "auta kupuje się w kupionej strefie 2")
 
+	----------------------------------------------------------------- Aktywności w strefach 3–5 (Etap 6)
+	local interview = Economy.Activities.Interview
+	local yacht = Economy.Activities.Yacht
+	local jet = Economy.Activities.Jet
+	local function fixed(x)
+		return function()
+			return x
+		end
+	end
+	d = fresh()
+	d.ZonesUnlocked = #Economy.Zones
+	check(Loop.activityTier(d, "Interview") == 1 and Loop.canStartActivity(d, {}, "Interview"), "wywiad nie ma tierów: od razu dostępny")
+	check(Loop.rollGrade("Interview", fixed(0)) == 1 and Loop.rollGrade("Interview", fixed(0.9999)) == #interview.Grades, "ocena: 0 = Flop, prawie 1 = Mega viral")
+	check(Loop.rollGrade("Interview", fixed(0.3)) == 2 and Loop.rollGrade("Car", fixed(0.5)) == nil, "ocena z szans w arkuszu, auto bez ocen")
+	check(near(Loop.activityReward(d, {}, "Interview"), interview.Base), "nagroda wywiadu przed oceną = ocena Solid (×1)")
+	check(near(Loop.activityReward(d, {}, "Interview", #interview.Grades), interview.Base * interview.Grades[#interview.Grades].Multiplier), "Mega viral mnoży nagrodę ×4")
+	local interviewView = Loop.view(d, {}).Activities.Interview
+	check(near(interviewView.MinReward, interview.Base * interview.Grades[1].Multiplier) and near(interviewView.MaxReward, interview.Base * 4) and interviewView.NextCost == nil, "widok wywiadu: od–do i bez ulepszeń")
+	d.Bag = 0
+	local gradeReward = Loop.finishActivity(d, {}, "Interview", 3)
+	check(near(gradeReward, interview.Base * interview.Grades[3].Multiplier) and d.Stats.Interviews == 1, "koniec wywiadu: nagroda za wylosowaną ocenę")
+	check(Loop.activityTier(d, "Yacht") == 1 and near(Loop.activityReward(d, {}, "Yacht"), yacht.Base), "pierwszy jacht za darmo")
+	d.ActivityTiers.Yacht = 2
+	check(near(Loop.activityReward(d, {}, "Yacht"), yacht.Base * yacht.Tiers[2].Multiplier), "drugi jacht ×2")
+	d.ActivityTiers.Jet = 0
+	local jetStart, jetWhy = Loop.canStartActivity(d, {}, "Jet")
+	check(Loop.activityTier(d, "Jet") == 0 and not jetStart and jetWhy == "Tier", "bez odrzutowca nie ma lotu")
+	local jetView = Loop.view(d, {}).Activities.Jet
+	check(jetView.Tier == 0 and jetView.Reward == 0 and jetView.NextCost == jet.Tiers[1].Cost, "widok: pierwszy odrzutowiec do kupienia")
+	d.Cash = jet.Tiers[1].Cost
+	d.Bag = 0
+	check(Loop.buyActivityTier(d, "Jet") and Loop.activityTier(d, "Jet") == 1 and d.Cash == 0 and Loop.canStartActivity(d, {}, "Jet"), "pierwszy odrzutowiec za 120B, potem lot")
+	check(not Loop.buyActivityTier(d, "Interview"), "wywiadu nie da się ulepszyć")
+
 	----------------------------------------------------------------- Pety i jajka
 	local function always(x)
 		return function()

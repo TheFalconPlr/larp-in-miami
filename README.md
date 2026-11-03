@@ -15,8 +15,8 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
 | `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService, PetService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (sesja zdjęciowa z autem), `Pets` (okno PETS i pety za graczami), `Eggs` (jajka: tablice, okno, otwieranie), `PetModels` (modele petów i jajek), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `Pets` (okno PETS i pety za graczami), `Eggs` (jajka: tablice, okno, otwieranie), `PetModels` (modele petów i jajek), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -78,7 +78,7 @@ Koniec:      Stop  →  Ctrl+S  →  w oknie z Rojo Ctrl+C
    ```
    [Larp in Miami] Serwer działa. Ekonomia v2 (arkusz z 29.10.2026). Strefa 5 kosztuje 3T L$, Rebirth 10 kosztuje 750Qa L$.
    ConfigCheck: OK (64 testów zgodnych z arkuszem)
-   LoopCheck: OK (90 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
+   LoopCheck: OK (103 testów pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety)
    [Dane] TwojNick: zapis wczytany (DataStore: Access)
    ```
    Komendy testowe wpisujesz na czacie (zacznij od `/cmds`). **Stop** (Shift+F5) kończy test.
@@ -173,11 +173,40 @@ Zwykłe jajko: Common 60%, Uncommon 28%, Rare 10%, Epic 2%. Złote: Uncommon 50%
 
 Dźwięki są w `Settings.Sounds`: `Crack` (pojedyncze pęknięcie: gra 3 razy, coraz wyżej, a przy rozbiciu dwa razy naraz, nisko i wysoko), `Hatch` (nowy pet) i `Reward` (oklaski przy Legendary, Mythic i Secret).
 
+## Etap 6: aktywności w strefach 3–5
+
+Co działa: w każdej kupionej strefie jest jedna aktywność. Działa jak zdjęcia z autem: podchodzisz, otwiera się okno z nagrodą i przyciskiem START, a sesja to zaciemnienie, kamera i efekty. W tym czasie kliknięcia nie działają, a inni gracze są u Ciebie ukryci. Na koniec LP trafiają do Bag, ale tylko do pełna (z Auto-Sell całość).
+
+| Strefa | Aktywność | Czas | Nagroda | Co kupujesz |
+| --- | --- | --- | --- | --- |
+| Luxury Mall | Celebrity Interview: wywiad w studiu telewizyjnym | 25 s | wartość kliku × 1800 × ocena | nic, ocena jest losowa: Flop ×0,5 (20%), Solid ×1 (40%), Viral ×2 (30%), Mega viral ×4 (10%) |
+| Miami Beach | Yacht Party: impreza na jachcie | 45 s | wartość kliku × 6000 × jacht | Motor Yacht 400M (×2), Large Yacht 1,5B (×5), Superyacht 4B (×10), Mega Yacht 8B (×25) |
+| Private Airport | Private Jet: lot odrzutowcem | 60 s | wartość kliku × 315K × odrzutowiec | Light Jet 120B (×1, pierwszy trzeba kupić), Midsize Jet 1T (×2,5), Ultra Long Range 4T (×6) |
+
+Wszystkie nagrody mnożą też bonusy LP (Rebirth, 2x LP), ale nie mnożnik strefy.
+
+- **Wywiad:** odliczanie „LIVE IN 3, 2, 1”, ujęcia jak w telewizji (cały plan, gość, prowadzący, z boku), ON AIR w rogu i licznik wyświetleń. Na koniec wielki napis z oceną, np. MEGA VIRAL! ×4. Okno pokazuje nagrodę od–do i szanse ocen.
+- **Jacht:** stoisz na pokładzie swojego jachtu i tańczysz, kamera okrąża basen, jacht lekko się kołysze, migają kolorowe światła i spada konfetti.
+- **Odrzutowiec:** samolot rozpędza się na pasie, startuje i leci ponad chmurami (tylko u Ciebie), a kamera leci za nim. Na koniec samolot wraca na pas. Bez odrzutowca okno pokazuje BUY.
+
+**Tymczasowe miejsca.** Dopóki na mapie nie ma miejsc, serwer stawia je z klocków po lewej stronie ścieżki: studio z tłem, biurkiem, prowadzącym i kamerą (strefa 3), basen z pomostem i 5 jachtami (strefa 4) oraz pas startowy z 3 odrzutowcami (strefa 5).
+
+**Twoje miejsca.**
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Studio | model `InterviewSpot` w strefie 3 | W środku część `Pose` (tu stoi gość). Punkt obrotu (pivot) modelu na środku sceny, przodem do widowni: według niego ustawiają się kamery. |
+| Jachty | model `YachtSpot` w strefie 4, w nim `Yacht1` … `Yacht5` | Jachty w tym samym miejscu na wodzie; w każdym może być własna `Pose` na pokładzie. Bez niej gracz stoi na `Pose` miejsca (np. na pomoście). |
+| Odrzutowce | model `JetSpot` w strefie 5, w nim `Jet1` … `Jet3` i `Pose` | Punkt obrotu każdego odrzutowca przodem w stronę dziobu: w tę stronę samolot startuje, więc przed nim musi być pas. |
+| Tablica | część `SignAnchor` (niewidoczna) w dowolnym miejscu | Tablica z nazwą i nagrodą wisi nad nią. Bez niej wisi nad największą częścią miejsca. |
+
+Nazwy modeli w grze (auta, jachty, odrzutowce) są robocze, zmienisz je w `src/client/Activities.luau` (`KINDS`).
+
 ## Co dalej (plan etapów)
 
 | Etap | Co |
 | --- | --- |
-| 6 | Aktywności w strefach 3–5, jak zdjęcia z autem w strefie 2: wywiad w Luxury Mall (losowa ocena Flop, Solid, Viral albo Mega viral), jacht w Miami Beach (5 jachtów do kupienia) i odrzutowiec na Private Airport (3 odrzutowce). |
+| 6 | ✓ Gotowe: wywiad, jacht i odrzutowiec (opis wyżej). |
 | 7 | Rebirth i Aura: reset postępu za stały mnożnik LP, Aura za Rebirthy i ulepszenia za Aurę (Click Boost, Luck do jajek, Aura Gain). |
 | 8 | Sprzedawanie i łączenie petów (Gold, Diamond) oraz ubrania (skrzynki, sloty i bonusy). |
 | 9 | Robux: gamepassy, produkty, boosty i Premium Egg (ID tworzysz w Creator Hub). |
@@ -198,12 +227,12 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/sell` | sprzedaje Bag od razu, bez chodzenia na Sell |
 | `/click 20` | ustawia poziom Click Multipliera (0–150) |
 | `/bag 10` | ustawia poziom Bag (0–35) |
-| `/max` | wszystko na maksa: strefy 1–5, Click 150, Bag 35 i najlepsze auto (L$ bez zmian) |
+| `/max` | wszystko na maksa: strefy 1–5, Click 150, Bag 35, najlepsze auto, jacht i odrzutowiec (L$ bez zmian) |
 | `/zone 3` | ustawia ostatnią kupioną strefę (1 = tylko start) |
 | `/tp 4` | teleportuje do strefy (mnożnik działa tylko w kupionej); `/tp sell` na pole Sell |
 | `/speed 60` | prędkość chodzenia (16 = normalnie, po odrodzeniu wraca) |
 | `/time 0` | pora dnia dla wszystkich (0 = noc, 14 = dzień) |
-| `/tier car 3` | ustawia auto do zdjęć (tier 1–5) |
+| `/tier yacht 3` | ustawia tier aktywności: `car` 1–5, `yacht` 1–5, `jet` 0–3 (0 = bez odrzutowca) |
 | `/pet Legendary 2` | daje peta (rzadkość i strefa, np. `/pet Secret 5`); załóż go w oknie PETS |
 | `/pet all 3` | daje po jednym pecie z każdej rzadkości ze strefy 3 |
 | `/clearpets` | usuwa wszystkie pety |

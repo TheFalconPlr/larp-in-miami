@@ -3,6 +3,7 @@
 -- Etap 3: strefy (bramki za L$, mnożnik LP strefy, tymczasowe strefy, gdy nie ma ich na mapie).
 -- Etap 4: aktywności, na razie sesja zdjęciowa z autem w Luxury Cars (tiery aut za L$).
 -- Etap 5: jajka i pety (stoiska w strefach, otwieranie za L$, ekwipunek, bonus petów do L$ przy Sell).
+-- Etap 6: aktywności w strefach 3–5 (wywiad z losową oceną, impreza na jachcie, lot odrzutowcem).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -38,4 +39,4 @@ PetService.start()
 AdminService.start()
 DataService.start()
 
-print("[Larp in Miami] Etap 5 gotowy: klik, Bag, Sell, ulepszenia, strefy, zdjęcia z autem, jajka i pety, tryb testowy.")
+print("[Larp in Miami] Etap 6 gotowy: klik, Bag, Sell, ulepszenia, strefy, aktywności (auto, wywiad, jacht, odrzutowiec), jajka i pety, tryb testowy.")
