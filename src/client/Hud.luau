@@ -695,6 +695,7 @@ function Hud.start()
 				f.icon:Destroy()
 				table.remove(flying, i)
 				bounce(cashBounce)
+				Sounds.play("CashTick")
 			elseif t >= 0 then
 				local k = t * t -- przyspiesza w drodze do licznika
 				local a = f.from:Lerp(f.control, k)
@@ -703,6 +704,7 @@ function Hud.start()
 				local size = f.size0 + (f.size1 - f.size0) * k
 				f.icon.Position = UDim2.fromOffset(p.X, p.Y)
 				f.icon.Size = UDim2.fromOffset(size, size)
+				f.icon.Rotation = f.rotation + f.spin * t -- banknot kręci się w locie
 			end
 		end
 	end)
@@ -730,12 +732,20 @@ function Hud.start()
 				Parent = popsGui,
 			})
 			local delay = (i - 1) * 0.04
+			-- przy wyskoku banknot przekręca się trochę w bok, a w locie kręci się dalej
+			local rotation = math.random(-40, 40)
 			task.delay(delay, function()
+				Sounds.play("CashPop")
 				TweenService:Create(icon, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
 					Position = UDim2.fromOffset(risen.X, risen.Y),
 					Size = UDim2.fromOffset(size, size),
+					Rotation = rotation,
 				}):Play()
 			end)
+			local spin = math.random(240, 420)
+			if math.random() < 0.5 then
+				spin = -spin
+			end
 			-- łuk: punkt kontrolny wysoko nad drogą do licznika (jak strzałka na szkicu)
 			table.insert(flying, {
 				icon = icon,
@@ -746,6 +756,8 @@ function Hud.start()
 				duration = 0.55 + math.random() * 0.15,
 				size0 = size,
 				size1 = 30 * s,
+				rotation = rotation,
+				spin = spin,
 			})
 		end
 	end

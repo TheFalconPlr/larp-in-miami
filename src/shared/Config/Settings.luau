@@ -71,6 +71,10 @@ local Settings = {
 		-- pojedyncze pęknięcie jajka: gra 3 razy, coraz wyżej, a przy rozbiciu dwa razy naraz (nisko i wysoko).
 		-- Plik trwa 1,1 s, więc gra tylko początek, żeby pęknięcia się nie zlewały.
 		Crack = { Id = 9113959343, Volume = 0.9, MinGap = 0.03, Length = 0.6, FadeOut = 0.25 },
+		-- sprzedaż: „pop”, gdy banknot wyskakuje z paska Bag, i „tick”, gdy wpada do licznika L$
+		-- (kolejne ticki coraz wyżej, jak przy zbieraniu monet)
+		CashPop = { Id = 72264591133889, Volume = 0.4, MinGap = 0.03 },
+		CashTick = { Id = 8646410774, Volume = 0.45, MinGap = 0.03, Rise = { Step = 1, Max = 10, Reset = 0.5 } },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

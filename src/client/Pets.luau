@@ -419,6 +419,18 @@ function Pets.start(hud)
 		})
 		Kit.corner(card, 18)
 		local stroke = Kit.stroke(card, 3, Enum.ApplyStrokeMode.Border)
+		-- tło za petem w kolorze rzadkości (jak w panelu nad jajkiem), np. Rare na niebiesko
+		local color = PetsConfig.RarityColors[pet.Rarity] or Theme.White
+		local tile = Kit.new("Frame", {
+			Name = "RarityTile",
+			Position = UDim2.fromOffset(8, 8),
+			Size = UDim2.new(1, -16, 0, 72),
+			BackgroundColor3 = color:Lerp(Theme.White, 0.65),
+			BorderSizePixel = 0,
+			ZIndex = 4,
+			Parent = card,
+		})
+		Kit.corner(tile, 14)
 		local viewport = Kit.new("ViewportFrame", {
 			Position = UDim2.fromOffset(6, 4),
 			Size = UDim2.new(1, -12, 0, 78),
