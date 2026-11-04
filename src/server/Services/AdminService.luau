@@ -406,6 +406,16 @@ command("ultra", "/ultra [kategoria]", "daj ubranie Ultra Secret (chrome) i ogł
 	)
 end)
 
+command("nextbox", "/nextbox [rzadkość|off]", "następny box da tę rzadkość (przy Buy 3 pierwszy z trzech), np. /nextbox ultra, żeby zobaczyć animację", function(player, _, args)
+	if string.lower(args[1] or "") == "off" then
+		ClothesService.forceNext(player, nil)
+		return "Następny box znów losuje."
+	end
+	local rarity = needClothRarity(args[1])
+	ClothesService.forceNext(player, rarity)
+	return string.format("Następny box da %s. Kup go przy stoisku (L$ normalnie schodzą).", rarity)
+end)
+
 command("clearclothes", "/clearclothes", "usuń wszystkie ubrania", function(_, data)
 	local n = Clothes.count(data)
 	data.Clothes = {}

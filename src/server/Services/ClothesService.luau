@@ -37,6 +37,7 @@ local SECRET_DELAY = 0.6 + 2.2 -- komunikat o Ultra Secret po animacji otwierani
 
 local stands = {}
 local lastOpen = {} -- [gracz] = czas ostatniego otwarcia
+local forcedNext = {} -- [gracz] = rzadkość następnego boxa (tylko tryb testowy: /nextbox)
 local lastAction = {} -- [gracz] = czas ostatniej sprzedaży albo łączenia
 local sentInventory = {} -- [gracz] = podpis ekwipunku wysłanego klientowi
 local dressed = {} -- [gracz] = podpis ubrań na postaci
@@ -314,10 +315,11 @@ local function buyBox(player, box, count)
 		return { Ok = false, Reason = "TooFar" }
 	end
 	local ctx = LoopService.contextFor(player)
-	local list, reason = Clothes.openBoxes(data, ctx, box, count, random01, ClothesConfig.MaxInventory)
+	local list, reason = Clothes.openBoxes(data, ctx, box, count, random01, ClothesConfig.MaxInventory, forcedNext[player])
 	if list == nil then
 		return { Ok = false, Reason = reason }
 	end
+	forcedNext[player] = nil
 	lastOpen[player] = now
 	LoopService.markDirty(player)
 	local seconds = openTime(player)
@@ -446,6 +448,11 @@ end
 
 ----------------------------------------------------------------- Dla innych modułów
 -- Daje ubranie (komenda testowa). Zwraca id.
+-- Tryb testowy: następny box (pierwszy z trzech przy Triple Open) da tę rzadkość. nil = losuje.
+function ClothesService.forceNext(player, rarity)
+	forcedNext[player] = rarity
+end
+
 function ClothesService.give(data, category, rarity, level)
 	local id = tostring(data.NextClothId)
 	data.NextClothId = data.NextClothId + 1
@@ -497,6 +504,7 @@ function ClothesService.start()
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		lastOpen[player] = nil
+		forcedNext[player] = nil
 		lastAction[player] = nil
 		sentInventory[player] = nil
 		dressed[player] = nil

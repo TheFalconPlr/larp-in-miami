@@ -253,7 +253,7 @@ Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania pod
 | Rzeczy z katalogu Roblox | podeślij mi ID | Gdy znajdziesz włosy, okulary, łańcuchy, zegarki, koszule, spodnie i buty w katalogu, podepnę je zamiast klocków. |
 | Ikona kafelka CLOTHES | `Settings.Ui.Icons.Clothes` | Ustawiona Twoja ikona 14002284211. |
 
-Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/pass TripleOpen` (Buy 3), `/cloth Chain Rare 5` (5 łańcuchów do łączenia), `/cloth all Epic` (po jednym z każdej kategorii), `/cloth Hair Mythic 1 gold`, `/cloth all ultra` (cały strój chrome), `/ultra Shirt` (Ultra Secret z paskiem dla wszystkich) i `/clearclothes`. Animację Ultra Secret zobaczysz tylko z boxa, bo komenda daje ubranie od razu.
+Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/pass TripleOpen` (Buy 3), `/cloth Chain Rare 5` (5 łańcuchów do łączenia), `/cloth all Epic` (po jednym z każdej kategorii), `/cloth Hair Mythic 1 gold`, `/cloth all ultra` (cały strój chrome), `/ultra Shirt` (Ultra Secret z paskiem dla wszystkich), `/nextbox ultra` (następny kupiony box da Ultra Secret, więc zobaczysz animację) i `/clearclothes`.
 
 ## Co dalej (plan etapów)
 
@@ -297,6 +297,7 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/clearindex` | czyści indeks petów (zostają w nim pety, które masz), żeby znów zobaczyć NEW! |
 | `/cloth Chain Rare 5` | daje ubranie: kategoria (albo `all`), rzadkość (do `UltraSecret`, można pisać `ultra`), ile sztuk i poziom (`gold`, `diamond`), np. `/cloth all Epic` albo `/cloth Hair Mythic 1 gold` |
 | `/ultra Shirt` | daje ubranie Ultra Secret z tej kategorii i ogłasza je wszystkim (na wszystkich serwerach, gdy działa MessagingService) |
+| `/nextbox ultra` | następny kupiony box da tę rzadkość (przy Buy 3 pierwszy z trzech), np. żeby zobaczyć animację Ultra Secret; `/nextbox off` wyłącza |
 | `/clearclothes` | usuwa wszystkie ubrania |
 | `/odds 10000 1 B` | losuje na próbę 10 000 złotych jajek ze strefy 1 i pokazuje, co wypadło (bez L$ i bez petów) |
 | `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |

@@ -109,6 +109,12 @@ return function()
 	check(notYet == nil and whySecret == "ConfirmSecret" and d.Clothes[three[1].id] ~= nil, "sprzedaż Ultra Secret tylko po potwierdzeniu")
 	local soldU, cashU = Clothes.sell(d, {}, { three[3].id }, true)
 	check(soldU == 1 and cashU == iced * 0.1, "Ultra Secret po potwierdzeniu: 10% ceny boxa Iced")
+	-- tryb testowy (/nextbox): wymuszona rzadkość tylko dla pierwszego boxa
+	d.Cash = boxes.Street.Price * 3
+	local forced = Clothes.openBoxes(d, {}, "Street", 3, always(0.01), 250, "UltraSecret")
+	check(forced[1].item.Rarity == "UltraSecret" and forced[2].item.Rarity == "Common" and forced[3].item.Rarity == "Common" and d.Stats.UltraSecrets == 2, "/nextbox: pierwszy box daje wybraną rzadkość, reszta losuje")
+	local _, plainItem = Clothes.openBox(d, {}, "Street", always(0.01), 250, "Nonsense")
+	check(plainItem == "NotEnough", "/nextbox: bez L$ i tak nic się nie otwiera")
 
 	----------------------------------------------------------------- Zakładanie i warstwa LP
 	d = fresh()

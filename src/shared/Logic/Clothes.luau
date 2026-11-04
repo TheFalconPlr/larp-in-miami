@@ -240,7 +240,8 @@ end
 -- z Aury działa na boxy za L$), potem kategoria (każda tak samo często). Nowe ubranie samo się
 -- zakłada, gdy w kategorii jest wolny slot albo jest lepsze od najsłabszego założonego.
 -- Zwraca id, ubranie i czy zostało założone albo nil i powód (jak canBuy).
-function Clothes.openBox(data, ctx, box, random01, maxItems)
+-- forced = rzadkość zamiast losowania (tylko tryb testowy: /nextbox, żeby zobaczyć animację).
+function Clothes.openBox(data, ctx, box, random01, maxItems, forced)
 	local ok, reason = Clothes.canBuy(data, box, 1, maxItems)
 	if not ok then
 		return nil, reason
@@ -251,7 +252,12 @@ function Clothes.openBox(data, ctx, box, random01, maxItems)
 	if info.LuckApplies ~= false then
 		luck = Formulas.luck(data.AuraUpgrades.Luck)
 	end
-	local rarity = Formulas.roll(info.Odds, luck, random01, C.RarityOrder)
+	local rarity
+	if forced ~= nil and C.RarityBonus[forced] ~= nil then
+		rarity = forced
+	else
+		rarity = Formulas.roll(info.Odds, luck, random01, C.RarityOrder)
+	end
 	local n = #C.Categories
 	local index = math.floor(random01() * n) + 1
 	if index > n then
@@ -276,14 +282,18 @@ end
 -- Otwiera count boxów naraz (Triple Open, ten sam gamepass co przy jajkach). Najpierw sprawdza,
 -- czy stać na wszystkie i czy wszystkie się zmieszczą. Zwraca listę { id, item, worn } albo nil
 -- i powód (jak canBuy).
-function Clothes.openBoxes(data, ctx, box, count, random01, maxItems)
+function Clothes.openBoxes(data, ctx, box, count, random01, maxItems, forced)
 	local ok, reason = Clothes.canBuy(data, box, count, maxItems)
 	if not ok then
 		return nil, reason
 	end
 	local list = {}
-	for _ = 1, count do
-		local id, item, worn = Clothes.openBox(data, ctx, box, random01, maxItems)
+	for i = 1, count do
+		local first = nil
+		if i == 1 then
+			first = forced -- wymuszona rzadkość tylko dla pierwszego z trzech
+		end
+		local id, item, worn = Clothes.openBox(data, ctx, box, random01, maxItems, first)
 		if id == nil then
 			break
 		end
