@@ -653,12 +653,16 @@ local function finish(player, kind, grade)
 	if data == nil then
 		return
 	end
-	local reward, added, sold = Loop.finishActivity(data, LoopService.contextFor(player), kind, grade)
+	local reward, added, sold, aura = Loop.finishActivity(data, LoopService.contextFor(player), kind, grade)
 	LoopService.markDirty(player)
 	-- LP = ile naprawdę weszło do Bag (najwyżej do pełna), Reward = pełna nagroda za sesję
 	LoopService.notify(player, { Kind = "ActivityEnd", Activity = kind, LP = added, Reward = reward, Grade = grade })
 	if sold > 0 then
 		LoopService.notify(player, { Kind = "Sold", Cash = sold, Auto = true })
+	end
+	-- pasek Aury się napełnił (od Rebirth 1): „+10 AURA” przy liczniku
+	if aura ~= nil and aura > 0 then
+		LoopService.notify(player, { Kind = "Aura", Amount = aura, Source = "Bar" })
 	end
 end
 

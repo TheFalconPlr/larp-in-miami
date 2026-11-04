@@ -325,6 +325,16 @@ function LoopService.sellNow(player)
 	return sellFor(player, s)
 end
 
+-- Pierwsze pole Sell (np. żeby postawić obok niego sklep Aury) albo nil.
+function LoopService.firstSellPad()
+	for _, pad in ipairs(pads) do
+		if pad.Parent ~= nil then
+			return pad
+		end
+	end
+	return nil
+end
+
 function LoopService.sellPadPosition(position)
 	local pad = nearestPad(position)
 	if pad == nil then

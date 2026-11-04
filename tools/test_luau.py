@@ -3,7 +3,7 @@
 Sprawdza:
   1. czy wszystkie pliki .luau się kompilują (nasz kod piszemy w podzbiorze zgodnym z Lua 5.1,
      więc to też poprawny Luau; biblioteki z folderów Vendor pomijamy, bo używają pełnego Luau),
-  2. ConfigSpec, LoopSpec, ClothesSpec i InterviewSpec (te same testy, które w Studio uruchamia ConfigCheck),
+  2. ConfigSpec, LoopSpec, ClothesSpec, InterviewSpec i RebirthSpec (te same testy, które w Studio uruchamia ConfigCheck),
   3. zgodność wzorów i pętli z modelem ekonomii w Pythonie (koszty, LP za klik, Bag, szanse, ceny,
      warstwy petów i ubrań),
   4. losowanie ze szczęściem (Monte Carlo) względem wzoru na szanse.
@@ -121,6 +121,7 @@ run_spec('ConfigSpec', req(Shared.Tests.ConfigSpec)(Economy, Formulas, Format))
 run_spec('LoopSpec', req(Shared.Tests.LoopSpec)())
 run_spec('ClothesSpec', req(Shared.Tests.ClothesSpec)())
 run_spec('InterviewSpec', req(Shared.Tests.InterviewSpec)())
+run_spec('RebirthSpec', req(Shared.Tests.RebirthSpec)())
 
 # ---------------------------------------------------------------- 3. zgodność z modelem w Pythonie
 cfg = final_cfg2()
@@ -146,6 +147,12 @@ for lam in (1.0, 1.25, 1.5, 2.0, 2.35, 3.0, 4.5):
         ok(abs(lu[names[k]] - p) < 1e-12, 'szanse B przy szczęściu %.2f, %s' % (lam, names[k]))
 for L in range(1, 11):
     ok(Formulas.rebirthFee(L) == cfg['REB_FEE'][L], 'opłata R%d' % L)
+# po R10 (Etap 9): opłata +25% za każdy kolejny, Aura 100 × poziom (po limicie 100 × 10), jak w modelu
+for n in range(1, 21):
+    cap = cfg['REB_CAP']
+    py_fee = cfg['REB_FEE'][n] if n <= cap else cfg['REB_FEE'][cap] * cfg['POST_CAP_G'] ** (n - cap)
+    ok(abs(Formulas.rebirthFee(n) - py_fee) <= 1e-9 * py_fee, 'opłata za Rebirth nr %d' % n)
+    ok(Formulas.rebirthAura(n) == cfg['AURA_REB'] * min(n, cap), 'Aura za Rebirth nr %d' % n)
 fees = {1: '40T', 2: '100T', 3: '5Qa', 4: '15Qa', 5: '40Qa', 6: '75Qa', 7: '150Qa', 8: '300Qa', 9: '500Qa', 10: '750Qa'}
 for L, s in fees.items():
     ok(Format.number(cfg['REB_FEE'][L]) == s, 'zapis opłaty R%d: %s' % (L, Format.number(cfg['REB_FEE'][L])))

@@ -37,6 +37,33 @@ Theme.Gradients = {
 	Money = { hex("#7BF26A"), hex("#14A84A") }, -- zielony jak banknoty (kwoty w komunikatach)
 }
 
+-- Tytuły Rebirth (nad głową i w oknie Rebirth): gradient z góry na dół dla każdego poziomu.
+-- Nazwy tytułów są w Economy.Rebirth.Titles (Broke … Certified Larper).
+Theme.TitleColors = {
+	[0] = { hex("#E2E2E8"), hex("#9A9AA8") }, -- Broke
+	[1] = { hex("#FFFFFF"), hex("#C9DDFF") }, -- Wannabe
+	[2] = { hex("#C8FF9E"), hex("#5CCB2E") }, -- Fake Rich
+	[3] = { hex("#FFB3E2"), hex("#FF4FB8") }, -- Influencer
+	[4] = { hex("#9EE8FF"), hex("#1FB2FF") }, -- Main Character
+	[5] = { hex("#B6FFB0"), hex("#22B84A") }, -- Self-Made
+	[6] = { hex("#A8C4FF"), hex("#3A6BFF") }, -- Trust Fund
+	[7] = { hex("#E2BFFF"), hex("#9A4DFF") }, -- Old Money
+	[8] = { hex("#9FFFF0"), hex("#12C9B0") }, -- Yacht Club
+	[9] = { hex("#FFD29E"), hex("#FF8A1F") }, -- Jet Set
+	[10] = { hex("#FFF07A"), hex("#FFA200") }, -- Certified Larper
+}
+
+-- Poświata wokół awatara na progach Aura Level (Economy.Aura.Glow): kolor iskier i światła.
+-- Rainbow mieni się wszystkimi kolorami (Theme.Rainbow).
+Theme.GlowColors = {
+	White = hex("#FFFFFF"),
+	Blue = hex("#4FA8FF"),
+	Purple = hex("#B046FF"),
+	Gold = hex("#FFC21A"),
+	Red = hex("#FF3B3B"),
+}
+Theme.Rainbow = { hex("#FF3B3B"), hex("#FFA21A"), hex("#FFE14D"), hex("#4CE06A"), hex("#4FA8FF"), hex("#B046FF") }
+
 -- Pasek Bag: czerwony, od lewej do prawej.
 Theme.BagFill = { hex("#FF6B57"), hex("#F23B3B"), hex("#D91A33") }
 

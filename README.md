@@ -14,9 +14,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Nametags` (tytuł i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -255,18 +255,51 @@ Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania pod
 
 Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/pass TripleOpen` (Buy 3), `/cloth Chain Rare 5` (5 łańcuchów do łączenia), `/cloth all Epic` (po jednym z każdej kategorii), `/cloth Hair Mythic 1 gold`, `/cloth all ultra` (cały strój chrome), `/ultra Shirt` (Ultra Secret z paskiem dla wszystkich), `/nextbox ultra` (następny kupiony box da Ultra Secret, więc zobaczysz animację) i `/clearclothes`.
 
+## Etap 9: Rebirth i Aura
+
+Zasady są z dokumentu projektu (etap „Rebirth i Aura”), a liczby z arkusza ekonomii (opłaty, mnożniki, tytuły, koszty w sklepie Aury).
+
+- **Rebirth** robi się przy portalu na lotnisku (strefa 5), gdy masz wszystkie strefy i L$ na opłatę: Rebirth 1 kosztuje 40T, Rebirth 10 kosztuje 750Qa. Duże E otwiera okno: tytuł teraz → po Rebirthie, co dostajesz (mnożnik LP, Aura, +5% szybkości, od R3 i R7 dodatkowy slot na peta), co się zeruje i co zostaje. Przycisk REBIRTH pyta jeszcze „Rebirth now?”.
+- **Co się zeruje:** L$, Bag, Click Multiplier i Bag, strefy oraz auta, jachty i odrzutowce. **Co zostaje:** pety, ubrania, indeks, Aura, sklep Aury i zakupy za Robuxy.
+- **Co dostajesz:** mnożnik LP ×2 po R1, ×3, ×4, ×5, ×7, ×10, ×13, ×16, ×20 i ×25 po R10, tytuł nad głową (Broke → Wannabe → Fake Rich → Influencer → Main Character → Self-Made → Trust Fund → Old Money → Yacht Club → Jet Set → Certified Larper) i +5% szybkości chodzenia za poziom.
+- **Animacja:** promienie, „REBIRTH!”, nowy tytuł, mnożnik LP i „+X AURA”. Potem ekran ciemnieje, gra przenosi Cię na spawn w Downtown i ekran jaśnieje.
+- **Po R10** licznik Rebirthów dalej rośnie (ranking), ale bez nowego mnożnika i tytułu. Każdy kolejny daje 1 000 Aury, a opłata rośnie o 25%.
+- **Aura** to druga waluta. Licznik (fioletowy, nad L$) pojawia się dopiero po Rebirth 1. Aurę dają Rebirthy (100 × nowy poziom: R1 = 100, R10 = 1 000) i pasek pod licznikiem: każde 10 minut aktywności (auto, wywiad, jacht, odrzutowiec) to +10 Aury, a wywiad napełnia go 2× szybciej. Klikanie się nie liczy, więc Auto-Click nie farmi Aury. Zadania dzienne dojdą w etapie z nagrodami.
+- **Sklep Aury** to fioletowy kryształ przy spawnie, obok Sell. Działa od Rebirth 1, a wcześniej nad nim jest kłódka. Ma 4 ulepszenia, każde z BUY 1 i BUY MAX:
+
+| Ulepszenie | Efekt za poziom | Limit | Koszt 1. poziomu | Każdy kolejny |
+| --- | --- | --- | --- | --- |
+| Click Boost | +0,1× do Click Multipliera (klik i wszystkie aktywności) | brak | 100 | +10% |
+| Luck | +5% szczęścia w jajkach i boxach za L$ | brak | 100 | +10% |
+| Aura Gain | +5% Aury ze wszystkich źródeł | brak | 250 | +15% |
+| Merge Luck | +1 pkt proc. szansy na każdy pet albo ubranie przy łączeniu | 5 poziomów | 200, 400, 800, 1 500, 3 000 | — |
+
+- **Aura Level** to suma poziomów w sklepie. Widać go nad głową obok tytułu (fioletowa liczba). Od Aura Level 10 wokół awatara pojawia się poświata (iskry i światło): biała od 10, niebieska od 25, fioletowa od 50, złota od 75, czerwona od 100 i tęczowa od 150. Napisy nad głowami i poświatę widzą wszyscy gracze. W czasie aktywności napisy są schowane.
+
+**Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia portal Rebirth (złoty pierścień z fioletową taflą) w strefie 5, po tej samej stronie ścieżki co jajka, 30 studs w głąb strefy, oraz kryształ sklepu Aury 10 studs obok pola Sell.
+
+**Twoje stoiska.**
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Portal Rebirth | `RebirthSpot` (model albo część) | W strefie 5. Napis „REBIRTH” z następnym tytułem wisi nad najwyższym punktem, E na środku. |
+| Sklep Aury | `AuraShop` (model albo część) | Przy spawnie, obok pola Sell. |
+| Ikony | `Settings.Ui.Icons`: `Aura`, `Rebirth`, `Luck`, `Merge`, `Speed` | Bez nich są emoji 🔮 🔄 🍀 🧬 👟. |
+
+Do testu: `/zone 5` i `/cash 1Qi`, a potem REBIRTH przy portalu. Rebirth zeruje L$ i strefy, więc przed kolejnym znowu `/zone 5` i `/cash 1Qi` (albo `/rb`, czyli Rebirth od razu, bez opłaty i bez portalu, z animacją i teleportem). Dalej `/aurabar 10` (pełny pasek, +10 Aury), `/aura 50000` (dużo Aury na sklep), `/auraup clickboost 150` (od razu Aura Level 150 i tęczowa poświata) i `/rebirth 10` (od razu R10, bez resetu). Całą grę od zera do R10 i dalej przejdziesz tak w kilka minut.
+
 ## Co dalej (plan etapów)
 
-Kolejność jest jak w dokumencie projektu: najpierw pety i ubrania, potem Rebirth i Aura.
+Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, a teraz monetyzacja.
 
 | Etap | Co |
 | --- | --- |
 | 6 | ✓ Gotowe: wywiad, jacht i odrzutowiec. |
 | 7 | ✓ Gotowe: sprzedaż i łączenie petów, indeks i sekrety. |
 | 8 | ✓ Gotowe: ubrania (opis wyżej). Etap „Pety, ubrania, sekrety” z dokumentu jest kompletny. |
-| 9 | Rebirth i Aura: reset postępu za stały mnożnik LP, tytuły, teleport na spawn, +5% szybkości; Aura za Rebirthy, pasek czasu (w wywiadzie 2×) i sklep Aury (Click Boost, Luck, Aura Gain, Merge Luck), Aura Level i poświata. |
+| 9 | ✓ Gotowe: Rebirth i Aura (opis wyżej). |
 | 10 | Robux: gamepassy, produkty, boosty, jajka premium i starter pack (ID tworzysz w Creator Hub). |
-| 11 | Nagrody dzienne i zadania, kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuły nad głową, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
+| 11 | Nagrody dzienne i zadania (z Aurą), kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuł „Secret Society”, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
 
 Kolejność może się zmienić, jeśli coś będzie pilniejsze.
 
@@ -302,8 +335,11 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/odds 10000 1 B` | losuje na próbę 10 000 złotych jajek ze strefy 1 i pokazuje, co wypadło (bez L$ i bez petów) |
 | `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |
 | `/adminluck` | szczęście ×100 000 w jajkach i boxach do wyjścia z gry (sekret ze złotego jajka ~98%, Ultra Secret z Iced Boxa ~33%), na pigułce TEST MODE widać wtedy „LUCK ×100K”; `/adminluck off` wyłącza, `/adminluck 500` daje ×500 |
-| `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |
+| `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10), bez resetu i bez Aury |
+| `/rb` | Rebirth od razu: bez opłaty i bez portalu, z resetem, Aurą, animacją i teleportem na spawn |
 | `/aura 500` | ustawia Aurę |
+| `/aurabar 10` | dolicza minuty do paska Aury (10 minut = +10 Aury, działa od Rebirth 1) |
+| `/auraup luck 20` | ustawia poziom ulepszenia Aury: `clickboost`, `luck`, `auragain`, `mergeluck` (do 5); np. `/auraup clickboost 150` daje tęczową poświatę |
 | `/pass AutoSell` | włącza albo wyłącza gamepass (`all`, `none`), np. `/pass TripleOpen` dla Buy 3. Zostaje na kolejne testy, a `/reset` go czyści |
 | `/stats` | pokazuje zapis |
 | `/reset` | czyści zapis, jak u nowego gracza |

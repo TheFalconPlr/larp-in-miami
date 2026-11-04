@@ -6,6 +6,7 @@
 -- Etap 6: aktywności w strefach 3–5 (wywiad z losową oceną, impreza na jachcie, lot odrzutowcem).
 -- Etap 7: sprzedaż i łączenie petów, indeks, sekrety z komunikatem na wszystkich serwerach.
 -- Etap 8: ubrania (mystery boxy w Mall, 7 kategorii, bonus do LP, ubrania na awatarze).
+-- Etap 9: Rebirth i Aura (stoisko Rebirth na lotnisku, sklep Aury przy Sell, pasek Aury, tytuły).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -22,6 +23,7 @@ local LoopService = require(Services.LoopService)
 local ActivityService = require(Services.ActivityService)
 local PetService = require(Services.PetService)
 local ClothesService = require(Services.ClothesService)
+local RebirthService = require(Services.RebirthService)
 local AdminService = require(Services.AdminService)
 
 print(string.format(
@@ -40,7 +42,8 @@ LoopService.start()
 ActivityService.start()
 PetService.start()
 ClothesService.start()
+RebirthService.start()
 AdminService.start()
 DataService.start()
 
-print("[Larp in Miami] Etap 8 gotowy: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety (łączenie, indeks, sekrety), ubrania, tryb testowy.")
+print("[Larp in Miami] Etap 9 gotowy: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety (łączenie, indeks, sekrety), ubrania, Rebirth i Aura, tryb testowy.")

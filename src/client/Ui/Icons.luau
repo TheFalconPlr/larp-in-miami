@@ -35,6 +35,9 @@ local EMOJI = {
 	Camera = "📸",
 	SellCash = "💵",
 	Clothes = "👕",
+	Luck = "🍀", -- sklep Aury: Luck
+	Merge = "🧬", -- sklep Aury: Merge Luck
+	Speed = "👟", -- Rebirth: szybsze chodzenie
 }
 
 local CELL = 256

@@ -14,6 +14,7 @@
 
 local Economy = require(script.Parent.Parent.Config.Economy)
 local Formulas = require(script.Parent.Parent.Formulas)
+local Rebirth = require(script.Parent.Rebirth)
 
 local Loop = {}
 
@@ -428,7 +429,9 @@ function Loop.finishActivity(data, ctx, kind, grade)
 	if field ~= nil then
 		data.Stats[field] = (data.Stats[field] or 0) + 1
 	end
-	return reward, added, sold
+	-- pasek Aury (od Rebirth 1): czas aktywności, wywiad 2×; pełne 10 minut = +10 Aury
+	local aura = Rebirth.addBarTime(data, Rebirth.barSecondsFor(kind))
+	return reward, added, sold, aura
 end
 
 -- Co HUD pokazuje o aktywności: tier, pełna nagroda za sesję i ile z niej zmieści się teraz w Bag
@@ -958,6 +961,9 @@ function Loop.view(data, ctx)
 	view.IndexCount = Loop.indexCount(data)
 	view.IndexTotal = Loop.indexTotal()
 	view.MergeLuck = (data.AuraUpgrades and data.AuraUpgrades.MergeLuck) or 0
+	for key, value in pairs(Rebirth.view(data)) do
+		view[key] = value
+	end
 	return view
 end
 

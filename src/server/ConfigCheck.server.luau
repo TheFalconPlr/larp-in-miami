@@ -1,6 +1,7 @@
 -- Testy: uruchamiają się tylko w Studio (Play). Sprawdzają liczby z arkusza (ConfigSpec), zasady
--- pętli (LoopSpec), ubrania (ClothesSpec) i treść wywiadu (InterviewSpec). Wynik w oknie Output:
--- „ConfigCheck: OK”, „LoopCheck: OK”, „ClothesCheck: OK” i „InterviewCheck: OK” albo lista błędów.
+-- pętli (LoopSpec), ubrania (ClothesSpec), treść wywiadu (InterviewSpec) oraz Rebirth i Aurę
+-- (RebirthSpec). Wynik w oknie Output: „ConfigCheck: OK”, „LoopCheck: OK”, „ClothesCheck: OK”,
+-- „InterviewCheck: OK” i „RebirthCheck: OK” albo lista błędów.
 
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -17,6 +18,7 @@ local configSpec = require(Shared.Tests.ConfigSpec)
 local loopSpec = require(Shared.Tests.LoopSpec)
 local clothesSpec = require(Shared.Tests.ClothesSpec)
 local interviewSpec = require(Shared.Tests.InterviewSpec)
+local rebirthSpec = require(Shared.Tests.RebirthSpec)
 
 local function report(name, what, passed, failed, messages)
 	if failed == 0 then
@@ -33,3 +35,4 @@ report("ConfigCheck", "zgodnych z arkuszem", configSpec(Economy, Formulas, Forma
 report("LoopCheck", "pętli: klik, Bag, Sell, ulepszenia, strefy, aktywności, pety", loopSpec())
 report("ClothesCheck", "ubrań: boxy, sloty, warstwa LP, sprzedaż, łączenie", clothesSpec())
 report("InterviewCheck", "wywiadu: pytania, odpowiedzi, losowanie", interviewSpec())
+report("RebirthCheck", "Rebirth i Aury: reset, poziomy, pasek, sklep, poświata", rebirthSpec())

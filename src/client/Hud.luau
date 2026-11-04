@@ -12,6 +12,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
 local Format = require(Shared.Format)
+local Formulas = require(Shared.Formulas)
 local Loop = require(Shared.Logic.Loop)
 local Settings = require(Shared.Config.Settings)
 local Net = require(Shared.Net)
@@ -54,6 +55,7 @@ local TEXT = {
 	Upgraded = "%s → Lv %d",
 	TestMode = "TEST MODE · /cmds",
 	TestLuck = " · LUCK ×%s", -- /adminluck
+	AuraPop = "+%s AURA", -- pasek Aury się napełnił
 	AutoClickOn = "AUTO CLICK",
 	AutoSellOn = "AUTO SELL",
 }
@@ -486,6 +488,62 @@ function Hud.start()
 		Text = TEXT.Loading,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, { maxSize = 52, stroke = 5, gradient = Theme.Gradients.Gold })
+
+	----------------------------------------------------------------- Aura nad L$ (od Rebirth 1)
+	-- Licznik Aury i pasek do następnych +10 (10 minut aktywności, wywiad 2× szybciej; klikanie się
+	-- nie liczy). Przed pierwszym Rebirthem jest ukryty (dokument projektu).
+	local auraGroup = Kit.new("Frame", {
+		Name = "Aura",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 32, 1, -108),
+		Size = UDim2.fromOffset(300, 58),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = gui,
+	})
+	registerScale(auraGroup)
+	local auraInner = Kit.new("Frame", {
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = auraGroup,
+	})
+	local auraBounce = Kit.new("UIScale", { Parent = auraInner })
+	local auraIcon = Icons.make("Aura", { Size = UDim2.fromOffset(56, 56), Parent = auraInner })
+	local auraLabel = Kit.text(auraInner, {
+		Name = "AuraAmount",
+		Position = UDim2.fromOffset(66, 0),
+		Size = UDim2.fromOffset(220, 38),
+		Text = "0",
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, { maxSize = 38, stroke = 4, gradient = Theme.Gradients.Aura })
+	local auraTrack = Kit.new("Frame", {
+		Name = "AuraBar",
+		Position = UDim2.fromOffset(68, 41),
+		Size = UDim2.fromOffset(150, 12),
+		BackgroundColor3 = Theme.White,
+		BorderSizePixel = 0,
+		Parent = auraInner,
+	})
+	Kit.corner(auraTrack, 6)
+	Kit.stroke(auraTrack, 2.5, Enum.ApplyStrokeMode.Border)
+	local auraFill = Kit.new("Frame", {
+		Size = UDim2.fromScale(0, 1),
+		BackgroundColor3 = Theme.White,
+		BorderSizePixel = 0,
+		Parent = auraTrack,
+	})
+	Kit.corner(auraFill, 6)
+	Kit.gradient(auraFill, Theme.Gradients.Aura, 0)
+	local auraBarLabel = Kit.text(auraInner, {
+		Name = "AuraBarReward",
+		Position = UDim2.fromOffset(226, 36),
+		Size = UDim2.fromOffset(70, 22),
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, { maxSize = 18, stroke = 2.5, gradient = Theme.Gradients.Aura })
+	local auraShown = false
 
 	----------------------------------------------------------------- Pasek Bag na dole pośrodku
 	-- W pasku: zapełnienie Bag na środku wolnego miejsca i „+X / click” przy prawym końcu.
@@ -1074,6 +1132,24 @@ function Hud.start()
 			end
 		end
 
+		-- Aura (od Rebirth 1): licznik pokazuje część całkowitą, pasek postęp do następnych +10
+		local auraOn = view.AuraUnlocked == true
+		if auraOn and not auraShown then
+			auraShown = true
+			auraBounce.Scale = 0.3
+			TweenService:Create(auraBounce, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		elseif not auraOn then
+			auraShown = false
+		end
+		auraGroup.Visible = auraOn
+		if auraOn then
+			auraLabel.Text = Format.number(math.floor((view.Aura or 0) + 1e-9))
+			local progress = math.clamp((view.AuraBar or 0) / Economy.Aura.BarSeconds, 0, 1)
+			auraFill.Size = UDim2.fromScale(progress, 1)
+			local gainLevel = (view.AuraUpgrades and view.AuraUpgrades.AuraGain) or 0
+			auraBarLabel.Text = "+" .. Format.number(math.floor(Economy.Aura.BarReward * Formulas.auraGain(gainLevel) + 1e-9))
+		end
+
 		testHolder.Visible = view.IsAdmin == true
 		updateHint(view)
 	end
@@ -1155,6 +1231,13 @@ function Hud.start()
 	----------------------------------------------------------------- Zdarzenia
 	State.onChange(render)
 	State.onNotify(function(payload)
+		if payload.Kind == "Aura" and type(payload.Amount) == "number" then
+			-- pasek Aury się napełnił: „+10 AURA” przy liczniku, licznik podskakuje
+			Sounds.play("Unlock", { volume = 0.5 })
+			pop(center(auraIcon) + Vector2.new(70 * currentScale, -40 * currentScale), string.format(TEXT.AuraPop, Format.number(math.floor(payload.Amount + 1e-9))), Theme.Gradients.Aura)
+			bounce(auraBounce)
+			return
+		end
 		if payload.Kind ~= "Sold" then
 			return
 		end

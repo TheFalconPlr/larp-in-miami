@@ -15,6 +15,7 @@ local Format = require(Shared.Format)
 local Formulas = require(Shared.Formulas)
 local Loop = require(Shared.Logic.Loop)
 local Clothes = require(Shared.Logic.Clothes)
+local Rebirth = require(Shared.Logic.Rebirth)
 local ClothesConfig = require(Shared.Config.Clothes)
 local Net = require(Shared.Net)
 
@@ -23,6 +24,7 @@ local GamepassService = require(script.Parent.GamepassService)
 local LoopService = require(script.Parent.LoopService)
 local PetService = require(script.Parent.PetService)
 local ClothesService = require(script.Parent.ClothesService)
+local RebirthService = require(script.Parent.RebirthService)
 local ZoneService = require(script.Parent.ZoneService)
 
 local AdminService = {}
@@ -544,6 +546,49 @@ end)
 command("aura", "/aura [ile]", "ustaw Aurę", function(_, data, args)
 	data.Aura = math.max(0, math.floor(needNumber(args[1])))
 	return "Aura: " .. Format.number(data.Aura)
+end)
+
+command("rb", "/rb", "Rebirth od razu, bez opłaty i bez stoiska (z animacją i teleportem na spawn)", function(player, data)
+	local result = Rebirth.rebirth(data, true)
+	RebirthService.performed(player, data, result)
+	return string.format(
+		"Rebirth nr %d: poziom %d (%s), LP ×%s, +%s Aury.",
+		result.Count,
+		result.Level,
+		result.Title,
+		tostring(Economy.Rebirth.LPMultiplier[result.Level]),
+		Format.number(math.floor(result.Aura + 1e-9))
+	)
+end)
+
+command("aurabar", "/aurabar [minuty]", "dolicz minuty do paska Aury (10 minut = +10 Aury, działa od Rebirth 1), np. /aurabar 10", function(player, data, args)
+	local minutes = 10
+	if args[1] ~= nil then
+		minutes = needNumber(args[1])
+	end
+	if minutes <= 0 or minutes > 6000 then
+		error("podaj od 0,1 do 6000 minut", 0)
+	end
+	if not Rebirth.unlocked(data) then
+		error("pasek Aury działa od Rebirth 1 (/rb)", 0)
+	end
+	local added, full = Rebirth.addBarTime(data, minutes * 60)
+	if added > 0 then
+		LoopService.notify(player, { Kind = "Aura", Amount = added, Source = "Bar" })
+	end
+	return string.format("Pasek Aury: +%s min, pełnych %d (+%s Aury), teraz %d s z %d.", Format.small(minutes), full, Format.number(math.floor(added + 1e-9)), math.floor(data.AuraBar), Economy.Aura.BarSeconds)
+end)
+
+command("auraup", "/auraup [ulepszenie] [poziom]", "ustaw poziom ulepszenia Aury: clickboost, luck, auragain, mergeluck (do 5), np. /auraup luck 20 albo /auraup clickboost 150 (tęczowa poświata)", function(_, data, args)
+	local wanted = string.lower(args[1] or "")
+	for _, key in ipairs(Rebirth.UpgradeOrder) do
+		if string.lower(key) == wanted then
+			local max = Rebirth.maxLevel(key) or 100000
+			data.AuraUpgrades[key] = needLevel(args[2], max)
+			return string.format("%s: poziom %d, Aura Level %d", key, data.AuraUpgrades[key], Rebirth.auraLevel(data))
+		end
+	end
+	error("ulepszenia: " .. table.concat(Rebirth.UpgradeOrder, ", "), 0)
 end)
 
 -- Gamepassy z /pass zapisują się w danych gracza (TestPasses), więc są też w następnym teście.

@@ -23,7 +23,8 @@ return {
 	NextClothId = 1, -- id następnego ubrania
 	RebirthLevel = 0, -- poziom Rebirth, czyli mnożnik LP (na premierę maks. 10)
 	RebirthCount = 0, -- wszystkie Rebirthy, także po R10 (ranking)
-	Aura = 0,
+	Aura = 0, -- druga waluta (od Rebirth 1), z ułamkiem; gra pokazuje część całkowitą
+	AuraBar = 0, -- pasek Aury: sekundy aktywności do następnych +10 Aury (Etap 9)
 	AuraUpgrades = {
 		ClickBoost = 0,
 		Luck = 0,
@@ -57,6 +58,7 @@ return {
 		ClothesSold = 0, -- sprzedane ubrania
 		ClothMerges = 0, -- próby łączenia ubrań
 		ClothMergesFailed = 0, -- nieudane łączenia ubrań
+		AuraEarned = 0, -- cała zdobyta Aura (Rebirthy, pasek, później zadania)
 	},
 	FirstJoin = 0,
 	LastJoin = 0,
