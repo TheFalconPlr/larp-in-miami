@@ -14,12 +14,15 @@ local Settings = require(Shared.Config.Settings)
 local Format = require(Shared.Format)
 local Formulas = require(Shared.Formulas)
 local Loop = require(Shared.Logic.Loop)
+local Clothes = require(Shared.Logic.Clothes)
+local ClothesConfig = require(Shared.Config.Clothes)
 local Net = require(Shared.Net)
 
 local DataService = require(script.Parent.DataService)
 local GamepassService = require(script.Parent.GamepassService)
 local LoopService = require(script.Parent.LoopService)
 local PetService = require(script.Parent.PetService)
+local ClothesService = require(script.Parent.ClothesService)
 local ZoneService = require(script.Parent.ZoneService)
 
 local AdminService = {}
@@ -317,6 +320,70 @@ command("clearindex", "/clearindex", "wyczyść indeks petów (znów pokażą si
 	return string.format("Indeks: %d/%d (zostały pety, które masz)", Loop.indexCount(data), Loop.indexTotal())
 end)
 
+command(
+	"cloth",
+	"/cloth [kategoria|all] [rzadkość] [ile] [gold|diamond]",
+	"daj ubranie, np. /cloth Chain Rare 5 (5 do łączenia), /cloth Hair Mythic 1 gold; /cloth all Epic = po jednym z każdej kategorii",
+	function(_, data, args)
+		local wanted = string.lower(args[1] or "")
+		local categories = {}
+		if wanted == "all" then
+			categories = Clothes.Categories
+		else
+			for _, name in ipairs(Clothes.Categories) do
+				if string.lower(name) == wanted then
+					categories = { name }
+				end
+			end
+			if #categories == 0 then
+				error("kategorie: " .. table.concat(Clothes.Categories, ", ") .. " albo all", 0)
+			end
+		end
+		local rarity = "Common"
+		if args[2] ~= nil then
+			rarity = needRarity(args[2])
+		end
+		if Economy.Clothes.RarityBonus[rarity] == nil then
+			error("ubrania mają rzadkości od Common do Mythic", 0)
+		end
+		local count = 1
+		local level = 0
+		for i = 3, #args do
+			local word = string.lower(args[i])
+			if LEVEL_WORDS[word] ~= nil then
+				level = LEVEL_WORDS[word]
+			else
+				count = math.floor(needNumber(args[i]))
+				if count < 1 or count > ClothesConfig.MaxInventory then
+					error(string.format("podaj od 1 do %d sztuk", ClothesConfig.MaxInventory), 0)
+				end
+			end
+		end
+		if Clothes.count(data) + count * #categories > ClothesConfig.MaxInventory then
+			error(string.format("nie zmieści się (najwyżej %d ubrań)", ClothesConfig.MaxInventory), 0)
+		end
+		for _, category in ipairs(categories) do
+			for _ = 1, count do
+				ClothesService.give(data, category, rarity, level)
+			end
+		end
+		return string.format(
+			"Nowe ubrania: %s × %d (%s, +%s%% LP każde). Załóż je w oknie CLOTHES (WEAR BEST).",
+			#categories == 1 and ClothesConfig.fullName(categories[1], rarity, level) or (rarity .. " z każdej kategorii"),
+			count,
+			rarity,
+			Format.small(Formulas.clothBonus(rarity, level) * 100)
+		)
+	end
+)
+
+command("clearclothes", "/clearclothes", "usuń wszystkie ubrania", function(_, data)
+	local n = Clothes.count(data)
+	data.Clothes = {}
+	data.Worn = {}
+	return string.format("Usunięte ubrania: %d", n)
+end)
+
 command("odds", "/odds [ile] [strefa] [A|B]", "losuje jajka na próbę (bez L$ i bez petów), np. /odds 10000 1 B", function(_, data, args)
 	local count = 1000
 	if args[1] ~= nil then
@@ -442,9 +509,9 @@ command("pass", "/pass [nazwa|all|none]", "włącz albo wyłącz gamepass (zosta
 	error("nazwy: " .. table.concat(GamepassService.Keys, ", "), 0)
 end)
 
-command("stats", "/stats", "pokaż swój zapis", function(_, data)
+command("stats", "/stats", "pokaż swój zapis", function(player, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d, indeks %d/%d, sprzedane %d, łączenia %d, nieudane %d, sekrety %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d, indeks %d/%d, sprzedane %d, łączenia %d, nieudane %d, sekrety %d) · ubrania %d (założone %d, boxy %d, warstwa ×%s) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
@@ -466,6 +533,10 @@ command("stats", "/stats", "pokaż swój zapis", function(_, data)
 		data.Stats.Merges or 0,
 		data.Stats.MergesFailed or 0,
 		data.Stats.SecretsHatched or 0,
+		Clothes.count(data),
+		#data.Worn,
+		data.Stats.BoxesOpened or 0,
+		Format.small(Clothes.layer(data, LoopService.contextFor(player))),
 		data.RebirthCount,
 		data.RebirthLevel,
 		Format.number(data.Aura),

@@ -18,6 +18,9 @@ return {
 	Equipped = {}, -- lista id wyposażonych petów
 	NextPetId = 1, -- id następnego peta
 	Index = {}, -- [„strefa:rzadkość”] = true: pety, które gracz już miał (indeks, Etap 7)
+	Clothes = {}, -- [id jako tekst] = { Category = "Chain", Rarity = "Rare", Level = 0, Box = "Street" } (Etap 8)
+	Worn = {}, -- lista id założonych ubrań (1 na kategorię; Chain i Watch po 2 z gamepassem)
+	NextClothId = 1, -- id następnego ubrania
 	RebirthLevel = 0, -- poziom Rebirth, czyli mnożnik LP (na premierę maks. 10)
 	RebirthCount = 0, -- wszystkie Rebirthy, także po R10 (ranking)
 	Aura = 0,
@@ -30,6 +33,7 @@ return {
 	Settings = {
 		AutoClick = true, -- działa tylko z gamepassem Auto-Click
 		AutoSell = true, -- działa tylko z gamepassem Auto-Sell
+		ShowClothes = true, -- ubrania z gry widać na awatarze (false = własny wygląd, bonus zostaje)
 	},
 	TestPasses = {}, -- tryb testowy: gamepassy z /pass ([klucz] = true/false); działają tylko u adminów
 	Stats = {
@@ -47,6 +51,10 @@ return {
 		Merges = 0, -- próby łączenia petów
 		MergesFailed = 0, -- nieudane łączenia
 		SecretsHatched = 0, -- sekretne pety z jajek (ranking „Sekrety” w dokumencie projektu)
+		BoxesOpened = 0, -- otwarte boxy z ubraniami (Etap 8)
+		ClothesSold = 0, -- sprzedane ubrania
+		ClothMerges = 0, -- próby łączenia ubrań
+		ClothMergesFailed = 0, -- nieudane łączenia ubrań
 	},
 	FirstJoin = 0,
 	LastJoin = 0,

@@ -3,8 +3,9 @@
 Sprawdza:
   1. czy wszystkie pliki .luau się kompilują (nasz kod piszemy w podzbiorze zgodnym z Lua 5.1,
      więc to też poprawny Luau; biblioteki z folderów Vendor pomijamy, bo używają pełnego Luau),
-  2. ConfigSpec, LoopSpec i InterviewSpec (te same testy, które w Studio uruchamia ConfigCheck),
-  3. zgodność wzorów i pętli z modelem ekonomii w Pythonie (koszty, LP za klik, Bag, szanse, ceny),
+  2. ConfigSpec, LoopSpec, ClothesSpec i InterviewSpec (te same testy, które w Studio uruchamia ConfigCheck),
+  3. zgodność wzorów i pętli z modelem ekonomii w Pythonie (koszty, LP za klik, Bag, szanse, ceny,
+     warstwy petów i ubrań),
   4. losowanie ze szczęściem (Monte Carlo) względem wzoru na szanse.
 Uruchom z głównego folderu projektu:  python tools/test_luau.py
 """
@@ -105,6 +106,7 @@ Economy = req(Shared.Config.Economy)
 Format = req(Shared.Format)
 Formulas = req(Shared.Formulas)
 Loop = req(Shared.Logic.Loop)
+Clothes = req(Shared.Logic.Clothes)
 Template = req(Shared.Data.Template)
 
 
@@ -117,6 +119,7 @@ def run_spec(name, result):
 
 run_spec('ConfigSpec', req(Shared.Tests.ConfigSpec)(Economy, Formulas, Format))
 run_spec('LoopSpec', req(Shared.Tests.LoopSpec)())
+run_spec('ClothesSpec', req(Shared.Tests.ClothesSpec)())
 run_spec('InterviewSpec', req(Shared.Tests.InterviewSpec)())
 
 # ---------------------------------------------------------------- 3. zgodność z modelem w Pythonie
@@ -185,6 +188,55 @@ for _ in range(300):
         t += cost
         c += 1
     ok(count == c and abs(total - t) <= 1e-9 * max(1, t), 'Kup max %s od poz. %d za %s' % (kind, start, cash))
+
+# Warstwy petów i ubrań jak w modelu (etap 4 w dokumencie: „mnożniki z petów i ubrań zgadzają się
+# z arkuszem”). Losowe ekwipunki: model bierze najlepsze na sloty, a my EQUIP BEST / WEAR BEST.
+RARS = ['C', 'U', 'R', 'E', 'L', 'M', 'S']
+rng = random.Random(11)
+for trial in range(200):
+    R = rng.choice([0, 3, 7, 10])
+    pet_pass = rng.random() < 0.5
+    extra = rng.random() < 0.5
+    payer = {'pet_slots': 2 if pet_pass else 0, 'extra_cloth': ('chain', 'watch') if extra else ()}
+    p = E.Player(cfg, payer=payer)
+    p.R = R
+    d = deep_copy(Template)
+    d.RebirthLevel = R
+    passes = {}
+    if pet_pass:
+        passes['PetSlots'] = True
+    if extra:
+        passes['DoubleChain'] = True
+        passes['DoubleWrist'] = True
+    ctx = lua.table_from({'passes': lua.table_from(passes)})
+    pets, clothes = {}, {}
+    for i in range(rng.randint(0, 14)):
+        key = (rng.randint(1, 5), rng.choice(['A', 'B']), rng.choice(RARS), rng.choice([0, 0, 0, 1, 2]))
+        pets[key] = pets.get(key, 0) + 1
+        d.Pets['p%d' % i] = lua.table_from({'Zone': key[0], 'Rarity': names[key[2]], 'Level': key[3], 'Egg': key[1]})
+    for i in range(rng.randint(0, 14)):
+        key = (rng.choice(E.CATS), rng.choice(RARS[:6]), rng.choice([0, 0, 0, 1, 2]))
+        clothes[key] = clothes.get(key, 0) + 1
+        d.Clothes['c%d' % i] = lua.table_from({'Category': key[0].capitalize(), 'Rarity': names[key[1]], 'Level': key[2], 'Box': 'Street'})
+    p.pets, p.clothes = pets, clothes
+    p._pl, p._cl = None, None
+    Loop.equipBest(d, ctx)
+    Clothes.wearBest(d, ctx)
+    got_p, exp_p = Loop.petLayer(d, ctx), p.pet_layer()
+    got_c, exp_c = Clothes.layer(d, ctx), p.cloth_layer()
+    ok(abs(got_p - exp_p) <= 1e-9 * max(1, exp_p), 'warstwa petów (próba %d): Luau %s, model %s' % (trial, got_p, exp_p))
+    ok(abs(got_c - exp_c) <= 1e-9 * max(1, exp_c), 'warstwa ubrań (próba %d): Luau %s, model %s' % (trial, got_c, exp_c))
+for rar in RARS[:6]:
+    for lvl in (0, 1):
+        key_fee = cfg['BOX_PRICE'][E.cloth_source(rar)] * cfg['MERGE_FEE'][lvl]
+        d = deep_copy(Template)
+        ids = []
+        for i in range(5):
+            d.Clothes['m%d' % i] = lua.table_from({'Category': 'Chain', 'Rarity': names[rar], 'Level': lvl, 'Box': 'Street'})
+            ids.append('m%d' % i)
+        info = Clothes.mergeInfo(d, lua.table_from(ids))
+        ok(info.Fee == key_fee, 'opłata za łączenie 5 ubrań %s poz. %d: Luau %s, model %s' % (rar, lvl, info.Fee, key_fee))
+print('warstwy petów i ubrań: 200 losowych ekwipunków zgodnych z modelem')
 
 # ---------------------------------------------------------------- 4. losowanie ze szczęściem
 rng = random.Random(7)

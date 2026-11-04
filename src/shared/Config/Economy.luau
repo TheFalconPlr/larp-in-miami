@@ -492,6 +492,17 @@ local Economy = {
 			Chain = "DoubleChain",
 			Watch = "DoubleWrist",
 		},
+		SourceBox = {
+			Common = "Street",
+			Uncommon = "Street",
+			Rare = "Street",
+			Epic = "Street",
+			Legendary = "Designer",
+			Mythic = "Iced",
+		},
+		SellReturn = 0.1,
+		GoldSellX = 5,
+		DiamondSellX = 25,
 	},
 	Rebirth = {
 		Cap = 10,

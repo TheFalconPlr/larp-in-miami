@@ -301,7 +301,7 @@ function Hud.start()
 	local left = Kit.new("Frame", {
 		Name = "Menu",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 22, 0.48, 0),
+		Position = UDim2.new(0, 22, 0.46, 0),
 		Size = UDim2.fromOffset(104, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
@@ -332,7 +332,21 @@ function Hud.start()
 		textSize = 21,
 	})
 	local upgradesPulse = makePulser(Kit.new("UIScale", { Parent = upgradesTile.body }))
-	local autoClickButton = Kit.button(left, {
+	-- przełączniki gamepassów obok kafelka SELL (w kolumnie nie mieszczą się przy 4 kafelkach)
+	local autoFrame = Kit.new("Frame", {
+		Name = "AutoToggles",
+		Position = UDim2.new(1, 14, 0, 6),
+		Size = UDim2.fromOffset(116, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Parent = sellTile.holder,
+	})
+	Kit.new("UIListLayout", {
+		Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = autoFrame,
+	})
+	local autoClickButton = Kit.button(autoFrame, {
 		name = "AutoClick",
 		size = Vector2.new(116, 40),
 		text = TEXT.AutoClickOn,
@@ -344,7 +358,7 @@ function Hud.start()
 		order = 10,
 	})
 	autoClickButton.holder.Visible = false
-	local autoSellButton = Kit.button(left, {
+	local autoSellButton = Kit.button(autoFrame, {
 		name = "AutoSell",
 		size = Vector2.new(116, 40),
 		text = TEXT.AutoSellOn,

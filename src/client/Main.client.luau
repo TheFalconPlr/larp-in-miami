@@ -1,5 +1,5 @@
--- Larp in Miami — start klienta (gracza): HUD, klikanie, strefy, aktywności, pety, jajka, komunikaty
--- o sekretach i tryb testowy.
+-- Larp in Miami — start klienta (gracza): HUD, klikanie, strefy, aktywności, pety, jajka, ubrania
+-- i mystery boxy, komunikaty o sekretach i tryb testowy.
 -- Najpierw moduły rejestrują, czego słuchają, a na końcu State podłącza zdarzenia z serwera.
 
 local Players = game:GetService("Players")
@@ -16,6 +16,8 @@ local Zones = require(script.Parent.Zones)
 local Activities = require(script.Parent.Activities)
 local Pets = require(script.Parent.Pets)
 local Eggs = require(script.Parent.Eggs)
+local Wardrobe = require(script.Parent.Wardrobe)
+local Boxes = require(script.Parent.Boxes)
 local SecretBanner = require(script.Parent.SecretBanner)
 local Sounds = require(script.Parent.Ui.Sounds)
 
@@ -25,7 +27,9 @@ ClickInput.start(hud)
 Zones.start(hud)
 Activities.start(hud)
 Pets.start(hud)
+Wardrobe.start(hud)
 Eggs.start(hud)
+Boxes.start(hud)
 SecretBanner.start(hud)
 Admin.start()
 State.start()

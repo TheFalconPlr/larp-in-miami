@@ -34,6 +34,7 @@ local EMOJI = {
 	Clock = "⏱️",
 	Camera = "📸",
 	SellCash = "💵",
+	Clothes = "👕",
 }
 
 local CELL = 256
@@ -75,8 +76,9 @@ function Icons.make(name, props)
 		icon = Instance.new("ImageLabel")
 		icon.Image = own
 		icon.ScaleType = Enum.ScaleType.Fit
-	elseif sheetId ~= nil then
-		local index = INDEX[name] or 0
+	elseif sheetId ~= nil and INDEX[name] ~= nil then
+		-- arkusz ma tylko 16 ikon; reszta (np. Clothes) bez własnej ikony to emoji
+		local index = INDEX[name]
 		icon = Instance.new("ImageLabel")
 		icon.Image = sheetId
 		icon.ImageRectSize = Vector2.new(CELL, CELL)

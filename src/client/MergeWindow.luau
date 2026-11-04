@@ -1,10 +1,10 @@
--- Łączenie petów: okno przed losowaniem i animacja wyniku. Z dokumentu projektu: „Przed losowaniem
--- okno pokazuje szansę i pety, które można stracić. Wynik pokazuje krótka animacja.”
--- Okno otwiera tryb MERGE w oknie PETS (Pets.luau). Wynik losuje serwer (PetService → Loop.mergePets):
--- sukces daje wersję Golden (z Golden: Diamond), porażka zabiera wszystkie wrzucone pety, a opłata
--- przepada zawsze. W czasie animacji HUD jest schowany, a State.busy blokuje klikanie.
--- Ten moduł nie wymaga Pets.luau (Pets wymaga jego), więc to, czego potrzebuje z Pets, dostaje
--- w PetMerge.create(hud, helpers).
+-- Łączenie petów i ubrań: okno przed losowaniem i animacja wyniku. Z dokumentu projektu: „Przed
+-- losowaniem okno pokazuje szansę i pety, które można stracić. Wynik pokazuje krótka animacja.”
+-- Okno otwiera tryb MERGE w oknie PETS (Pets.luau) i CLOTHES (Wardrobe.luau). Wynik losuje serwer
+-- (Loop.mergePets, Logic/Clothes.merge): sukces daje wersję Golden (z Golden: Diamond), porażka
+-- zabiera wszystkie wrzucone rzeczy, a opłata przepada zawsze. W czasie animacji HUD jest schowany,
+-- a State.busy blokuje klikanie. Moduł nie wymaga Pets ani Clothes (one wymagają jego): to, co
+-- zależy od rodzaju rzeczy (model, nazwa, bonus, remote), dostaje w MergeWindow.create(hud, kind).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -22,28 +22,25 @@ local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
 local Icons = require(script.Parent.Ui.Icons)
 local Sounds = require(script.Parent.Ui.Sounds)
-local PetModels = require(script.Parent.PetModels)
 
-local PetMerge = {}
+local MergeWindow = {}
 
 local TEXT = {
-	Title = "Merge Pets",
 	Put = "You put in",
 	Get = "You get",
 	Chance = "chance",
 	Fee = "Fee",
 	Safe = "100% chance, it can't fail!",
-	Risk = "If it fails, you lose all %d pets!",
-	RiskOne = "If it fails, you lose this pet!",
+	Risk = "If it fails, you lose all %d %s!",
+	RiskOne = "If it fails, you lose this %s!",
 	Cancel = "CANCEL",
 	Merge = "MERGE!",
 	Success = "SUCCESS!",
 	Failed = "MERGE FAILED",
-	Lost = "You lost %d pets",
-	LostOne = "You lost 1 pet",
-	Equipped = "Equipped!",
-	Gone = "Those pets are gone, pick them again",
-	Premium = "Premium pets merge only at 100%",
+	Lost = "You lost %d %s",
+	LostOne = "You lost 1 %s",
+	Gone = "Those %s are gone, pick them again",
+	Premium = "Robux items merge only at 100%",
 	Error = "Merge didn't work, try again",
 }
 
@@ -63,7 +60,7 @@ local RAY_FADE = NumberSequence.new({
 local FAIL_COLOR = Color3.fromRGB(150, 146, 165)
 
 -- Kolor szansy: 100% zielony, od 50% złoty, mniej czerwony.
-function PetMerge.chanceColors(chance)
+function MergeWindow.chanceColors(chance)
 	if chance >= 1 - 1e-9 then
 		return Theme.Gradients.Green
 	elseif chance >= 0.5 then
@@ -76,6 +73,25 @@ local function levelColors(level)
 	return PetsConfig.LevelColors[level] or Theme.Gradients.Gold
 end
 
+-- Model w ViewportFrame: kamera patrzy na przód modelu z odległości dopasowanej do jego wielkości
+-- (jak PetModels.show).
+local function showModel(view, model, distanceScale)
+	for _, child in ipairs(view:GetChildren()) do
+		if child:IsA("Model") or child:IsA("Camera") then
+			child:Destroy()
+		end
+	end
+	model:PivotTo(CFrame.new())
+	model.Parent = view
+	local camera = Instance.new("Camera")
+	local size = model:GetExtentsSize().Magnitude
+	camera.FieldOfView = 40
+	camera.CFrame = CFrame.lookAt(Vector3.new(size * 0.35, size * 0.3, -size * (distanceScale or 1.45)), Vector3.new(0, 0, 0))
+	camera.Parent = view
+	view.CurrentCamera = camera
+	return camera
+end
+
 local function viewport(parent, props)
 	props.BackgroundTransparency = 1
 	props.Ambient = Color3.fromRGB(205, 205, 215)
@@ -84,10 +100,23 @@ local function viewport(parent, props)
 	return Kit.new("ViewportFrame", props)
 end
 
--- helpers: rarityItem(rarity, size), powerText(pet), tileCenter(), bump() z Pets.luau.
--- Zwraca { open(pets, info, onDone), isOpen() }. onDone(result) po animacji (result = odpowiedź
--- serwera) albo onDone(nil) po CANCEL.
-function PetMerge.create(hud, helpers)
+-- kind opisuje rodzaj rzeczy:
+--   title, icon        tytuł i ikona okna (np. "Merge Pets", "Pets")
+--   one, many          nazwa jednej i wielu rzeczy w napisach (np. "pet", "pets")
+--   remote             RemoteFunction łączenia (np. "MergePets")
+--   model(item)        model do ViewportFrame
+--   name(item)         pełna nazwa z poziomem (np. „Golden Pigeon”)
+--   powerText(item)    bonus, np. „+40% L$”
+--   rarityItem(r, s)   napis rzadkości dla Kit.line
+--   fromInfo(info)     rzecz po łączeniu z podglądu (Loop.mergeInfo albo Clothes.mergeInfo)
+--   fromReply(reply)   rzecz z odpowiedzi serwera po sukcesie
+--   onText             napis, gdy nowa rzecz jest założona (np. "Equipped!")
+--   isOn(item)         czy nowa rzecz jest założona
+--   tileCenter(), bump()  kafelek w menu, do którego leci nowa rzecz
+-- Zwraca { open(items, info, onDone), isOpen(), chancePerPiece() }. onDone(result) po animacji
+-- (result = odpowiedź serwera) albo onDone(nil) po CANCEL.
+function MergeWindow.create(hud, kind)
+	local helpers = kind
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
 
@@ -115,8 +144,8 @@ function PetMerge.create(hud, helpers)
 	local card = Kit.panel(gui, {
 		name = "MergeCard",
 		size = CARD_SIZE,
-		title = TEXT.Title,
-		icon = "Pets",
+		title = kind.title,
+		icon = kind.icon,
 		padding = 30,
 		top = 40,
 		bottom = 24,
@@ -403,18 +432,18 @@ function PetMerge.create(hud, helpers)
 			Kit.corner(cell, 14)
 			Kit.stroke(cell, 2.5, Enum.ApplyStrokeMode.Border)
 			local view = viewport(cell, { Size = UDim2.fromScale(1, 1), ZIndex = 6 })
-			PetModels.show(view, PetModels.pet(pet.Zone, pet.Rarity, pet.Level), 1.6)
+			showModel(view, kind.model(pet), 1.6)
 		end
 		resultGradient.Color = ColorSequence.new(levelColors(info.Level)[1], levelColors(info.Level)[2])
-		resultModel = PetModels.pet(info.Zone, info.Rarity, info.Level)
-		PetModels.show(resultView, resultModel, 1.6)
-		local preview = { Zone = info.Zone, Rarity = info.Rarity, Level = info.Level }
+		local preview = kind.fromInfo(info)
+		resultModel = kind.model(preview)
+		showModel(resultView, resultModel, 1.6)
 		nameLine.set({
-			{ text = PetsConfig.fullName(info.Zone, info.Rarity, info.Level), size = 28, colors = levelColors(info.Level) },
+			{ text = kind.name(preview), size = 28, colors = levelColors(info.Level) },
 			{ text = helpers.powerText(preview), size = 24, colors = Theme.Gradients.Gold },
 		})
 		chanceLine.set({
-			{ text = Format.percent(info.Chance), size = 58, colors = PetMerge.chanceColors(info.Chance) },
+			{ text = Format.percent(info.Chance), size = 58, colors = MergeWindow.chanceColors(info.Chance) },
 			{ text = TEXT.Chance, size = 28 },
 		})
 		local cash = (State.view and State.view.Cash) or 0
@@ -430,9 +459,9 @@ function PetMerge.create(hud, helpers)
 		if info.Chance >= 1 - 1e-9 then
 			riskLine.set({ { text = TEXT.Safe, size = 22, colors = Theme.Gradients.Green } })
 		elseif #pets == 1 then
-			riskLine.set({ { text = TEXT.RiskOne, size = 22, colors = Theme.Gradients.Red } })
+			riskLine.set({ { text = string.format(TEXT.RiskOne, kind.one), size = 22, colors = Theme.Gradients.Red } })
 		else
-			riskLine.set({ { text = string.format(TEXT.Risk, #pets), size = 22, colors = Theme.Gradients.Red } })
+			riskLine.set({ { text = string.format(TEXT.Risk, #pets, kind.many), size = 22, colors = Theme.Gradients.Red } })
 		end
 	end
 
@@ -535,8 +564,8 @@ function PetMerge.create(hud, helpers)
 				Size = UDim2.fromOffset(170, 170),
 				ZIndex = 4,
 			})
-			local model = PetModels.pet(pet.Zone, pet.Rarity, pet.Level)
-			PetModels.show(view, model, 1.9)
+			local model = kind.model(pet)
+			showModel(view, model, 1.9)
 			local scale = Kit.new("UIScale", { Scale = 0, Parent = view })
 			TweenService:Create(scale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 			table.insert(spinners, {
@@ -567,15 +596,15 @@ function PetMerge.create(hud, helpers)
 		local middle = Vector2.new(STAGE_SIZE.X / 2, STAGE_SIZE.Y / 2 - 10)
 		local now = os.clock()
 		if result.Success then
-			local pet = result.Pet or { Zone = result.Zone, Rarity = result.Rarity, Level = result.Level }
+			local pet = kind.fromReply(result)
 			local colors = levelColors(pet.Level)
 			for _, bar in ipairs(bars) do
 				bar.BackgroundColor3 = colors[2]
 			end
 			glow.BackgroundColor3 = colors[2]
 			glowStroke.Color = colors[1]
-			resultModel = PetModels.pet(pet.Zone, pet.Rarity, pet.Level)
-			PetModels.show(centerView, resultModel, 2.1)
+			resultModel = kind.model(pet)
+			showModel(centerView, resultModel, 2.1)
 			center:SetAttribute("Start", now)
 			center.Visible = true
 			centerPop.Scale = 0.15
@@ -596,15 +625,15 @@ function PetMerge.create(hud, helpers)
 			end
 			banner.set({ { text = TEXT.Success, size = 54, colors = Theme.Gradients.Green } })
 			popIn(banner, 0)
-			resultName.set({ { text = PetsConfig.fullName(pet.Zone, pet.Rarity, pet.Level), size = 44, colors = colors } })
+			resultName.set({ { text = kind.name(pet), size = 44, colors = colors } })
 			popIn(resultName, 0.1)
 			resultInfo.set({
 				helpers.rarityItem(pet.Rarity, 28),
 				{ text = helpers.powerText(pet), size = 28, colors = Theme.Gradients.Gold },
 			})
 			popIn(resultInfo, 0.22)
-			if pet.Equipped then
-				resultExtra.set({ { text = TEXT.Equipped, size = 24, colors = Theme.Gradients.Green } })
+			if kind.isOn(pet) then
+				resultExtra.set({ { text = kind.onText, size = 24, colors = Theme.Gradients.Green } })
 				popIn(resultExtra, 0.34)
 			end
 		else
@@ -618,9 +647,9 @@ function PetMerge.create(hud, helpers)
 			Sounds.play("MergeFail")
 			banner.set({ { text = TEXT.Failed, size = 54, colors = Theme.Gradients.Red } })
 			popIn(banner, 0)
-			local lost = string.format(TEXT.Lost, #pets)
+			local lost = string.format(TEXT.Lost, #pets, kind.many)
 			if #pets == 1 then
-				lost = TEXT.LostOne
+				lost = string.format(TEXT.LostOne, kind.one)
 			end
 			resultName.set({ { text = lost, size = 36 } })
 			popIn(resultName, 0.15)
@@ -710,7 +739,7 @@ function PetMerge.create(hud, helpers)
 		end
 		requesting = true
 		local ok, result = pcall(function()
-			return Net.func("MergePets"):InvokeServer(ids)
+			return Net.func(kind.remote):InvokeServer(ids)
 		end)
 		requesting = false
 		if not ok or type(result) ~= "table" then
@@ -725,7 +754,7 @@ function PetMerge.create(hud, helpers)
 				Sounds.play("NotEnough")
 				local text = TEXT.Error
 				if result.Reason == "Missing" or result.Reason == "NotSame" then
-					text = TEXT.Gone
+					text = string.format(TEXT.Gone, kind.many)
 				elseif result.Reason == "Premium" then
 					text = TEXT.Premium
 				end
@@ -745,7 +774,7 @@ function PetMerge.create(hud, helpers)
 		end
 	end)
 
-	------------------------------------------------------------- Dla Pets.luau
+	------------------------------------------------------------- Dla okien PETS i CLOTHES
 	local api = {}
 
 	-- pets: lista petów { Id, Zone, Rarity, Level, Egg }, info: wynik Loop.mergeInfo.
@@ -787,4 +816,4 @@ function PetMerge.create(hud, helpers)
 	return api
 end
 
-return PetMerge
+return MergeWindow

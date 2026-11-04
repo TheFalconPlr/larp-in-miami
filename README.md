@@ -14,9 +14,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `PetMerge` (okno i animacja łączenia), `Eggs` (jajka: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -223,6 +223,36 @@ Do testu: `/pet Rare 1 5` daje 5 Rare do łączenia, `/pet Epic 2 1 gold` daje G
 
 Jeszcze nie ma: tytułu „Secret Society” za komplet 5 sekretów i rankingu „Sekrety”. Dojdą razem z tytułami i rankingami, a licznik sekretów już się zapisuje.
 
+## Etap 8: ubrania
+
+Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania podbijają LP: za klik i w aktywnościach (pety podbijają L$).
+
+- **Mystery boxy w Mall.** Wszystkie trzy stoją w Mall, ale Designer da się kupić dopiero po odblokowaniu plaży, a Iced po odblokowaniu lotniska (wtedy pigułka pokazuje kłódkę i nazwę strefy). Działa jak przy jajkach: pigułka z ceną, panel z szansami nad boxem, duże E i okno kupna. Animacja: box drży 3 razy, wieko odlatuje, a ze środka wyskakuje ubranie z promieniami w kolorze rzadkości i leci do kafelka CLOTHES.
+
+| Box | Cena | Kiedy | Szanse |
+| --- | --- | --- | --- |
+| Street Box | 2,5M L$ | po odblokowaniu Mall | Common 60%, Uncommon 28%, Rare 10%, Epic 2% |
+| Designer Box | 200M L$ | po odblokowaniu plaży | Uncommon 50%, Rare 35%, Epic 13%, Legendary 2% |
+| Iced Box | 80B L$ | po odblokowaniu lotniska | Rare 50%, Epic 35%, Legendary 13%, Mythic 2% |
+
+- **7 kategorii po 1 slocie:** Hair, Glasses, Chain, Watch, Shirt, Pants, Shoes. Kategoria wypada losowo (każda tak samo często). Gamepassy Double Chain i Double Wrist dają drugi łańcuch i drugi zegarek (w teście `/pass DoubleChain`, `/pass DoubleWrist`). Bonus do LP: Common +20%, Uncommon +40%, Rare +80%, Epic +160%, Legendary +320%, Mythic +640%, a Golden ×2 i Diamond ×4. Bonusy założonych ubrań się dodają, np. Rare łańcuch i Epic włosy dają ×3,4 LP. Nowe ubranie samo się zakłada, jeśli w jego kategorii jest wolne miejsce albo jest lepsze od tego, co masz na sobie. Szczęście (Luck z Aury) działa na boxy tak jak na jajka.
+- **Na awatarze:** ubrania widzą wszyscy gracze. Dopóki nie ma rzeczy z katalogu Roblox, są zbudowane z klocków: włosy, okulary, łańcuch na szyi, zegarek na lewym nadgarstku (drugi na prawym), koszula z rękawami, spodnie albo szorty i buty. Działa na R15 i R6. Włosy z gry chowają Twoje włosy. Przycisk AVATAR ON/OFF w oknie chowa ubrania z gry (bonus zostaje).
+- **Okno CLOTHES** (nowy kafelek po lewej): po lewej 7 kategorii z tym, co masz na sobie (kliknij kategorię, żeby zobaczyć tylko jej ubrania), po prawej wszystkie ubrania. Kliknij ubranie, żeby je założyć (zastępuje to z tej samej kategorii) albo zdjąć. WEAR BEST zakłada najlepsze. SELL i MERGE działają jak u petów: sprzedaż za 10% ceny boxa (Common–Epic liczą się od Street, Legendary od Designer, Mythic od Iced; Golden ×5, Diamond ×25), łączenie 1–5 identycznych ubrań po 20% szansy z tym samym oknem i animacją. Ubrania kupione za Robuxy (np. zegarek ze Starter Packa) łączą się tylko przy 100%.
+- **Menu po lewej:** z czwartym kafelkiem przełączniki Auto-Click i Auto-Sell przeszły obok kafelka SELL, a całe menu jest trochę wyżej, żeby nie wchodziło na licznik L$.
+
+**Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia 3 pudełka na podłodze Mall, po tej samej stronie ścieżki co jajka, dalej w głąb strefy.
+
+**Twoje stoiska i ubrania.**
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Stoiska boxów | `BoxStreet`, `BoxDesigner`, `BoxIced` (model albo część) | W Mall. Panel z szansami wisi nad najwyższym punktem stoiska, pigułka z ceną przy jego spodzie. |
+| Nazwy, kolory i kształty ubrań | `src/shared/Config/Clothes.luau` | Kolory (`Main`, `Accent`), wykończenie (`Finish`: Metal, Ice, Neon) i kształt (np. `Sleeves`, `Long`, `Style`). Nazwy bez „Golden” i „Diamond” na początku. |
+| Rzeczy z katalogu Roblox | podeślij mi ID | Gdy znajdziesz włosy, okulary, łańcuchy, zegarki, koszule, spodnie i buty w katalogu, podepnę je zamiast klocków. |
+| Ikona kafelka CLOTHES | `Settings.Ui.Icons.Clothes` (ID z Toolboxa) | Bez niej jest emoji 👕. |
+
+Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/cloth Chain Rare 5` (5 łańcuchów do łączenia), `/cloth all Epic` (po jednym z każdej kategorii), `/cloth Hair Mythic 1 gold` i `/clearclothes`.
+
 ## Co dalej (plan etapów)
 
 Kolejność jest jak w dokumencie projektu: najpierw pety i ubrania, potem Rebirth i Aura.
@@ -230,8 +260,8 @@ Kolejność jest jak w dokumencie projektu: najpierw pety i ubrania, potem Rebir
 | Etap | Co |
 | --- | --- |
 | 6 | ✓ Gotowe: wywiad, jacht i odrzutowiec. |
-| 7 | ✓ Gotowe: sprzedaż i łączenie petów, indeks i sekrety (opis wyżej). |
-| 8 | Ubrania: 3 boxy w Mall (Street, Designer po odblokowaniu plaży, Iced po odblokowaniu lotniska), 7 kategorii po 1 slocie, bonus do LP, ubrania widoczne na awatarze (z opcją ukrycia), sprzedaż i łączenie jak u petów. |
+| 7 | ✓ Gotowe: sprzedaż i łączenie petów, indeks i sekrety. |
+| 8 | ✓ Gotowe: ubrania (opis wyżej). Etap „Pety, ubrania, sekrety” z dokumentu jest kompletny. |
 | 9 | Rebirth i Aura: reset postępu za stały mnożnik LP, tytuły, teleport na spawn, +5% szybkości; Aura za Rebirthy, pasek czasu (w wywiadzie 2×) i sklep Aury (Click Boost, Luck, Aura Gain, Merge Luck), Aura Level i poświata. |
 | 10 | Robux: gamepassy, produkty, boosty, jajka premium i starter pack (ID tworzysz w Creator Hub). |
 | 11 | Nagrody dzienne i zadania, kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuły nad głową, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
@@ -263,6 +293,8 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/mergeluck 5` | ustawia ulepszenie Merge Luck (0–5, +1 pkt proc. na peta przy łączeniu) |
 | `/clearpets` | usuwa wszystkie pety (indeks zostaje) |
 | `/clearindex` | czyści indeks petów (zostają w nim pety, które masz), żeby znów zobaczyć NEW! |
+| `/cloth Chain Rare 5` | daje ubranie: kategoria (albo `all`), rzadkość, ile sztuk i poziom (`gold`, `diamond`), np. `/cloth all Epic` albo `/cloth Hair Mythic 1 gold` |
+| `/clearclothes` | usuwa wszystkie ubrania |
 | `/odds 10000 1 B` | losuje na próbę 10 000 złotych jajek ze strefy 1 i pokazuje, co wypadło (bez L$ i bez petów) |
 | `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |

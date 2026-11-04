@@ -148,6 +148,10 @@ def build():
             'Iced': {'Price': c['BOX_PRICE']['iced'], 'RequiresZone': c['BOX_ANCHOR']['iced'][0], 'Odds': rar_odds(c['BOX_ODDS']['iced'])},
         },
         'ExtraSlotGamepass': {'Chain': 'DoubleChain', 'Watch': 'DoubleWrist'},
+        # box, od którego liczy się cena ubrania danej rzadkości (opłata za łączenie w modelu,
+        # e.cloth_source, i sprzedaż: 10% tej ceny); łączenie na tych samych zasadach co pety
+        'SourceBox': {RAR[k]: e.cloth_source(k).capitalize() for k in c['CLOTH_BONUS']},
+        'SellReturn': 0.10, 'GoldSellX': 5, 'DiamondSellX': 25,
     }
 
     titles = ['Broke', 'Wannabe', 'Fake Rich', 'Influencer', 'Main Character', 'Self-Made', 'Trust Fund', 'Old Money',

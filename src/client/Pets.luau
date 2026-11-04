@@ -4,7 +4,7 @@
 --     zaznacza duplikaty (z każdego rodzaju jeden zostaje), ALL wszystkie niezałożone. Sprzedaż
 --     sekreta trzeba potwierdzić (dokument projektu),
 --   • MERGE: zaznacz 1–5 identycznych petów (każdy daje 20% szansy, więcej z Merge Luck) i połącz
---     je w wersję Golden (z Golden: Diamond). Okno z szansą i animację robi PetMerge,
+--     je w wersję Golden (z Golden: Diamond). Okno z szansą i animację robi MergeWindow,
 --   • INDEX: wszystkie pety z jajek, odkryte i „???”.
 -- Pety wszystkich graczy rysuje każdy klient sam, z atrybutu gracza „LarpPets” (ustawia go serwer,
 -- PetService). Liczy wszystko serwer; tu jest wygląd i podgląd (szansa, opłata, cena sprzedaży).
@@ -28,7 +28,7 @@ local Kit = require(script.Parent.Ui.Kit)
 local Sounds = require(script.Parent.Ui.Sounds)
 local LocalHide = require(script.Parent.LocalHide)
 local PetModels = require(script.Parent.PetModels)
-local PetMerge = require(script.Parent.PetMerge)
+local MergeWindow = require(script.Parent.MergeWindow)
 
 local Pets = {}
 
@@ -271,9 +271,30 @@ function Pets.start(hud)
 	})
 	hud.registerScale(panel.holder)
 	hud.addWindow(panel)
-	local merger = PetMerge.create(hud, {
-		rarityItem = rarityItem,
+	local merger = MergeWindow.create(hud, {
+		title = "Merge Pets",
+		icon = "Pets",
+		one = "pet",
+		many = "pets",
+		remote = "MergePets",
+		model = function(pet)
+			return PetModels.pet(pet.Zone, pet.Rarity, pet.Level)
+		end,
+		name = function(pet)
+			return PetsConfig.fullName(pet.Zone, pet.Rarity, pet.Level)
+		end,
 		powerText = powerText,
+		rarityItem = rarityItem,
+		fromInfo = function(info)
+			return { Zone = info.Zone, Rarity = info.Rarity, Level = info.Level }
+		end,
+		fromReply = function(reply)
+			return reply.Pet or { Zone = reply.Zone, Rarity = reply.Rarity, Level = reply.Level }
+		end,
+		onText = "Equipped!",
+		isOn = function(pet)
+			return pet.Equipped == true
+		end,
 		tileCenter = Pets.tileCenter,
 		bump = Pets.bump,
 	})
@@ -594,7 +615,7 @@ function Pets.start(hud)
 				end
 				footer.set({
 					{ text = TEXT.MergeChance, size = 22 },
-					{ text = Format.percent(info.Chance), size = 28, colors = PetMerge.chanceColors(info.Chance) },
+					{ text = Format.percent(info.Chance), size = 28, colors = MergeWindow.chanceColors(info.Chance) },
 					{ text = TEXT.MergeFee, size = 22 },
 					{ icon = "Cash", size = 32 },
 					{ text = Format.number(info.Fee), size = 26, colors = feeColors },

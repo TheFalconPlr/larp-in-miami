@@ -189,4 +189,16 @@ function Formulas.petPower(zone, rarity, mergeLevel)
 	return power
 end
 
+----------------------------------------------------------------- Ubrania
+-- Bonus ubrania (+% LP jako ułamek): bonus rzadkości × (Golden ×2, Diamond ×4), np. Rare = 0,8.
+function Formulas.clothBonus(rarity, mergeLevel)
+	local bonus = Economy.Clothes.RarityBonus[rarity] or 0
+	if mergeLevel == 1 then
+		bonus = bonus * Economy.Pets.Merge.GoldMultiplier
+	elseif mergeLevel == 2 then
+		bonus = bonus * Economy.Pets.Merge.DiamondMultiplier
+	end
+	return bonus
+end
+
 return Formulas

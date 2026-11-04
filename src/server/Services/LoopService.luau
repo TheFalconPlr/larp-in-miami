@@ -14,6 +14,7 @@ local Economy = require(Shared.Config.Economy)
 local Settings = require(Shared.Config.Settings)
 local Format = require(Shared.Format)
 local Loop = require(Shared.Logic.Loop)
+local Clothes = require(Shared.Logic.Clothes)
 local RateLimiter = require(Shared.Logic.RateLimiter)
 local Net = require(Shared.Net)
 
@@ -45,9 +46,11 @@ local function contextFor(player)
 		friends = 0, -- Etap 10: bonus za znajomych
 		boost = false, -- Etap 9: boost 2x LP
 		petLayer = 1,
+		clothLayer = 1,
 	}
 	if data ~= nil then
 		ctx.petLayer = Loop.petLayer(data, ctx) -- wyposażone pety mnożą L$ przy Sell
+		ctx.clothLayer = Clothes.layer(data, ctx) -- założone ubrania mnożą LP (klik i aktywności)
 	end
 	return ctx
 end
@@ -126,6 +129,7 @@ local function flush(player, s)
 	view.Settings = {
 		AutoClick = data.Settings.AutoClick ~= false,
 		AutoSell = data.Settings.AutoSell ~= false,
+		ShowClothes = data.Settings.ShowClothes ~= false,
 	}
 	for _, hook in ipairs(viewHooks) do
 		hook(player, view)
@@ -368,7 +372,7 @@ local function buyZone(player, id)
 end
 
 local function setSetting(player, key, value)
-	if (key ~= "AutoClick" and key ~= "AutoSell") or type(value) ~= "boolean" then
+	if (key ~= "AutoClick" and key ~= "AutoSell" and key ~= "ShowClothes") or type(value) ~= "boolean" then
 		return
 	end
 	local data = DataService.get(player)
