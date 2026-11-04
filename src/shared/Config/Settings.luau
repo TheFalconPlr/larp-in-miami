@@ -99,6 +99,12 @@ local Settings = {
 		Comment = { Id = 140323850218372, Volume = 0.25, MinGap = 0.08 }, -- nowy komentarz w czacie
 		ClipPosted = { Id = 137081214744553, Volume = 1.2 }, -- „whoosh”: klip idzie do sieci (cichy plik)
 		InterviewFlop = { Id = 116298781032555, Volume = 0.7 }, -- ocena FLOP: smutna trąbka
+
+		-- Pety (Etap 7): nieudane łączenie (ta sama smutna trąbka), sekret z jajka („vine boom” przy
+		-- rozbiciu, potem oklaski Reward) i komunikat o sekrecie u wszystkich graczy (gong z kabiny).
+		MergeFail = { Id = 116298781032555, Volume = 0.6, MinGap = 0.5 },
+		SecretReveal = { Id = 140367458608473, Volume = 0.8, MinGap = 0.5 },
+		SecretAnnounce = { Id = 76104215304832, Volume = 0.5, MinGap = 1 },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

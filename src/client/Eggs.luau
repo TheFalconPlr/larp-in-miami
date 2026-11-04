@@ -82,7 +82,16 @@ local TEXT = {
 	NewPets = "NEW PETS!",
 	RarePet = "%s PET!",
 	Equipped = "Equipped!",
+	New = "NEW!",
+	SecretPet = "SECRET PET!",
 }
+
+-- Sekret (dokument projektu: „specjalna animacja”): fioletowo-złote promienie, fioletowy błysk,
+-- mocniejsze drżenie, „vine boom”, więcej iskier i dłuższa chwila na pokaz.
+local SECRET_RAYS = { Color3.fromRGB(176, 70, 255), Color3.fromRGB(255, 200, 60) }
+local SECRET_COLORS = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 170, 255) }
+local SECRET_FLASH = Color3.fromRGB(200, 140, 255)
+local SECRET_HOLD = 2.2 -- tyle sekund dłużej widać sekreta
 
 local RANK = {}
 for i, rarity in ipairs(Economy.Pets.RarityOrder) do
@@ -619,6 +628,10 @@ function Eggs.start(hud)
 	local banner = Kit.line(stage, { name = "Banner", anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 96), height = 60 })
 	banner.holder.ZIndex = 8
 	local bannerScale = Kit.new("UIScale", { Scale = 0, Parent = banner.holder })
+	-- pod napisem SECRET PET! szansa „1 in 25,000”
+	local subBanner = Kit.line(stage, { name = "SubBanner", anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 140), height = 40 })
+	subBanner.holder.ZIndex = 8
+	local subBannerScale = Kit.new("UIScale", { Scale = 0, Parent = subBanner.holder })
 
 	local slots = {}
 	local particles = {}
@@ -714,7 +727,11 @@ function Eggs.start(hud)
 			size, spacing = SLOT_BIG, 0
 		end
 		local x = (index - (count + 1) / 2) * spacing
+		local secret = pet.Rarity == "Secret"
 		local color = PetsConfig.RarityColors[pet.Rarity] or Theme.White
+		if secret then
+			color = SECRET_RAYS[1] -- ciemny kolor sekreta nie świeci, więc promienie i poświata są fioletowe
+		end
 		local holder = Kit.new("Frame", {
 			Name = "Slot" .. index,
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -740,11 +757,15 @@ function Eggs.start(hud)
 		local raysScale = Kit.new("UIScale", { Parent = rays })
 		local bars = {}
 		for i = 1, 8 do
+			local barColor = color
+			if secret then
+				barColor = SECRET_RAYS[(i % 2) + 1]
+			end
 			local bar = Kit.new("Frame", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.fromScale(0.5, 0.5),
 				Size = UDim2.new(0, math.floor(size * 0.15), 1, 0),
-				BackgroundColor3 = color,
+				BackgroundColor3 = barColor,
 				BorderSizePixel = 0,
 				Rotation = (i - 1) * 22.5,
 				ZIndex = 2,
@@ -807,12 +828,29 @@ function Eggs.start(hud)
 		if big then
 			nameH, infoH, equippedH = 52, 40, 34
 		end
+		-- „NEW!” w rogu: pet, którego gracz jeszcze nie miał (indeks)
+		local newLabel = Kit.text(holder, {
+			Name = "New",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.16, 0.12),
+			Size = UDim2.fromOffset(math.floor(size * 0.36), math.floor(size * 0.13)),
+			Rotation = -14,
+			Text = TEXT.New,
+			ZIndex = 7,
+		}, { maxSize = 44, stroke = 3.5, gradient = Theme.Gradients.Yellow })
+		local newScale = Kit.new("UIScale", { Scale = 0, Parent = newLabel })
+		local sparkColor = rarityColors(pet.Rarity)[1]
+		if secret then
+			sparkColor = SECRET_RAYS[2]
+		end
 		return {
 			big = big,
 			size = size,
 			pet = pet,
 			color = color,
-			sparkColor = rarityColors(pet.Rarity)[1],
+			secret = secret,
+			newScale = newScale,
+			sparkColor = sparkColor,
 			center = Vector2.new(STAGE_SIZE.X / 2 + x, STAGE_SIZE.Y / 2),
 			holder = holder,
 			holderScale = holderScale,
@@ -869,12 +907,19 @@ function Eggs.start(hud)
 					slot.glowScale.Scale = 1 + math.sin(e * 4) * 0.04
 				end
 				if phase == "reveal" and BIG_RARITY[slot.pet.Rarity] and now >= slot.nextSpark then
-					slot.nextSpark = now + 0.07
+					local gap = 0.07
+					if slot.secret then
+						gap = 0.03
+					end
+					slot.nextSpark = now + gap
 					local angle = math.random() * math.pi * 2
 					local radius = slot.size * (0.2 + math.random() * 0.32)
 					local position = slot.center + Vector2.new(math.cos(angle), math.sin(angle)) * radius
 					local color = Theme.White
-					if math.random() < 0.5 then
+					local roll = math.random()
+					if slot.secret and roll < 0.33 then
+						color = SECRET_RAYS[1]
+					elseif roll < 0.5 or (slot.secret and roll < 0.66) then
 						color = slot.sparkColor
 					end
 					spawnParticle("spark", position, Vector2.new(0, -40), color, math.random(16, 28), 0.6)
@@ -912,6 +957,18 @@ function Eggs.start(hud)
 		local now = os.clock()
 		local eggColor = PetModels.eggColor(egg)
 		phase = "reveal"
+		local best = nil
+		for _, slot in ipairs(slots) do
+			if best == nil or RANK[slot.pet.Rarity] > RANK[best] then
+				best = slot.pet.Rarity
+			end
+		end
+		local secret = best == "Secret"
+		flash.BackgroundColor3 = Color3.new(1, 1, 1)
+		if secret then
+			flash.BackgroundColor3 = SECRET_FLASH
+			TweenService:Create(dim, TweenInfo.new(0.4), { BackgroundTransparency = 0.08 }):Play()
+		end
 		flash.BackgroundTransparency = 0
 		TweenService:Create(flash, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
 		-- rozbicie: dwa pęknięcia naraz (niskie i wysokie) i dźwięk nowego peta
@@ -920,13 +977,13 @@ function Eggs.start(hud)
 			Sounds.play("Crack", { pitch = 1.3, volume = 0.8 })
 		end)
 		Sounds.play("Hatch")
-		local best = nil
-		for _, slot in ipairs(slots) do
-			if best == nil or RANK[slot.pet.Rarity] > RANK[best] then
-				best = slot.pet.Rarity
-			end
-		end
-		if BIG_RARITY[best] then
+		if secret then
+			Sounds.play("SecretReveal")
+			shakeUntil = now + 1
+			task.delay(0.35, function()
+				Sounds.play("Reward")
+			end)
+		elseif BIG_RARITY[best] then
 			shakeUntil = now + 0.45
 			task.delay(0.2, function()
 				Sounds.play("Reward")
@@ -942,7 +999,7 @@ function Eggs.start(hud)
 			end
 			local pet = slot.pet
 			slot.eggModel = nil
-			slot.petModel = PetModels.pet(pet.Zone, pet.Rarity)
+			slot.petModel = PetModels.pet(pet.Zone, pet.Rarity, pet.Level)
 			PetModels.show(slot.viewport, slot.petModel, PET_REVEAL_DISTANCE)
 			slot.petSize = slot.petModel:GetExtentsSize().Magnitude
 			slot.revealStart = now
@@ -959,8 +1016,11 @@ function Eggs.start(hud)
 			if slot.big then
 				nameSize, infoSize, powerSize, equippedSize = 44, 30, 28, 24
 			end
-			slot.nameLine.set({ { text = PetsConfig.name(pet.Zone, pet.Rarity), size = nameSize } })
+			slot.nameLine.set({ { text = PetsConfig.fullName(pet.Zone, pet.Rarity, pet.Level), size = nameSize } })
 			popIn(slot.nameLine.scale, delay)
+			if pet.New then
+				popIn(slot.newScale, delay + 0.3, 0.35)
+			end
 			slot.infoLine.set({
 				Pets.rarityItem(pet.Rarity, infoSize),
 				{ text = Pets.powerText(pet), size = powerSize, colors = Theme.Gradients.Gold },
@@ -976,12 +1036,24 @@ function Eggs.start(hud)
 			text = TEXT.NewPets
 		end
 		local colors = Theme.Gradients.Gold
-		if BIG_RARITY[best] then
+		if secret then
+			text = TEXT.SecretPet
+			colors = SECRET_COLORS
+		elseif BIG_RARITY[best] then
 			text = string.format(TEXT.RarePet, string.upper(best))
 			colors = rarityColors(best)
 		end
-		banner.set({ { text = text, size = 46, colors = colors } })
+		local bannerSize = 46
+		if secret then
+			bannerSize = 58
+		end
+		banner.set({ { text = text, size = bannerSize, colors = colors } })
 		popIn(bannerScale, 0, 0.35)
+		if secret then
+			subBanner.set({ { text = Format.oneIn(Economy.Pets.SecretChance), size = 32, colors = Theme.Gradients.Gold } })
+			popIn(subBannerScale, 0.25, 0.35)
+		end
+		return secret
 	end
 
 	-- Koniec: HUD wraca, a pety lecą do kafelka PETS (kafelek podskakuje).
@@ -990,6 +1062,7 @@ function Eggs.start(hud)
 		hud.setVisible(true)
 		TweenService:Create(dim, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
 		TweenService:Create(bannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		TweenService:Create(subBannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
 		local target = Pets.tileCenter()
 		local inset = GuiService:GetGuiInset()
 		for i, slot in ipairs(slots) do
@@ -1051,11 +1124,14 @@ function Eggs.start(hud)
 		end
 		banner.set({})
 		bannerScale.Scale = 0
+		subBanner.set({})
+		subBannerScale.Scale = 0
 		local slotSize = SLOT_SMALL
 		if #pets == 1 then
 			slotSize = SLOT_BIG
 		end
 		banner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 - 44)
+		subBanner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 + 4)
 		stage.Position = UDim2.fromScale(0.5, STAGE_Y)
 		dim.BackgroundTransparency = 1
 		hatchGui.Enabled = true
@@ -1071,8 +1147,11 @@ function Eggs.start(hud)
 			crackBeat(k, egg)
 		end
 		waitUntil(start + BURST_AT * total)
-		burst(egg)
-		task.wait(math.max(0.9, total * 0.5))
+		local hold = math.max(0.9, total * 0.5)
+		if burst(egg) then
+			hold = hold + SECRET_HOLD
+		end
+		task.wait(hold)
 		exit()
 		task.wait(0.6)
 	end

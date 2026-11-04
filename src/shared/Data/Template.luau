@@ -14,9 +14,10 @@ return {
 		Yacht = 1,
 		Jet = 0, -- pierwszy odrzutowiec trzeba kupić
 	},
-	Pets = {}, -- [id jako tekst] = { Zone = strefa jajka, Rarity = "Rare", Level = 0 } (Etap 5)
+	Pets = {}, -- [id jako tekst] = { Zone = strefa jajka, Rarity = "Rare", Level = 0, Egg = "A" } (Etap 5)
 	Equipped = {}, -- lista id wyposażonych petów
 	NextPetId = 1, -- id następnego peta
+	Index = {}, -- [„strefa:rzadkość”] = true: pety, które gracz już miał (indeks, Etap 7)
 	RebirthLevel = 0, -- poziom Rebirth, czyli mnożnik LP (na premierę maks. 10)
 	RebirthCount = 0, -- wszystkie Rebirthy, także po R10 (ranking)
 	Aura = 0,
@@ -42,6 +43,10 @@ return {
 		YachtParties = 0, -- imprezy na jachcie (Etap 6)
 		JetFlights = 0, -- loty odrzutowcem (Etap 6)
 		EggsOpened = 0, -- otwarte jajka (Etap 5; pierwsze jajko A w strefie 1 daje Rare)
+		PetsSold = 0, -- sprzedane pety (Etap 7)
+		Merges = 0, -- próby łączenia petów
+		MergesFailed = 0, -- nieudane łączenia
+		SecretsHatched = 0, -- sekretne pety z jajek (ranking „Sekrety” w dokumencie projektu)
 	},
 	FirstJoin = 0,
 	LastJoin = 0,

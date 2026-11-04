@@ -16,7 +16,7 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 | --- | --- | --- |
 | `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Tests` |
 | `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS i pety za graczami), `Eggs` (jajka: tablice, okno, otwieranie), `PetModels` (modele petów i jajek), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `PetMerge` (okno i animacja łączenia), `Eggs` (jajka: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -150,7 +150,7 @@ Co działa: w każdej strefie stoją dwa jajka za L$: zwykłe i złote (droższe
 
 Animacja otwierania: jajko pęka 3 razy (dźwięk coraz wyżej, rysy i odpryski), skorupka się rozpryskuje, a pet wkręca się i odbija na tle promieni i poświaty w kolorze rzadkości. Przy Legendary i Secret są jeszcze iskry, drżenie ekranu i oklaski. Napisy (nazwa, rzadkość z bonusem, „Equipped!”) wskakują po kolei, a na koniec pet leci do kafelka PETS. W czasie animacji HUD jest schowany. Pierwsze jajko w grze (zwykłe w Downtown Miami) zawsze daje Rare. Nowy pet sam się zakłada, jeśli jest wolne miejsce.
 
-Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Sell. Bonus peta = moc strefy × mnożnik rzadkości, np. Rare z Downtown Miami daje +20% L$, a dwa takie pety dają ×1,4. Miejsca na pety: 3, po jednym więcej od Rebirth 3 i Rebirth 7, a gamepass Pet Slots daje +2. Kafelek PETS po lewej otwiera ekwipunek: kliknij peta, żeby go założyć albo zdjąć, a EQUIP BEST zakłada najmocniejsze. Obok tytułu widać, ile masz petów (np. 37/250; ekwipunek mieści 250). DELETE włącza usuwanie: klikasz pety do usunięcia (dostają czerwony X), ALL zaznacza wszystkie niezałożone, a DELETE (N) je usuwa; CANCEL wraca. Założonych petów nie da się usunąć. Czerwona kropka na PETS znaczy, że masz wolne miejsce i peta do założenia. Sprzedawanie i łączenie petów (Gold, Diamond) będzie w Etapie 8.
+Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Sell. Bonus peta = moc strefy × mnożnik rzadkości, np. Rare z Downtown Miami daje +20% L$, a dwa takie pety dają ×1,4. Miejsca na pety: 3, po jednym więcej od Rebirth 3 i Rebirth 7, a gamepass Pet Slots daje +2. Kafelek PETS po lewej otwiera ekwipunek: kliknij peta, żeby go założyć albo zdjąć, a EQUIP BEST zakłada najmocniejsze. Obok tytułu widać, ile masz petów (np. 37/250; ekwipunek mieści 250). Czerwona kropka na PETS znaczy, że masz wolne miejsce i peta do założenia. Sprzedaż, łączenie i indeks petów opisuje Etap 7.
 
 | Strefa | Zwykłe jajko | Złote jajko | Common → Legendary |
 | --- | --- | --- | --- |
@@ -207,15 +207,34 @@ W czasie sesji tablice aktywności i pigułki z cenami jajek są schowane, żeby
 
 Nazwy modeli w grze (auta, jachty, odrzutowce) są robocze, zmienisz je w `src/client/Activities.luau` (`KINDS`).
 
+## Etap 7: sprzedaż, łączenie, indeks i sekrety
+
+Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Okno PETS ma teraz na dole trzy przyciski: INDEX, MERGE i SELL. DELETE zniknął, bo sprzedaż robi to samo i jeszcze daje L$.
+
+- **SELL:** klikasz pety do sprzedaży (dostają czerwony X). Na kartach widać cenę, a na dole sumę. DUPES zaznacza duplikaty (z każdego rodzaju zostaje jeden: założony albo najstarszy; sekretów nie rusza), ALL zaznacza wszystkie niezałożone, SELL (N) sprzedaje, a CANCEL wraca. Pet daje 10% ceny jajka, z którego wypadł; Golden ×5, a Diamond ×25 (czyli tyle, ile pety, które na niego poszły). Założonych petów nie da się sprzedać, a sprzedaż sekreta trzeba potwierdzić w okienku.
+- **MERGE:** wybierasz od 1 do 5 identycznych petów (ta sama strefa, rzadkość i poziom). Wybrane mają fioletowe numery, a pety, których nie da się dołożyć, są przygaszone. Każdy pet to 20% szansy (Merge Luck z Aury dodaje 1 pkt proc. na peta), więc 5 petów to 100%. AUTO dobiera identyczne pety do 5, a bez wyboru bierze rodzaj, którego masz najwięcej. Na dole widać szansę i opłatę. MERGE otwiera okno z petami, które możesz stracić, wynikiem, szansą, opłatą i ostrzeżeniem. Sukces daje wersję Golden (×2 mocy), a z Golden wersję Diamond (×4). Porażka zabiera wszystkie wrzucone pety. Opłata przepada zawsze: za każdego peta 1/5 ceny jajka przy Golden albo cała cena jajka przy Diamond, więc średnio Golden kosztuje zawsze 5 petów i cenę jajka. Animacja: pety krążą i zlatują się do środka, błysk, a potem nowy pet z promieniami i oklaskami (leci do PETS) albo szare odłamki i smutna trąbka. Pety z jajek premium (będą w etapie z Robuxami) łączą się tylko przy 100%.
+- **INDEX:** 35 petów (5 stref × 7 rzadkości). Odkryte widać normalnie, a nieodkryte jako czarną sylwetkę z „???”. Na dole jest licznik sekretów (np. 1/5). Pet, którego jeszcze nie miałeś, ma w animacji jajka napis NEW!. Mythic wypadnie dopiero z jajek premium. Stare zapisy dostają w indeksie pety, które już mają.
+- **Sekrety:** wypadają tylko ze złotego jajka (1 na 25 000). Mają specjalną animację: fioletowo-złote promienie, fioletowy błysk, „vine boom”, mocniejsze drżenie, napis SECRET PET! z „1 in 25,000” i dłuższy pokaz. Chwilę później u wszystkich graczy na wszystkich serwerach wjeżdża u góry pasek z głową awatara, np. „Nasdaq hatched a SECRET Iced Flamingo, 1 in 25,000” (u Ciebie „You hatched…”). Działa przez MessagingService. W Studio bez dostępu do API komunikat widać tylko na tym serwerze, a w Output jest wtedy ostrzeżenie.
+- **Golden i Diamond** mają złoty i diamentowy kolor (kulka albo Twój model), na karcie wstążkę GOLDEN albo DIAMOND, a w nazwie słowo z przodu, np. „Golden Pigeon”. Pety za graczem też są złote i diamentowe. Żeby nie było „Golden Golden Doge”, zmieniłem 4 robocze nazwy: Golden Doge → Crypto Doge, Diamond Flamingo → Iced Flamingo, Golden Whale → Mega Whale, Diamond Griffin → Jetset Griffin. Jeśli masz już modele petów pod starymi nazwami, zmień im nazwy. We własnym modelu części, które mają zostać w swoim kolorze (np. oczy), oznacz atrybutem `KeepColor` (true).
+
+Dźwięki w `Settings.Sounds`: `MergeFail` (nieudane łączenie, smutna trąbka), `SecretReveal` (sekret z jajka, „vine boom”) i `SecretAnnounce` (komunikat o sekrecie, gong z kabiny samolotu). Podmień je, jeśli znajdziesz lepsze.
+
+Do testu: `/pet Rare 1 5` daje 5 Rare do łączenia, `/pet Epic 2 1 gold` daje Golden Epic, `/secret 3` daje sekreta ze strefy 3 i ogłasza go, `/mergeluck 5` ustawia Merge Luck, a `/clearindex` czyści indeks (znów są napisy NEW!).
+
+Jeszcze nie ma: tytułu „Secret Society” za komplet 5 sekretów i rankingu „Sekrety”. Dojdą razem z tytułami i rankingami, a licznik sekretów już się zapisuje.
+
 ## Co dalej (plan etapów)
+
+Kolejność jest jak w dokumencie projektu: najpierw pety i ubrania, potem Rebirth i Aura.
 
 | Etap | Co |
 | --- | --- |
-| 6 | ✓ Gotowe: wywiad, jacht i odrzutowiec (opis wyżej). |
-| 7 | Rebirth i Aura: reset postępu za stały mnożnik LP, Aura za Rebirthy i ulepszenia za Aurę (Click Boost, Luck do jajek, Aura Gain). |
-| 8 | Sprzedawanie i łączenie petów (Gold, Diamond) oraz ubrania (skrzynki, sloty i bonusy). |
-| 9 | Robux: gamepassy, produkty, boosty i Premium Egg (ID tworzysz w Creator Hub). |
-| 10 | Nagrody dzienne i zadania, bonus za grupę i znajomych, poprawki przed premierą. |
+| 6 | ✓ Gotowe: wywiad, jacht i odrzutowiec. |
+| 7 | ✓ Gotowe: sprzedaż i łączenie petów, indeks i sekrety (opis wyżej). |
+| 8 | Ubrania: 3 boxy w Mall (Street, Designer po odblokowaniu plaży, Iced po odblokowaniu lotniska), 7 kategorii po 1 slocie, bonus do LP, ubrania widoczne na awatarze (z opcją ukrycia), sprzedaż i łączenie jak u petów. |
+| 9 | Rebirth i Aura: reset postępu za stały mnożnik LP, tytuły, teleport na spawn, +5% szybkości; Aura za Rebirthy, pasek czasu (w wywiadzie 2×) i sklep Aury (Click Boost, Luck, Aura Gain, Merge Luck), Aura Level i poświata. |
+| 10 | Robux: gamepassy, produkty, boosty, jajka premium i starter pack (ID tworzysz w Creator Hub). |
+| 11 | Nagrody dzienne i zadania, kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuły nad głową, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
 
 Kolejność może się zmienić, jeśli coś będzie pilniejsze.
 
@@ -238,9 +257,12 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/speed 60` | prędkość chodzenia (16 = normalnie, po odrodzeniu wraca) |
 | `/time 0` | pora dnia dla wszystkich (0 = noc, 14 = dzień) |
 | `/tier yacht 3` | ustawia tier aktywności: `car` 1–5, `yacht` 1–5, `jet` 0–3 (0 = bez odrzutowca) |
-| `/pet Legendary 2` | daje peta (rzadkość i strefa, np. `/pet Secret 5`); załóż go w oknie PETS |
+| `/pet Legendary 2` | daje peta (rzadkość i strefa); dalej ile sztuk i poziom, np. `/pet Rare 1 5` (5 do łączenia) albo `/pet Epic 2 1 gold` (`gold`, `diamond`) |
 | `/pet all 3` | daje po jednym pecie z każdej rzadkości ze strefy 3 |
-| `/clearpets` | usuwa wszystkie pety |
+| `/secret 3` | daje sekreta ze strefy 3 i ogłasza go wszystkim (na wszystkich serwerach, gdy działa MessagingService) |
+| `/mergeluck 5` | ustawia ulepszenie Merge Luck (0–5, +1 pkt proc. na peta przy łączeniu) |
+| `/clearpets` | usuwa wszystkie pety (indeks zostaje) |
+| `/clearindex` | czyści indeks petów (zostają w nim pety, które masz), żeby znów zobaczyć NEW! |
 | `/odds 10000 1 B` | losuje na próbę 10 000 złotych jajek ze strefy 1 i pokazuje, co wypadło (bez L$ i bez petów) |
 | `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |
 | `/rebirth 3` | ustawia liczbę Rebirthów (poziom najwyżej 10) |

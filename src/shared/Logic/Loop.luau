@@ -457,8 +457,15 @@ function Loop.activityView(data, ctx, kind)
 end
 
 ----------------------------------------------------------------- Pety i jajka
--- Pet w zapisie: data.Pets[id] = { Zone = strefa jajka, Rarity = "Rare", Level = 0 }
--- (Level 0 zwykły, 1 złoty, 2 diamentowy). data.Equipped = lista id wyposażonych petów.
+-- Pet w zapisie: data.Pets[id] = { Zone = strefa jajka, Rarity = "Rare", Level = 0, Egg = "A" }
+-- (Level 0 zwykły, 1 złoty, 2 diamentowy; Egg = jajko, z którego jest: A, B albo P = premium;
+-- stare pety bez Egg liczą się jak z jajka A). data.Equipped = lista id wyposażonych petów.
+-- data.Index[„strefa:rzadkość”] = true: pety, które gracz już miał (indeks).
+
+-- Zaokrąglenie jak w arkuszu: połówki w górę.
+local function roundHalfUp(x)
+	return math.floor(x + 0.5 + 1e-9)
+end
 
 -- Sloty na pety: 3, +1 od Rebirth 3, +1 od Rebirth 7, +2 z gamepassem Pet Slots.
 function Loop.petSlots(data, ctx)
@@ -609,9 +616,55 @@ function Loop.canBuyEgg(data, zone, egg, maxPets)
 	return Loop.canBuyEggs(data, zone, egg, 1, maxPets)
 end
 
+----------------------------------------------------------------- Indeks
+function Loop.indexKey(zone, rarity)
+	return tostring(zone) .. ":" .. tostring(rarity)
+end
+
+-- Zapisuje peta w indeksie. Zwraca true, gdy gracz ma go pierwszy raz (napis NEW! przy otwieraniu).
+function Loop.addToIndex(data, zone, rarity)
+	if type(data.Index) ~= "table" then
+		data.Index = {}
+	end
+	local key = Loop.indexKey(zone, rarity)
+	if data.Index[key] then
+		return false
+	end
+	data.Index[key] = true
+	return true
+end
+
+-- Uzupełnia indeks petami, które gracz już ma (zapisy sprzed indeksu).
+function Loop.backfillIndex(data)
+	for _, pet in pairs(data.Pets) do
+		Loop.addToIndex(data, pet.Zone, pet.Rarity)
+	end
+end
+
+-- Wszystkie pety w indeksie: strefy z jajkami × rzadkości (Mythic dojdzie z jajkami premium).
+function Loop.indexTotal()
+	local zones = 0
+	for _ in ipairs(Economy.Pets.Eggs) do
+		zones = zones + 1
+	end
+	return zones * #Economy.Pets.RarityOrder
+end
+
+function Loop.indexCount(data)
+	local n = 0
+	if type(data.Index) == "table" then
+		for _, found in pairs(data.Index) do
+			if found then
+				n = n + 1
+			end
+		end
+	end
+	return n
+end
+
 -- Kupuje i otwiera jajko. random01 = funkcja losująca liczbę z [0, 1). Pierwsze jajko A w strefie 1
 -- zawsze daje Rare (dobry start). Szczęście z Aury działa na jajka za L$. Nowy pet trafia na wolny
--- slot. Zwraca id i peta albo nil i powód (jak canBuyEgg).
+-- slot. Zwraca id, peta i czy jest nowy w indeksie albo nil i powód (jak canBuyEgg).
 function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
 	local ok, reason = Loop.canBuyEgg(data, zone, egg, maxPets)
 	if not ok then
@@ -631,17 +684,21 @@ function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
 	end
 	local id = tostring(data.NextPetId)
 	data.NextPetId = data.NextPetId + 1
-	local pet = { Zone = zone, Rarity = rarity, Level = 0 }
+	local pet = { Zone = zone, Rarity = rarity, Level = 0, Egg = egg }
 	data.Pets[id] = pet
 	data.Stats.EggsOpened = data.Stats.EggsOpened + 1
+	if rarity == "Secret" then
+		data.Stats.SecretsHatched = (data.Stats.SecretsHatched or 0) + 1
+	end
 	if #Loop.activePets(data, ctx) < Loop.petSlots(data, ctx) then
 		table.insert(data.Equipped, id)
 	end
-	return id, pet
+	local isNew = Loop.addToIndex(data, zone, rarity)
+	return id, pet, isNew
 end
 
 -- Otwiera count jajek naraz (Triple Open). Najpierw sprawdza, czy stać na wszystkie i czy wszystkie
--- się zmieszczą. Zwraca listę { id, pet } albo nil i powód (jak canBuyEggs).
+-- się zmieszczą. Zwraca listę { id, pet, new } albo nil i powód (jak canBuyEggs).
 function Loop.openEggs(data, ctx, zone, egg, count, random01, maxPets)
 	local ok, reason = Loop.canBuyEggs(data, zone, egg, count, maxPets)
 	if not ok then
@@ -649,11 +706,11 @@ function Loop.openEggs(data, ctx, zone, egg, count, random01, maxPets)
 	end
 	local list = {}
 	for _ = 1, count do
-		local id, pet = Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
+		local id, pet, isNew = Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
 		if id == nil then
 			break
 		end
-		table.insert(list, { id = id, pet = pet })
+		table.insert(list, { id = id, pet = pet, new = isNew })
 	end
 	return list
 end
@@ -668,8 +725,158 @@ function Loop.isEquipped(data, id)
 	return false
 end
 
--- Usuwa pety z ekwipunku (bez zwrotu L$; sprzedawanie dojdzie w Etapie 8). Założonych nie usuwa.
--- Zwraca, ile usunął.
+----------------------------------------------------------------- Sprzedaż i łączenie (Etap 7)
+local LEVEL_SELL = { [0] = 1, [1] = Economy.Pets.GoldSellX, [2] = Economy.Pets.DiamondSellX }
+
+-- Cena jajka, z którego jest pet (premium liczy się jak jajko B, stare pety bez Egg jak A).
+function Loop.petEggPrice(pet)
+	local eggs = Economy.Pets.Eggs[pet.Zone]
+	if eggs == nil then
+		return 0
+	end
+	local egg = pet.Egg or "A"
+	if egg == "P" then
+		egg = "B"
+	end
+	local info = eggs[egg] or eggs.A
+	return (info and info.Price) or 0
+end
+
+-- Ile L$ za sprzedaż peta: 10% ceny jajka, Złoty ×5 (tyle co 5 zwykłych), Diamentowy ×25.
+function Loop.petSellValue(pet)
+	return roundHalfUp(Loop.petEggPrice(pet) * Economy.Pets.SellReturn * (LEVEL_SELL[pet.Level or 0] or 1))
+end
+
+-- Sprzedaje pety za L$. Założonych nie sprzedaje. Sekretnego tylko z confirm = true (u gracza okno
+-- „na pewno?”). Zwraca liczbę sprzedanych i L$ albo nil i "ConfirmSecret".
+function Loop.sellPets(data, ctx, ids, confirm)
+	data.Equipped = Loop.activePets(data, ctx)
+	if confirm ~= true then
+		for _, id in ipairs(ids) do
+			local pet = data.Pets[id]
+			if pet ~= nil and pet.Rarity == "Secret" and not Loop.isEquipped(data, id) then
+				return nil, "ConfirmSecret"
+			end
+		end
+	end
+	local count, cash = 0, 0
+	for _, id in ipairs(ids) do
+		local pet = data.Pets[id]
+		if pet ~= nil and not Loop.isEquipped(data, id) then
+			cash = cash + Loop.petSellValue(pet)
+			data.Pets[id] = nil
+			count = count + 1
+		end
+	end
+	data.Cash = data.Cash + cash
+	data.Stats.LifetimeCash = (data.Stats.LifetimeCash or 0) + cash
+	data.Stats.PetsSold = (data.Stats.PetsSold or 0) + count
+	return count, cash
+end
+
+-- Łączenie z szansą (zasady z dokumentu projektu): 1–5 identycznych petów (ta sama strefa, rzadkość
+-- i poziom), każdy daje 20% szansy (+1 pkt proc. za poziom Merge Luck ze sklepu Aury). Sukces daje
+-- wersję Złotą (ze Złotych: Diamentową), porażka zabiera wszystkie użyte pety. Opłata za każdego
+-- peta to 1/5 pełnej opłaty (cena jajka × 1 za Złotego, × 5 za Diamentowego), więc średni koszt
+-- Złotego zawsze wynosi 5 petów i jedną pełną opłatę. Pety z jajek premium tylko przy 100%.
+-- Zwraca { Chance, Fee, Level (po łączeniu), Zone, Rarity, Pieces, Premium } albo nil i powód:
+-- BadRequest, Missing, NotSame, MaxLevel, Premium.
+function Loop.mergeInfo(data, ids)
+	local merge = Economy.Pets.Merge
+	if type(ids) ~= "table" or #ids < 1 or #ids > merge.MaxPieces then
+		return nil, "BadRequest"
+	end
+	local first = nil
+	local seen = {}
+	local premium = false
+	for _, id in ipairs(ids) do
+		local pet = data.Pets[id]
+		if type(id) ~= "string" or pet == nil or seen[id] then
+			return nil, "Missing"
+		end
+		seen[id] = true
+		if first == nil then
+			first = pet
+		elseif pet.Zone ~= first.Zone or pet.Rarity ~= first.Rarity or (pet.Level or 0) ~= (first.Level or 0) then
+			return nil, "NotSame"
+		end
+		if pet.Egg == "P" then
+			premium = true
+		end
+	end
+	local level = first.Level or 0
+	if level >= 2 then
+		return nil, "MaxLevel"
+	end
+	local chance = Formulas.mergeChance(#ids, (data.AuraUpgrades and data.AuraUpgrades.MergeLuck) or 0)
+	if premium and chance < 1 - 1e-9 then
+		return nil, "Premium"
+	end
+	local feeX = merge.GoldFeeX
+	if level == 1 then
+		feeX = merge.DiamondFeeX
+	end
+	local fee = 0
+	for _, id in ipairs(ids) do
+		fee = fee + Loop.petEggPrice(data.Pets[id]) * feeX / merge.MaxPieces
+	end
+	return {
+		Chance = chance,
+		Fee = roundHalfUp(fee),
+		Level = level + 1,
+		Zone = first.Zone,
+		Rarity = first.Rarity,
+		Pieces = #ids,
+		Premium = premium,
+	}
+end
+
+-- Łączy pety (opłata zawsze, wynik losowy). random01() < szansa = sukces. Nowy pet zajmuje slot
+-- połączonych, jeśli któryś był założony. Zwraca { Success, Id, Pet, Info } albo nil i powód
+-- (jak mergeInfo albo NotEnough).
+function Loop.mergePets(data, ctx, ids, random01)
+	local info, reason = Loop.mergeInfo(data, ids)
+	if info == nil then
+		return nil, reason
+	end
+	if data.Cash < info.Fee then
+		return nil, "NotEnough"
+	end
+	data.Cash = data.Cash - info.Fee
+	data.Equipped = Loop.activePets(data, ctx)
+	local wasEquipped = false
+	local egg = nil
+	for _, id in ipairs(ids) do
+		local pet = data.Pets[id]
+		egg = egg or pet.Egg
+		for i = #data.Equipped, 1, -1 do
+			if data.Equipped[i] == id then
+				table.remove(data.Equipped, i)
+				wasEquipped = true
+			end
+		end
+		data.Pets[id] = nil
+	end
+	data.Stats.Merges = (data.Stats.Merges or 0) + 1
+	if random01() >= info.Chance then
+		data.Stats.MergesFailed = (data.Stats.MergesFailed or 0) + 1
+		return { Success = false, Info = info }
+	end
+	local id = tostring(data.NextPetId)
+	data.NextPetId = data.NextPetId + 1
+	local pet = { Zone = info.Zone, Rarity = info.Rarity, Level = info.Level, Egg = egg }
+	if info.Premium then
+		pet.Egg = "P"
+	end
+	data.Pets[id] = pet
+	if wasEquipped or #Loop.activePets(data, ctx) < Loop.petSlots(data, ctx) then
+		table.insert(data.Equipped, id)
+	end
+	return { Success = true, Id = id, Pet = pet, Info = info }
+end
+
+-- Usuwa pety z ekwipunku bez zwrotu L$ (gracze sprzedają je przez sellPets; to zostało dla testów).
+-- Założonych nie usuwa. Zwraca, ile usunął.
 function Loop.deletePets(data, ctx, ids)
 	data.Equipped = Loop.activePets(data, ctx)
 	local count = 0
@@ -723,6 +930,9 @@ function Loop.view(data, ctx)
 	view.PetsEquipped = #Loop.activePets(data, ctx)
 	view.PetCount = Loop.petCount(data)
 	view.EggsOpened = data.Stats.EggsOpened
+	view.IndexCount = Loop.indexCount(data)
+	view.IndexTotal = Loop.indexTotal()
+	view.MergeLuck = (data.AuraUpgrades and data.AuraUpgrades.MergeLuck) or 0
 	return view
 end
 

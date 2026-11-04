@@ -9,9 +9,14 @@
 --
 -- Pety gracza widzą wszyscy: serwer zapisuje wyposażone pety w atrybucie gracza „LarpPets”
 -- („strefa:rzadkość:poziom” po przecinku), a każdy klient rysuje je sam (Client/Pets).
+--
+-- Etap 7 (dokument projektu, etap 4): sprzedaż petów (SellPets, 10% ceny jajka), łączenie z szansą
+-- w wersję Złotą i Diamentową (MergePets), indeks odkrytych petów i komunikat o sekrecie na
+-- wszystkich serwerach gry (MessagingService; gdy nie działa, np. w Studio, tylko na tym serwerze).
 
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
+local MessagingService = game:GetService("MessagingService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -32,10 +37,16 @@ PetService.EggTag = "LarpEgg" -- tag stoisk (klient szuka ich po tym tagu)
 PetService.Attribute = "LarpPets" -- atrybut gracza z wyposażonymi petami
 
 local MAX_DISTANCE = 15 -- tak blisko stoiska (do jego najbliższej części) trzeba stać, żeby kupić jajko (studs)
+local SECRET_TOPIC = "LarpSecretHatched" -- kanał MessagingService z sekretami
+
+local ACTION_GAP = 0.25 -- najmniejszy odstęp między sprzedażą a łączeniem (s), żeby nie zalać serwera
+local SECRET_DELAY = 0.6 -- komunikat o sekrecie po animacji otwierania (s), żeby nie zdradzić wyniku
 
 local stands = {} -- lista stoisk (Model albo część z atrybutami Zone i Egg)
 local lastOpen = {} -- [gracz] = czas ostatniego otwarcia
+local lastAction = {} -- [gracz] = czas ostatniej sprzedaży albo łączenia
 local sentInventory = {} -- [gracz] = podpis ekwipunku wysłanego klientowi
+local secretsSubscribed = false -- czy ten serwer słucha sekretów z innych serwerów
 local rng = Random.new()
 
 local function random01()
@@ -194,7 +205,7 @@ local function equippedText(data, ctx)
 end
 
 local function inventorySignature(data)
-	return string.format("%d|%d|%s", Loop.petCount(data), data.NextPetId, table.concat(data.Equipped, ","))
+	return string.format("%d|%d|%d|%s", Loop.petCount(data), data.NextPetId, Loop.indexCount(data), table.concat(data.Equipped, ","))
 end
 
 -- Po każdej zmianie: atrybut z wyposażonymi petami (dla wszystkich) i pełny ekwipunek (dla gracza).
@@ -215,13 +226,75 @@ local function syncPets(player)
 	sentInventory[player] = signature
 	local pets = {}
 	for id, pet in pairs(data.Pets) do
-		table.insert(pets, { Id = id, Zone = pet.Zone, Rarity = pet.Rarity, Level = pet.Level or 0 })
+		table.insert(pets, { Id = id, Zone = pet.Zone, Rarity = pet.Rarity, Level = pet.Level or 0, Egg = pet.Egg or "A" })
 	end
 	local active = {}
 	for _, id in ipairs(Loop.activePets(data, ctx)) do
 		table.insert(active, id)
 	end
-	LoopService.notify(player, { Kind = "Pets", Pets = pets, Equipped = active })
+	local index = {}
+	for key, found in pairs(data.Index or {}) do
+		if found then
+			table.insert(index, key)
+		end
+	end
+	LoopService.notify(player, { Kind = "Pets", Pets = pets, Equipped = active, Index = index })
+end
+
+----------------------------------------------------------------- Sekret na wszystkich serwerach
+-- Każdy gracz na serwerze dostaje komunikat (u siebie pokazuje go jako baner u góry ekranu).
+local function deliverSecret(message)
+	if type(message) ~= "table" or type(message.Name) ~= "string" or type(message.Zone) ~= "number" then
+		return
+	end
+	if Economy.Pets.Eggs[message.Zone] == nil then
+		return
+	end
+	local level = message.Level
+	if type(level) ~= "number" then
+		level = 0
+	end
+	local userId = message.UserId
+	if type(userId) ~= "number" then
+		userId = 0
+	end
+	for _, other in ipairs(Players:GetPlayers()) do
+		LoopService.notify(other, {
+			Kind = "SecretHatched",
+			Name = string.sub(message.Name, 1, 40),
+			UserId = userId,
+			Zone = message.Zone,
+			Level = level,
+			Mine = other.UserId == userId,
+		})
+	end
+end
+
+-- Ogłasza sekretnego peta: nick, pet i „1 in 25,000” na wszystkich serwerach gry. Gdy
+-- MessagingService nie działa (np. w Studio bez dostępu do API), komunikat dostaje tylko ten serwer.
+function PetService.announceSecret(player, pet)
+	local message = { Name = player.DisplayName, UserId = player.UserId, Zone = pet.Zone, Level = pet.Level or 0 }
+	local sent = false
+	if secretsSubscribed then
+		sent = pcall(function()
+			MessagingService:PublishAsync(SECRET_TOPIC, message)
+		end)
+	end
+	if not sent then
+		deliverSecret(message)
+	end
+end
+
+local function subscribeSecrets()
+	local ok, err = pcall(function()
+		MessagingService:SubscribeAsync(SECRET_TOPIC, function(packet)
+			deliverSecret(packet.Data)
+		end)
+	end)
+	secretsSubscribed = ok
+	if not ok then
+		warn("[Pety] MessagingService nie działa (" .. tostring(err) .. "), więc sekrety ogłaszamy tylko na tym serwerze.")
+	end
 end
 
 ----------------------------------------------------------------- Żądania gracza
@@ -271,6 +344,7 @@ local function buyEgg(player, zone, egg, count)
 	end
 	lastOpen[player] = now
 	LoopService.markDirty(player)
+	local seconds = openTime(player)
 	local pets = {}
 	for _, entry in ipairs(list) do
 		table.insert(pets, {
@@ -278,10 +352,18 @@ local function buyEgg(player, zone, egg, count)
 			Zone = entry.pet.Zone,
 			Rarity = entry.pet.Rarity,
 			Level = entry.pet.Level,
+			Egg = entry.pet.Egg,
+			New = entry.new == true,
 			Equipped = Loop.isEquipped(data, entry.id),
 		})
+		if entry.pet.Rarity == "Secret" then
+			local pet = entry.pet
+			task.delay(seconds + SECRET_DELAY, function()
+				PetService.announceSecret(player, pet)
+			end)
+		end
 	end
-	return { Ok = true, Pets = pets, OpenTime = openTime(player) }
+	return { Ok = true, Pets = pets, OpenTime = seconds }
 end
 
 local function equipPet(player, id, on)
@@ -305,23 +387,95 @@ local function equipPet(player, id, on)
 	return { Ok = true }
 end
 
--- Usuwanie petów z okna PETS (tryb DELETE). Założonych serwer nie usuwa.
-local function deletePets(player, ids)
-	if type(ids) ~= "table" or #ids == 0 or #ids > PetsConfig.MaxInventory then
-		return { Ok = false, Reason = "BadRequest" }
+-- Lista id od gracza: 1..max różnych tekstów, bez dziur.
+local function validIds(ids, max)
+	if type(ids) ~= "table" or #ids == 0 or #ids > max then
+		return false
 	end
+	local seen = {}
+	local count = 0
 	for _, id in ipairs(ids) do
-		if type(id) ~= "string" then
-			return { Ok = false, Reason = "BadRequest" }
+		if type(id) ~= "string" or #id > 12 or seen[id] then
+			return false
 		end
+		seen[id] = true
+		count = count + 1
+	end
+	return count == #ids
+end
+
+-- Sprzedaż i łączenie najwyżej co ACTION_GAP sekund.
+local function tooSoon(player)
+	local now = os.clock()
+	if lastAction[player] ~= nil and now - lastAction[player] < ACTION_GAP then
+		return true
+	end
+	lastAction[player] = now
+	return false
+end
+
+local function petForClient(data, id, pet)
+	return {
+		Id = id,
+		Zone = pet.Zone,
+		Rarity = pet.Rarity,
+		Level = pet.Level or 0,
+		Egg = pet.Egg or "A",
+		Equipped = Loop.isEquipped(data, id),
+	}
+end
+
+-- Sprzedaż petów za L$ (tryb SELL w oknie PETS). Założonych serwer nie sprzedaje, a sekretnego
+-- tylko z confirm = true (gracz potwierdził w okienku).
+local function sellPets(player, ids, confirm)
+	if not validIds(ids, PetsConfig.MaxInventory) or (confirm ~= nil and type(confirm) ~= "boolean") then
+		return { Ok = false, Reason = "BadRequest" }
 	end
 	local data = DataService.get(player)
 	if data == nil then
 		return { Ok = false, Reason = "NotLoaded" }
 	end
-	local count = Loop.deletePets(data, LoopService.contextFor(player), ids)
+	if tooSoon(player) then
+		return { Ok = false, Reason = "Cooldown" }
+	end
+	local count, cash = Loop.sellPets(data, LoopService.contextFor(player), ids, confirm == true)
+	if count == nil then
+		return { Ok = false, Reason = cash }
+	end
 	LoopService.markDirty(player)
-	return { Ok = true, Count = count }
+	return { Ok = true, Count = count, Cash = cash }
+end
+
+-- Łączenie 1–5 identycznych petów (tryb MERGE). Szansę losuje serwer; opłata przepada zawsze.
+local function mergePets(player, ids)
+	if not validIds(ids, Economy.Pets.Merge.MaxPieces) then
+		return { Ok = false, Reason = "BadRequest" }
+	end
+	local data = DataService.get(player)
+	if data == nil then
+		return { Ok = false, Reason = "NotLoaded" }
+	end
+	if tooSoon(player) then
+		return { Ok = false, Reason = "Cooldown" }
+	end
+	local result, reason = Loop.mergePets(data, LoopService.contextFor(player), ids, random01)
+	if result == nil then
+		return { Ok = false, Reason = reason }
+	end
+	LoopService.markDirty(player)
+	local reply = {
+		Ok = true,
+		Success = result.Success,
+		Chance = result.Info.Chance,
+		Fee = result.Info.Fee,
+		Zone = result.Info.Zone,
+		Rarity = result.Info.Rarity,
+		Level = result.Info.Level,
+	}
+	if result.Success then
+		reply.Pet = petForClient(data, result.Id, result.Pet)
+	end
+	return reply
 end
 
 local function equipBest(player)
@@ -342,18 +496,25 @@ function PetService.start()
 		scan()
 	end
 
+	-- indeks: stare zapisy dostają pety, które gracz już ma
+	DataService.onLoaded(function(_, data)
+		Loop.backfillIndex(data)
+	end)
 	-- przy każdym wysłaniu stanu sprawdzamy, czy pety się zmieniły
 	LoopService.addViewHook(function(player)
 		syncPets(player)
 	end)
 	Players.PlayerRemoving:Connect(function(player)
 		lastOpen[player] = nil
+		lastAction[player] = nil
 		sentInventory[player] = nil
 	end)
 	Net.func("BuyEgg").OnServerInvoke = buyEgg
 	Net.func("EquipPet").OnServerInvoke = equipPet
 	Net.func("EquipBest").OnServerInvoke = equipBest
-	Net.func("DeletePets").OnServerInvoke = deletePets
+	Net.func("SellPets").OnServerInvoke = sellPets
+	Net.func("MergePets").OnServerInvoke = mergePets
+	task.spawn(subscribeSecrets)
 end
 
 return PetService

@@ -1072,6 +1072,14 @@ function Hud.start()
 	function api.setVisible(visible)
 		gui.Enabled = visible
 	end
+	-- L$ spoza Sell (np. sprzedaż petów): „+X” przy liczniku L$ i banknoty lecą do licznika.
+	function api.cashGain(amount)
+		if amount <= 0 then
+			return
+		end
+		pop(center(cashIcon) + Vector2.new(60 * currentScale, -54 * currentScale), "+" .. Format.number(amount), Theme.Gradients.Gold)
+		flyCash(6)
+	end
 	-- Inne okna (np. odblokowanie strefy) zamykają okno Upgrades, żeby się nie nakładały.
 	function api.closeUpgrades()
 		panel.hide()

@@ -38,6 +38,11 @@ return function()
 		return math.abs(a - b) <= 1e-9 * math.max(1, math.abs(b))
 	end
 
+	-- zaokrąglenie jak w arkuszu (połówki w górę)
+	local function roundTest(x)
+		return math.floor(x + 0.5 + 1e-9)
+	end
+
 	local function fresh()
 		return copy(Template)
 	end
@@ -308,6 +313,80 @@ return function()
 	end
 	local deleted = Loop.deletePets(d, {}, { loose[1], loose[2], d.Equipped[1], "nie-ma" })
 	check(deleted == 2 and Loop.petCount(d) == 3 and #d.Equipped == 3, "usuwanie: 2 niezałożone tak, założony i nieistniejący nie")
+
+	----------------------------------------------------------------- Indeks, sprzedaż i łączenie (Etap 7)
+	d = fresh()
+	d.Cash = eggA1.Price * 3
+	local _, p1, new1 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	local _, p2, new2 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	local _, _, new3 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
+	check(p1.Egg == "A" and p1.Rarity == "Rare" and p2.Rarity == "Common" and new1 and new2 and not new3, "indeks: pierwszy Rare i Common są nowe, drugi Common już nie")
+	check(Loop.indexCount(d) == 2 and Loop.indexTotal() == 35 and Loop.view(d, {}).IndexCount == 2, "indeks: 2 z 35 (5 stref × 7 rzadkości)")
+	d.Index = {}
+	Loop.backfillIndex(d)
+	check(Loop.indexCount(d) == 2, "indeks uzupełnia się z petów, które już są")
+
+	local sellA = { Zone = 1, Rarity = "Common", Level = 0, Egg = "A" }
+	local sellB = { Zone = 1, Rarity = "Common", Level = 0, Egg = "B" }
+	check(Loop.petSellValue(sellA) == eggA1.Price * 0.1 and Loop.petSellValue(sellB) == Economy.Pets.Eggs[1].B.Price * 0.1, "sprzedaż: 10% ceny jajka, z którego jest pet")
+	check(Loop.petSellValue({ Zone = 1, Rarity = "Common", Level = 1 }) == eggA1.Price * 0.1 * 5 and Loop.petSellValue({ Zone = 1, Rarity = "Common", Level = 2 }) == eggA1.Price * 0.1 * 25, "sprzedaż: stary pet bez Egg jak z A, Złoty ×5, Diamentowy ×25")
+
+	d = fresh()
+	d.Pets = {
+		a = { Zone = 1, Rarity = "Common", Level = 0, Egg = "A" },
+		b = { Zone = 1, Rarity = "Common", Level = 0, Egg = "A" },
+		s = { Zone = 1, Rarity = "Secret", Level = 0, Egg = "B" },
+		e = { Zone = 1, Rarity = "Rare", Level = 0, Egg = "A" },
+	}
+	d.Equipped = { "e" }
+	local notYet, whySecret = Loop.sellPets(d, {}, { "a", "s" })
+	check(notYet == nil and whySecret == "ConfirmSecret" and d.Pets.a ~= nil, "sprzedaż sekreta tylko po potwierdzeniu (nic się nie sprzedaje)")
+	local sold, soldCash = Loop.sellPets(d, {}, { "a", "s", "e", "brak" }, true)
+	check(sold == 2 and soldCash == eggA1.Price * 0.1 + Economy.Pets.Eggs[1].B.Price * 0.1 and d.Cash == soldCash and d.Pets.e ~= nil and d.Stats.PetsSold == 2, "sprzedaż: 2 pety za L$, założonego nie sprzedaje")
+	check(d.Stats.LifetimeCash == soldCash, "L$ ze sprzedaży petów liczą się do zarobionych L$")
+
+	local function fivePets(level, egg)
+		local data = fresh()
+		for i = 1, 5 do
+			data.Pets["p" .. i] = { Zone = 1, Rarity = "Rare", Level = level, Egg = egg }
+		end
+		return data, { "p1", "p2", "p3", "p4", "p5" }
+	end
+	d = fivePets(0, "A")
+	local info2 = Loop.mergeInfo(d, { "p1", "p2" })
+	check(near(info2.Chance, 0.4) and info2.Fee == roundTest(eggA1.Price * 2 / 5) and info2.Level == 1, "łączenie 2 petów: 40% i 2/5 opłaty (cena jajka × 1 za Złotego)")
+	local _, all5 = fivePets(0, "A")
+	check(near(Loop.mergeInfo(d, all5).Chance, 1) and Loop.mergeInfo(d, all5).Fee == eggA1.Price, "5 petów: 100% i pełna opłata")
+	d.AuraUpgrades.MergeLuck = 5
+	check(near(Loop.mergeInfo(d, { "p1", "p2", "p3", "p4" }).Chance, 1), "Merge Luck 5: 4 pety dają 100% (25% za sztukę)")
+	d.AuraUpgrades.MergeLuck = 0
+	d.Pets.p5.Rarity = "Epic"
+	local notSame, whyNotSame = Loop.mergeInfo(d, all5)
+	check(notSame == nil and whyNotSame == "NotSame", "łączyć można tylko identyczne pety")
+	local tooMany = Loop.mergeInfo(d, { "p1", "p2", "p3", "p4", "p5", "p6" })
+	local twice = Loop.mergeInfo(d, { "p1", "p1" })
+	check(tooMany == nil and twice == nil, "najwyżej 5 petów i każdy raz")
+	local dDiamond = fivePets(2, "A")
+	local maxed, whyMax = Loop.mergeInfo(dDiamond, { "p1" })
+	check(maxed == nil and whyMax == "MaxLevel", "Diamentowego nie da się już łączyć")
+	local dGold = fivePets(1, "B")
+	check(Loop.mergeInfo(dGold, { "p1" }).Fee == roundTest(Economy.Pets.Eggs[1].B.Price * 5 / 5), "Diamentowy: opłata × 5 (tu 1/5 za jednego peta z jajka B)")
+	local dPremium = fivePets(0, "P")
+	local prem, whyPrem = Loop.mergeInfo(dPremium, { "p1", "p2" })
+	check(prem == nil and whyPrem == "Premium" and Loop.mergeInfo(dPremium, all5) ~= nil, "pety premium tylko przy 100%")
+
+	d = fivePets(0, "A")
+	d.Equipped = { "p1" }
+	local poor, whyPoor = Loop.mergePets(d, {}, { "p1", "p2" }, always(0))
+	check(poor == nil and whyPoor == "NotEnough" and d.Pets.p1 ~= nil, "łączenie bez L$ na opłatę nic nie zabiera")
+	d.Cash = 1e9
+	local win = Loop.mergePets(d, {}, { "p1", "p2" }, always(0.39))
+	check(win.Success and win.Pet.Level == 1 and d.Pets.p1 == nil and d.Pets.p2 == nil and d.Pets[win.Id] ~= nil, "sukces (los 0,39 < 40%): 2 pety → 1 Złoty")
+	check(Loop.isEquipped(d, win.Id) and d.Cash == 1e9 - info2.Fee and d.Stats.Merges == 1, "Złoty zajmuje slot połączonego, opłata pobrana")
+	local lose = Loop.mergePets(d, {}, { "p3", "p4" }, always(0.4))
+	check(not lose.Success and d.Pets.p3 == nil and d.Pets.p4 == nil and Loop.petCount(d) == 2 and d.Stats.MergesFailed == 1, "porażka (los 0,40): oba pety przepadają")
+	local goldWin = Loop.mergePets(d, {}, { win.Id }, always(0))
+	check(goldWin.Success and goldWin.Pet.Level == 2 and Loop.petPower(goldWin.Pet) > Loop.petPower(win.Pet), "Złoty łączy się dalej w Diamentowego (mocniejszy)")
 
 	----------------------------------------------------------------- Limit kliknięć
 	local limiter = RateLimiter.new(10, 10)

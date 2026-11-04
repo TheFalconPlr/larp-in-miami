@@ -72,8 +72,40 @@ local function placeholder(rarity)
 	return prepare(model)
 end
 
--- Model peta (strefa i rzadkość jak w zapisie gracza).
-function PetModels.pet(zone, rarity)
+-- Wygląd po łączeniu: Złoty (1) i Diamentowy (2). mix = ile koloru poziomu w kolorze części.
+local LEVEL_LOOK = {
+	[1] = { color = Color3.fromRGB(255, 196, 40), material = Enum.Material.Foil, mix = 0.8, light = Color3.fromRGB(255, 210, 90) },
+	[2] = { color = Color3.fromRGB(150, 232, 255), material = Enum.Material.Glass, mix = 0.78, light = Color3.fromRGB(150, 232, 255) },
+}
+
+-- Barwi peta na złoto albo diament. Oczy kulki (Eye, Shine) i części z atrybutem KeepColor
+-- (np. oczy we własnym modelu) zostają bez zmian.
+local function applyLevel(model, level)
+	local look = LEVEL_LOOK[level]
+	if look == nil then
+		return
+	end
+	local biggest = nil
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name ~= "Eye" and d.Name ~= "Shine" and not d:GetAttribute("KeepColor") then
+			d.Color = d.Color:Lerp(look.color, look.mix)
+			d.Material = look.material
+			if biggest == nil or d.Size.Magnitude > biggest.Size.Magnitude then
+				biggest = d
+			end
+		end
+	end
+	if biggest ~= nil then
+		local light = Instance.new("PointLight")
+		light.Color = look.light
+		light.Range = 7
+		light.Brightness = 1.2
+		light.Parent = biggest
+	end
+end
+
+-- Model peta (strefa, rzadkość i poziom jak w zapisie gracza; poziom 1 złoty, 2 diamentowy).
+function PetModels.pet(zone, rarity, level)
 	local name = PetsConfig.name(zone, rarity)
 	local folder = ReplicatedStorage:FindFirstChild("PetModels")
 	local custom = folder and folder:FindFirstChild(name)
@@ -83,6 +115,7 @@ function PetModels.pet(zone, rarity)
 	else
 		model = placeholder(rarity)
 	end
+	applyLevel(model, level or 0)
 	model.Name = name
 	return model
 end

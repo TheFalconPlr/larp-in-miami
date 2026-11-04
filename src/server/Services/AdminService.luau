@@ -19,6 +19,7 @@ local Net = require(Shared.Net)
 local DataService = require(script.Parent.DataService)
 local GamepassService = require(script.Parent.GamepassService)
 local LoopService = require(script.Parent.LoopService)
+local PetService = require(script.Parent.PetService)
 local ZoneService = require(script.Parent.ZoneService)
 
 local AdminService = {}
@@ -196,60 +197,124 @@ command("time", "/time [0–24]", "pora dnia dla wszystkich, np. /time 14 (dzie�
 	return "Godzina: " .. Format.small(hour)
 end)
 
-local function givePet(data, zone, rarity)
+-- Jajko, z którego pet tej rzadkości mógł wypaść: A, potem B, a gdy nie ma go w żadnym (Mythic),
+-- premium (P). Od jajka zależy cena sprzedaży i opłata za łączenie.
+local function eggFor(zone, rarity)
+	for _, egg in ipairs({ "A", "B" }) do
+		local info = Loop.eggInfo(zone, egg)
+		if info ~= nil and info.Odds[rarity] ~= nil then
+			return egg
+		end
+	end
+	return "P"
+end
+
+local function givePet(data, zone, rarity, level)
 	local id = tostring(data.NextPetId)
 	data.NextPetId = data.NextPetId + 1
-	data.Pets[id] = { Zone = zone, Rarity = rarity, Level = 0 }
+	data.Pets[id] = { Zone = zone, Rarity = rarity, Level = level or 0, Egg = eggFor(zone, rarity) }
+	Loop.addToIndex(data, zone, rarity)
 	return id
 end
 
-command("pet", "/pet [rzadkość|all] [strefa]", "daj peta, np. /pet Legendary 2; /pet all = po jednym z każdej rzadkości", function(_, data, args)
-	local wanted = string.lower(args[1] or "")
-	if wanted == "all" then
+local function needRarity(arg)
+	local wanted = string.lower(arg or "")
+	for _, name in ipairs(Economy.Pets.RarityOrder) do
+		if string.lower(name) == wanted then
+			return name
+		end
+	end
+	error("rzadkości: " .. table.concat(Economy.Pets.RarityOrder, ", "), 0)
+end
+
+local LEVEL_WORDS = { normal = 0, gold = 1, golden = 1, diamond = 2 }
+
+local function needRoom(data, count)
+	if Loop.petCount(data) + count > PetsConfig.MaxInventory then
+		error(string.format("nie zmieści się %d petów (najwyżej %d w ekwipunku)", count, PetsConfig.MaxInventory), 0)
+	end
+end
+
+command(
+	"pet",
+	"/pet [rzadkość|all] [strefa] [ile] [gold|diamond]",
+	"daj peta, np. /pet Rare 1 5 (5 sztuk do łączenia), /pet Epic 2 1 gold; /pet all 3 = po jednym z każdej rzadkości",
+	function(_, data, args)
 		local zone = 1
 		if args[2] ~= nil then
 			zone = needZone(args[2])
 		end
-		local order = Economy.Pets.RarityOrder
-		if Loop.petCount(data) + #order > PetsConfig.MaxInventory then
-			error(string.format("nie zmieści się %d petów (najwyżej %d)", #order, PetsConfig.MaxInventory), 0)
+		local count = 1
+		local level = 0
+		for i = 3, #args do
+			local word = string.lower(args[i])
+			if LEVEL_WORDS[word] ~= nil then
+				level = LEVEL_WORDS[word]
+			else
+				count = math.floor(needNumber(args[i]))
+				if count < 1 or count > PetsConfig.MaxInventory then
+					error(string.format("podaj od 1 do %d sztuk", PetsConfig.MaxInventory), 0)
+				end
+			end
 		end
-		for _, rarity in ipairs(order) do
-			givePet(data, zone, rarity)
+		if string.lower(args[1] or "") == "all" then
+			local order = Economy.Pets.RarityOrder
+			needRoom(data, #order)
+			for _, rarity in ipairs(order) do
+				givePet(data, zone, rarity, level)
+			end
+			return string.format("Nowe pety: po jednym z każdej rzadkości ze strefy %d (%d). Załóż je w oknie PETS.", zone, #order)
 		end
-		return string.format("Nowe pety: po jednym z każdej rzadkości ze strefy %d (%d). Załóż je w oknie PETS.", zone, #order)
-	end
-	local rarity = nil
-	for _, name in ipairs(Economy.Pets.RarityOrder) do
-		if string.lower(name) == wanted then
-			rarity = name
+		local rarity = needRarity(args[1])
+		needRoom(data, count)
+		for _ = 1, count do
+			givePet(data, zone, rarity, level)
 		end
+		return string.format(
+			"Nowy pet: %s × %d (%s, strefa %d, +%s%% L$ każdy). Wyposaż go w oknie PETS.",
+			PetsConfig.fullName(zone, rarity, level),
+			count,
+			rarity,
+			zone,
+			Format.small(Formulas.petPower(zone, rarity, level) * 100)
+		)
 	end
-	if rarity == nil then
-		error("rzadkości: " .. table.concat(Economy.Pets.RarityOrder, ", "), 0)
-	end
+)
+
+command("secret", "/secret [strefa]", "daj sekretnego peta i ogłoś go (na wszystkich serwerach, gdy działa MessagingService)", function(player, data, args)
 	local zone = 1
-	if args[2] ~= nil then
-		zone = needZone(args[2])
+	if args[1] ~= nil then
+		zone = needZone(args[1])
 	end
-	if Loop.petCount(data) >= PetsConfig.MaxInventory then
-		error(string.format("ekwipunek pełny (%d petów)", PetsConfig.MaxInventory), 0)
-	end
-	givePet(data, zone, rarity)
+	needRoom(data, 1)
+	local id = givePet(data, zone, "Secret", 0)
+	data.Stats.SecretsHatched = (data.Stats.SecretsHatched or 0) + 1
+	PetService.announceSecret(player, data.Pets[id])
+	return string.format("Sekret: %s (strefa %d). Komunikat poszedł do wszystkich graczy.", PetsConfig.name(zone, "Secret"), zone)
+end)
+
+command("mergeluck", "/mergeluck [0–5]", "ustaw ulepszenie Merge Luck z Aury (+1 pkt proc. na peta przy łączeniu)", function(_, data, args)
+	local max = #Economy.Aura.Upgrades.MergeLuck.Costs
+	data.AuraUpgrades.MergeLuck = needLevel(args[1], max)
 	return string.format(
-		"Nowy pet: %s (%s, strefa %d, +%s%% L$). Wyposaż go w oknie PETS.",
-		PetsConfig.name(zone, rarity),
-		rarity,
-		zone,
-		Format.small(Formulas.petPower(zone, rarity, 0) * 100)
+		"Merge Luck: poziom %d (1 pet = %s, 4 pety = %s)",
+		data.AuraUpgrades.MergeLuck,
+		Format.percent(Formulas.mergeChance(1, data.AuraUpgrades.MergeLuck)),
+		Format.percent(Formulas.mergeChance(4, data.AuraUpgrades.MergeLuck))
 	)
 end)
 
-command("clearpets", "/clearpets", "usuń wszystkie pety", function(_, data)
+command("clearpets", "/clearpets", "usuń wszystkie pety (indeks zostaje)", function(_, data)
 	local n = Loop.petCount(data)
 	data.Pets = {}
 	data.Equipped = {}
 	return string.format("Usunięte pety: %d", n)
+end)
+
+command("clearindex", "/clearindex", "wyczyść indeks petów (znów pokażą się napisy NEW!)", function(_, data)
+	data.Index = {}
+	Loop.backfillIndex(data)
+	return string.format("Indeks: %d/%d (zostały pety, które masz)", Loop.indexCount(data), Loop.indexTotal())
 end)
 
 command("odds", "/odds [ile] [strefa] [A|B]", "losuje jajka na próbę (bez L$ i bez petów), np. /odds 10000 1 B", function(_, data, args)
@@ -379,7 +444,7 @@ end)
 
 command("stats", "/stats", "pokaż swój zapis", function(_, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d, indeks %d/%d, sprzedane %d, łączenia %d, nieudane %d, sekrety %d) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
@@ -395,6 +460,12 @@ command("stats", "/stats", "pokaż swój zapis", function(_, data)
 		Loop.petCount(data),
 		#data.Equipped,
 		data.Stats.EggsOpened or 0,
+		Loop.indexCount(data),
+		Loop.indexTotal(),
+		data.Stats.PetsSold or 0,
+		data.Stats.Merges or 0,
+		data.Stats.MergesFailed or 0,
+		data.Stats.SecretsHatched or 0,
 		data.RebirthCount,
 		data.RebirthLevel,
 		Format.number(data.Aura),
