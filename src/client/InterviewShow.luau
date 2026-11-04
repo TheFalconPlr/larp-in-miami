@@ -24,20 +24,28 @@ local Pattern = require(script.Parent.Ui.Pattern)
 
 local InterviewShow = {}
 
--- Czasy programu (s). Sesja trwa tyle, ile w arkuszu (25 s), więc czas na wybór odpowiedzi liczy się
+-- Czasy programu (s). Sesja trwa tyle, ile w arkuszu (45 s), więc czas na wybór odpowiedzi liczy się
 -- z tego, ile zostało: zwykle są 3 pytania, a gdy gracz odpowiada szybko, starcza na 4 albo 5.
+-- Napisy pojawiają się litera po literze i zostają chwilę po napisaniu, żeby dało się je przeczytać.
 local TIME = {
-	intro = 1.7, -- powitanie
-	lead = 0.45, -- od pytania do pokazania odpowiedzi
-	chooseMin = 2.5, -- najmniej czasu na wybór
-	chooseMax = 4.5, -- najwięcej czasu na wybór
-	bonusMin = 1.8, -- najmniej czasu na dodatkowe pytanie (dostaje je tylko ktoś, kto odpowiada szybko)
-	toGuest = 1.1, -- po tylu sekundach wybierania kamera przechodzi na gracza
-	answer = 1.1, -- odpowiedź gracza
-	react = 1.7, -- reakcja studia
-	silence = 0.6, -- przy ciszy (Crickets) prowadzący najpierw tyle milczy
-	outro = 1.8, -- najkrótsze zakończenie (klip idzie do sieci)
+	hostSpeed = 26, -- tyle znaków na sekundę pisze prowadzący
+	guestSpeed = 34, -- a tyle gracz
+	read = 1.5, -- tyle sekund napis zostaje po napisaniu
+	intro = 2.8, -- powitanie (najkrócej)
+	lead = 0.5, -- od napisania pytania do pokazania odpowiedzi (najpierw czytasz pytanie)
+	chooseMin = 4, -- najmniej czasu na wybór
+	chooseMax = 7, -- najwięcej czasu na wybór
+	bonusMin = 3.5, -- najmniej czasu na dodatkowe pytanie (dostaje je tylko ktoś, kto odpowiada szybko)
+	toGuest = 1.4, -- po tylu sekundach wybierania kamera przechodzi na gracza
+	tick = 3, -- przez tyle ostatnich sekund na odpowiedź tyka zegar
+	answer = 1.8, -- odpowiedź gracza (najkrócej)
+	react = 2.6, -- reakcja studia (najkrócej)
+	silence = 0.8, -- przy ciszy (Crickets) prowadzący najpierw tyle milczy
+	signOff = 4.2, -- pożegnanie gracza i odpowiedź prowadzącego (gdy zostanie czasu)
+	outro = 2.8, -- najkrótsze zakończenie (klip idzie do sieci)
 	margin = 0.45, -- zapas przed końcem sesji (nagroda przychodzi z serwera)
+	answerGuess = 2, -- szacunek odpowiedzi gracza i reakcji przy liczeniu czasu na wybór
+	reactGuess = 3.4,
 }
 local QUESTIONS = 3 -- tyle pytań w każdym wywiadzie
 local BONUS = 2 -- najwięcej dodatkowych pytań, gdy gracz odpowiada szybko
@@ -228,10 +236,11 @@ function InterviewShow.create(hud, layer)
 	local timerGradient = Kit.gradient(timerFill, Theme.Gradients.LP, 90)
 
 	local typing = nil -- { start, total, speed }: napis pojawia się litera po literze
+	-- Zwraca, ile sekund potrwa pisanie napisu.
 	local function say(who, text)
-		local name, colors, speed = Content.Host, Theme.Gradients.Pink, 46
+		local name, colors, speed = Content.Host, Theme.Gradients.Pink, TIME.hostSpeed
 		if who == "guest" then
-			name, colors, speed = player.DisplayName, Theme.Gradients.Cyan, 64
+			name, colors, speed = player.DisplayName, Theme.Gradients.Cyan, TIME.guestSpeed
 		end
 		tagLabel.Text = name
 		setGradient(tagGradient, colors)
@@ -242,6 +251,7 @@ function InterviewShow.create(hud, layer)
 		box.Visible = true
 		boxPop.Scale = 0.93
 		TweenService:Create(boxPop, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		return typing.total / speed
 	end
 
 	------------------------------------------------------------- Przyciski z odpowiedziami
@@ -249,7 +259,14 @@ function InterviewShow.create(hud, layer)
 	if Sounds.has("AnswerPick") then
 		pickSound = "AnswerPick"
 	end
-	local choosing = nil -- { picked, start, time, lastTick, red } w czasie wybierania
+	local choosing = nil -- { picked, start, time, red } w czasie wybierania
+	local ticking = nil -- tykanie zegara (dźwięk w pętli) w ostatnich sekundach wybierania
+	local function stopTicking()
+		if ticking ~= nil then
+			ticking.stop(0.15)
+			ticking = nil
+		end
+	end
 	local choices = {}
 	local function choose(i)
 		local entry = choices[i]
@@ -310,7 +327,8 @@ function InterviewShow.create(hud, layer)
 	end)
 
 	local function showChoices(answers, seconds)
-		choosing = { picked = nil, start = os.clock(), time = seconds, lastTick = nil, red = false }
+		stopTicking()
+		choosing = { picked = nil, start = os.clock(), time = seconds, red = false }
 		for i, entry in ipairs(choices) do
 			local answer = answers[i]
 			entry.used = answer ~= nil
@@ -333,6 +351,7 @@ function InterviewShow.create(hud, layer)
 	-- Wybrana odpowiedź podskakuje, reszta znika; po chwili znika też wybrana.
 	local function closeChoices(picked)
 		choosing = nil
+		stopTicking()
 		timerTrack.Visible = false
 		for i, entry in ipairs(choices) do
 			if entry.used then
@@ -353,6 +372,7 @@ function InterviewShow.create(hud, layer)
 
 	local function hideChoices()
 		choosing = nil
+		stopTicking()
 		timerTrack.Visible = false
 		for _, entry in ipairs(choices) do
 			entry.used = false
@@ -504,10 +524,8 @@ function InterviewShow.create(hud, layer)
 				choosing.red = true
 				setGradient(timerGradient, Theme.Gradients.Red)
 			end
-			local whole = math.ceil(left)
-			if whole >= 1 and whole <= 3 and whole ~= choosing.lastTick then
-				choosing.lastTick = whole
-				Sounds.play("AnswerTick")
+			if left <= TIME.tick and left > 0 and ticking == nil then
+				ticking = Sounds.start("AnswerTick")
 			end
 		end
 		local now = os.clock()
@@ -592,15 +610,17 @@ function InterviewShow.create(hud, layer)
 				float(HEARTS, 1)
 			end
 		end)
+		-- muzyka talk show przez cały program
+		local music = Sounds.start("InterviewMusic")
 
-		-- Jedno pytanie: prowadzący pyta, gracz wybiera (albo czas mija i mówi coś losowego),
-		-- studio reaguje. index = które to pytanie w wywiadzie. false = program przerwany.
+		-- Jedno pytanie: prowadzący pyta, gracz czyta pytanie, potem wybiera (albo czas mija i mówi coś
+		-- losowego), a studio reaguje. index = które to pytanie w wywiadzie. false = program przerwany.
 		local function ask(question, number, seconds, index)
 			remember(number)
 			local answers = Logic.shuffle(question.Answers, math.random)
 			cut("host")
-			say("host", question.Ask)
-			if not wait(TIME.lead) then
+			local typed = say("host", question.Ask)
+			if not wait(typed + TIME.lead) then
 				return false
 			end
 			showChoices(answers, seconds)
@@ -613,7 +633,7 @@ function InterviewShow.create(hud, layer)
 					onGuest = true
 					cut("guest") -- gracz myśli, a kamera powoli się zbliża
 				end
-				if thinking and t >= 1.6 then
+				if thinking and t >= 2.2 then
 					thinking = false
 					addComment(pickOne(Content.Comments.Thinking))
 				end
@@ -621,6 +641,9 @@ function InterviewShow.create(hud, layer)
 				if not state.alive then
 					return false
 				end
+			end
+			if not state.alive then
+				return false
 			end
 			local picked = choosing and choosing.picked
 			local line = nil
@@ -634,50 +657,70 @@ function InterviewShow.create(hud, layer)
 			if not onGuest then
 				cut("guest")
 			end
-			say("guest", line or answer.Say)
+			local typedAnswer = say("guest", line or answer.Say)
 			emote("point")
-			if not wait(TIME.answer) then
+			if not wait(math.max(TIME.answer, typedAnswer + 1.2)) then
 				return false
 			end
-			-- reakcja studia
+			-- reakcja studia (muzyka na chwilę ciszej, żeby było słychać śmiech, „boom” albo świerszcze)
 			local react = answer.React
 			cut(REACT_SHOT[react] or "host")
+			music.setVolume(0.35, 0.2)
 			Sounds.play(REACT_SOUND[react])
-			local rest = TIME.react
 			if react == "Crickets" then
 				say("host", "...")
 				if not wait(TIME.silence) then
 					return false
 				end
-				rest = rest - TIME.silence
 			end
-			say("host", answer.Reply)
+			local typedReply = say("host", answer.Reply)
 			addComment(answer.Comment)
 			float(REACT_EMOJI[react] or HEARTS, math.floor(4 * hype + 0.5))
 			state.views = state.views + target * (VIEW_SHARE[index] or 0.1)
-			if not wait(0.45) then
+			local hold = math.max(TIME.react, typedReply + TIME.read)
+			if not wait(0.6) then
 				return false
 			end
 			addComment(pickOne(Content.Comments[react]))
-			return wait(math.max(0.3, rest - 0.45))
+			local finished = wait(math.max(0.3, hold - 0.6))
+			music.setVolume(1, 0.8)
+			return finished
+		end
+
+		-- Pożegnanie: gracz mówi coś na koniec, a prowadzący odpowiada (gdy po pytaniach zostało czasu).
+		local function signOff()
+			local pair = pickOne(Content.SignOff)
+			if pair == nil then
+				return true
+			end
+			cut("guest")
+			local typedSay = say("guest", pair.Say)
+			emote("wave")
+			if not wait(math.max(1.8, typedSay + 1.1)) then
+				return false
+			end
+			cut("host")
+			local typedReply = say("host", pair.Reply)
+			addComment(pickOne(Content.Comments.Laugh))
+			return wait(math.max(2, typedReply + 1.2))
 		end
 
 		task.spawn(function()
 			local ok, err = pcall(function()
 				cut("wide")
-				Sounds.play("InterviewIntro")
-				say("host", pickOne(Content.Intro))
+				local typedIntro = say("host", pickOne(Content.Intro))
 				state.views = target * 0.012
 				addComment(pickOne(Content.Comments.Intro))
-				if not wait(TIME.intro) then
+				if not wait(math.max(TIME.intro, typedIntro + TIME.read)) then
 					return
 				end
 				-- czas na odpowiedź tak, żeby zmieściły się 3 pytania i zakończenie; przy szybkich
-				-- odpowiedziach zostaje czas na dodatkowe
-				local fixed = TIME.lead + TIME.answer + TIME.react
+				-- odpowiedziach zostaje czas na dodatkowe pytania i pożegnanie
 				local plan = Logic.pick(#Content.Questions, QUESTIONS + BONUS, math.random, recent)
 				local asked = 0
 				for _, number in ipairs(plan) do
+					local question = Content.Questions[number]
+					local fixed = Logic.length(question.Ask) / TIME.hostSpeed + TIME.lead + TIME.answerGuess + TIME.reactGuess
 					local remaining = deadline - now() - TIME.outro
 					local seconds
 					if asked < QUESTIONS then
@@ -693,14 +736,19 @@ function InterviewShow.create(hud, layer)
 						end
 					end
 					asked = asked + 1
-					if not ask(Content.Questions[number], number, seconds, asked) then
+					if not ask(question, number, seconds, asked) then
+						return
+					end
+				end
+				if deadline - now() - TIME.outro >= TIME.signOff then
+					if not signOff() then
 						return
 					end
 				end
 				-- koniec: klip idzie do sieci, wyświetlenia dobijają do wyniku, czat szaleje
 				cut("wide")
-				say("host", pickOne(Content.Outro))
-				if not wait(0.9) then
+				local typedOutro = say("host", pickOne(Content.Outro))
+				if not wait(math.max(1.4, typedOutro + 0.6)) then
 					return
 				end
 				Sounds.play("ClipPosted")
@@ -711,13 +759,15 @@ function InterviewShow.create(hud, layer)
 					beat = beat + 1
 					addComment(pickOne(list))
 					float(HEARTS, math.floor(3 * hype + 0.5))
-					if beat == 3 then
+					if beat == 2 then
 						cut("guest")
 						emote("cheer")
-					elseif beat == 6 then
+					elseif beat == 4 then
 						cut("side")
+					elseif beat == 6 then
+						cut("wide")
 					end
-					if not wait(0.6) then
+					if not wait(0.9) then
 						return
 					end
 				end
@@ -734,6 +784,7 @@ function InterviewShow.create(hud, layer)
 			end
 			state.alive = false
 			connection:Disconnect()
+			music.stop()
 			hideChoices()
 			clearComments()
 			clearFloaters()

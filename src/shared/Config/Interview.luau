@@ -2,7 +2,7 @@
 --
 -- Pomysł jak w filmikach z Miami: prowadzący pyta „tradera” o proste rzeczy (ile spółek jest
 -- w S&P 500, kto jest jego brokerem), a ten odpowiada głupio, bo tylko udaje, że gra na giełdzie.
--- W każdym wywiadzie są 3 losowe pytania (4, gdy gracz odpowiada szybko). Gracz wybiera jedną
+-- W każdym wywiadzie są 3 losowe pytania (4–5, gdy gracz odpowiada szybko). Gracz wybiera jedną
 -- z trzech odpowiedzi i wszystkie są głupie. Ocenę klipu (Flop … Mega viral) losuje serwer, więc
 -- odpowiedź jej nie zmienia: jest dla zabawy.
 --
@@ -40,6 +40,17 @@ return {
 		"Okay. I've heard enough.",
 		"Incredible. Truly. Posting it.",
 		"Wow. The internet needs to see this.",
+	},
+
+	-- Pożegnanie: gracz mówi coś na koniec, a prowadzący odpowiada (gdy po pytaniach zostanie czasu).
+	-- Say najwyżej 46 znaków (to nie przycisk), Reply najwyżej 32.
+	SignOff = {
+		{ Say = "Not financial advice!", Reply = "Clearly." },
+		{ Say = "Follow me for more tips!", Reply = "Please don't." },
+		{ Say = "Trust me, I'm rich.", Reply = "Your watch says otherwise." },
+		{ Say = "See you at the top! 🚀", Reply = "...The top of what?" },
+		{ Say = "Buy my trading course!", Reply = "Absolutely not." },
+		{ Say = "Stay rich, Miami!", Reply = "Stay... something." },
 	},
 
 	Questions = {

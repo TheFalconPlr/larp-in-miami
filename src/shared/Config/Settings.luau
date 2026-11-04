@@ -53,10 +53,10 @@ local Settings = {
 	-- ostatnie FadeOut sekund powoli cichnie. Start = od której sekundy pliku zacząć (pomija ciszę na początku).
 	Sounds = {
 		Button = { Id = 100809160609628, Volume = 0.5, MinGap = 0.05 }, -- domyślny dźwięk przycisków
-		-- klikanie na LP (cichy dźwięk „hover”, dlatego głośność 1). Rise: klikanie pod rząd podnosi
+		-- klikanie na LP (cichy dźwięk „hover”, dlatego głośność 2). Rise: klikanie pod rząd podnosi
 		-- dźwięk o Step półtonów co klik, najwyżej o Max półtonów (12 = oktawa); po Reset sekundach
 		-- przerwy wraca do zwykłej wysokości. Bez Rise dźwięk ma tylko lekko losową wysokość.
-		Click = { Id = 139719503904449, Volume = 1, MinGap = 0.06, Rise = { Step = 1, Max = 12, Reset = 0.8 } },
+		Click = { Id = 139719503904449, Volume = 2, MinGap = 0.06, Rise = { Step = 1, Max = 12, Reset = 0.8 } },
 		Sell = { Id = 111773238101465, Volume = 0.6, MinGap = 0.15 }, -- sprzedaż
 		BagFull = { Id = 139063727738556, Volume = 0.6, MinGap = 1 }, -- Bag właśnie się zapełnił
 		BagFullClick = { Id = 88442833509532, Volume = 0.6, MinGap = 0.1 }, -- klik przy pełnym Bag (razem z BAG FULL)
@@ -77,25 +77,28 @@ local Settings = {
 		CashTick = { Id = 8646410774, Volume = 0.45, MinGap = 0.03, Rise = { Step = 1, Max = 10, Reset = 0.5 } },
 
 		-- Dźwięki na dłużej (Sounds.start): Looped = gra w pętli do końca sesji, FadeIn = przez tyle
-		-- sekund rośnie od ciszy do pełnej głośności, FadeOut = tyle trwa wyciszanie na końcu.
-		-- odrzutowiec: silnik przez cały lot, na pasie się rozkręca (cicho → normalnie, wyżej)
-		JetEngine = { Id = 116765821564780, Volume = 0.6, Looped = true, FadeIn = 8, FadeOut = 1.5 },
-		JetCabin = { Id = 76104215304832, Volume = 0.6, MinGap = 1 }, -- „ding” w kabinie, gdy samolot rusza
-		-- jacht: muzyka przez całą imprezę i trąbka pod koniec (razem z wybuchem konfetti)
-		PartyMusic = { Id = 128285936198049, Volume = 0.45, Looped = true, FadeIn = 2, FadeOut = 2.5 },
-		PartyHorn = { Id = 118248543183940, Volume = 0.7, MinGap = 0.3 },
+		-- sekund rośnie do pełnej głośności (od FadeFrom: 0 = od ciszy, 0.3 = od 30%), FadeOut = tyle
+		-- trwa wyciszanie na końcu. Ids = kilka wersji jednego dźwięku (gra losowa).
+		-- odrzutowiec: silnik przez cały lot (cichy plik, dlatego głośność 2.5); na pasie rozkręca się
+		-- od 30% do pełnej głośności i trochę wyżej. Do tego muzyka w locie i „ding” w kabinie na starcie.
+		JetEngine = { Id = 116765821564780, Volume = 2.5, Looped = true, FadeIn = 6, FadeFrom = 0.3, FadeOut = 1.5 },
+		JetMusic = { Id = 9046476113, Volume = 0.4, Looped = true, FadeIn = 3, FadeOut = 2 },
+		JetCabin = { Id = 76104215304832, Volume = 0.6, MinGap = 1 },
+		-- jacht: muzyka przez całą imprezę, a na koniec trąbka z wybuchem konfetti (potem oklaski Reward)
+		PartyMusic = { Id = 1838028467, Volume = 0.5, Looped = true, FadeIn = 2, FadeOut = 1 },
+		PartyHorn = { Id = 118248543183940, Volume = 0.8, MinGap = 0.3 },
 
-		-- Wywiad. Bez ID na razie nic nie gra: wpisz Id, gdy znajdziesz dźwięk w Toolboxie.
-		InterviewIntro = { Volume = 0.6 }, -- dżingiel na wejście na wizję
+		-- Wywiad: muzyka talk show przez cały program (ściszana na chwilę przy reakcjach studia).
+		InterviewMusic = { Id = 9048498225, Volume = 0.3, Looped = true, FadeIn = 1, FadeOut = 1.2 },
 		AnswerPick = { Volume = 0.6, MinGap = 0.1 }, -- wybór odpowiedzi (bez ID gra zwykły Button)
-		AnswerTick = { Volume = 0.5, MinGap = 0.2 }, -- tykanie w ostatnich 3 sekundach na odpowiedź
-		ReactBoom = { Volume = 0.8 }, -- „vine boom” przy zbliżeniu na prowadzącego
-		ReactLaugh = { Volume = 0.6 }, -- śmiech publiczności
-		ReactCrickets = { Volume = 0.7 }, -- świerszcze przy niezręcznej ciszy
-		ReactBruh = { Volume = 0.8 }, -- „bruh”
-		Comment = { Volume = 0.35, MinGap = 0.08 }, -- nowy komentarz w czacie
-		ClipPosted = { Volume = 0.6 }, -- klip wrzucony do sieci, wyświetlenia lecą w górę
-		InterviewFlop = { Volume = 0.7 }, -- ocena FLOP (smutna trąbka); bez ID gra NotEnough
+		AnswerTick = { Id = 507267777, Volume = 0.5, Looped = true }, -- tykanie zegara, gdy wybierasz odpowiedź
+		ReactBoom = { Id = 140367458608473, Volume = 0.7 }, -- „vine boom” przy zbliżeniu na prowadzącego
+		ReactLaugh = { Ids = { 139341401874820, 79013083482469, 81245133419507 }, Volume = 0.6 }, -- śmiech (3 wersje)
+		ReactCrickets = { Id = 116480627582005, Volume = 0.7 }, -- świerszcze przy niezręcznej ciszy
+		ReactBruh = { Id = 140007222940724, Volume = 0.6 }, -- „bruh” (plik jest głośny)
+		Comment = { Id = 140323850218372, Volume = 0.25, MinGap = 0.08 }, -- nowy komentarz w czacie
+		ClipPosted = { Id = 137081214744553, Volume = 1.2 }, -- „whoosh”: klip idzie do sieci (cichy plik)
+		InterviewFlop = { Id = 116298781032555, Volume = 0.7 }, -- ocena FLOP: smutna trąbka
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

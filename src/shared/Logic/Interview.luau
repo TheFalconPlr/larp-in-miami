@@ -95,6 +95,14 @@ function Interview.validate(content)
 	list(content.Intro, limits.Line, "Intro")
 	list(content.Outro, limits.Line, "Outro")
 	list(content.Users, limits.User, "Users", 5)
+	if type(content.SignOff) ~= "table" or #content.SignOff < 1 then
+		table.insert(problems, "SignOff: za mało pozycji")
+	else
+		for i, pair in ipairs(content.SignOff) do
+			text(pair.Say, limits.Line, "SignOff " .. i)
+			text(pair.Reply, limits.Reply, "SignOff " .. i .. " (prowadzący)")
+		end
+	end
 
 	local comments = content.Comments
 	if type(comments) ~= "table" then

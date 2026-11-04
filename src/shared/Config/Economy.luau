@@ -178,8 +178,8 @@ local Economy = {
 		},
 		Interview = {
 			Zone = 3,
-			Base = 1800,
-			DurationSeconds = 25,
+			Base = 3000,
+			DurationSeconds = 45,
 			TransitionSeconds = 5,
 			Grades = {
 				{

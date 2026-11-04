@@ -626,8 +626,26 @@ local function pose(player, spot, kind)
 	if data ~= nil then
 		tier = Loop.activityTier(data, kind)
 	end
-	character:PivotTo(poseCFrame(spot, kind, tier))
+	local target = poseCFrame(spot, kind, tier)
+	-- Najpierw zatrzymanie, potem przestawienie. Odwrotnie (jak było) gracz, który akurat skakał albo
+	-- spadał, zdążył się jeszcze u siebie podnieść, zanim doszło zatrzymanie, i wisiał w powietrzu
+	-- przez całą sesję (postacią steruje jego komputer).
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.AssemblyAngularVelocity = Vector3.zero
 	root.Anchored = true
+	character:PivotTo(target)
+	-- dla pewności jeszcze dwa razy po chwili (inna wartość niż poprzednio, bo taka sama by nie doszła)
+	local session = sessions[player]
+	task.delay(0.3, function()
+		if sessions[player] == session and root.Parent ~= nil and root.Anchored then
+			character:PivotTo(target * CFrame.new(0, 0.001, 0))
+		end
+	end)
+	task.delay(1, function()
+		if sessions[player] == session and root.Parent ~= nil and root.Anchored then
+			character:PivotTo(target)
+		end
+	end)
 end
 
 local function finish(player, kind, grade)

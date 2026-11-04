@@ -49,7 +49,9 @@ def default_cfg():
         ZONE_COST={2: 2500.0, 3: 2e5, 4: 5e6, 5: 6e8},
         ACT={
             'car': dict(zone=2, base=110, dur=8, over=3, tiers=[1, 1.5, 2.5, 4, 6]),
-            'interview': dict(zone=3, base=1800, dur=25, over=5, tiers=[1], viral=1.5),
+            # wywiad: 45 s (3 pytania w spokojnym tempie); baza 3000 = dawne 1800 × (45+5)/(25+5),
+            # więc LP na minutę zostają takie same jak przy 25 s
+            'interview': dict(zone=3, base=3000, dur=45, over=5, tiers=[1], viral=1.5),
             'yacht': dict(zone=4, base=6000, dur=45, over=5, tiers=[1, 2, 5, 10, 25]),
             'jet': dict(zone=5, base=315000, dur=60, over=10, tiers=[1, 2.5, 6]),
         },

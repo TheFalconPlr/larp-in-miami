@@ -36,6 +36,7 @@ local FLASH_EVERY = 1.6 -- co tyle sekund błyska flesz (zdjęcia)
 local PARTY_EVERY = 0.9 -- co tyle sekund zmienia się kolor świateł (jacht)
 local SHOT_SECONDS = 4.2 -- przez tyle sekund kamera w studiu powoli się zbliża (wywiad)
 local PARTY_PHOTO_GAP = { 2, 3.6 } -- odstęp między zdjęciami na imprezie (s, losowy)
+local YACHT_SHOT = 3.8 -- tyle trwa jedno ujęcie na jachcie (potem przebitka)
 local JET_RUNWAY_PHOTOS = { 2.2, 3.6, 4.8, 5.9, 6.9, 7.8 } -- zdjęcia, gdy samolot rusza i startuje (s)
 local JET_FLIGHT_PHOTO_GAP = { 3.6, 5.8 } -- zdjęcia w locie (s, losowo)
 local JET_CRUISE = 140 -- wysokość lotu nad pasem (studs)
@@ -944,32 +945,129 @@ function Activities.start(hud)
 		}
 	end
 
-	-- Jacht: szeroki lot kamery wokół basenu, jacht lekko się kołysze, muzyka, kolorowe światła,
-	-- konfetti i zdjęcia (flesze z migawką). Pod koniec trąbka i wybuch konfetti.
-	SCENES.Yacht = function(spot, duration)
+	-- Jacht: przebitki jak w teledysku z imprezy (plan ogólny, gracz tańczy z bliska, nisko od wody,
+	-- zza pleców gracza w stronę lądu, z drona i jazda wzdłuż burty). Jacht lekko się kołysze, a gracz
+	-- razem z nim, gra muzyka, migają kolorowe światła, spada konfetti i co kilka sekund jest zdjęcie.
+	-- Kamera zawsze stoi po stronie lądu (tam, skąd gracz przyszedł), więc nie wylatuje poza mapę.
+	-- Na sam koniec trąbka i wybuch konfetti, a po zaciemnieniu oklaski (Reward).
+	SCENES.Yacht = function(spot, duration, payload)
 		local frame = pivotOf(spot)
 		local model = itemModel(spot, "Yacht", shownTier("Yacht"))
 		local original = model and model:GetPivot()
 		-- kołysanie wokół środka jachtu (bez względu na to, gdzie jest jego punkt obrotu)
-		local center, pivotOffset = nil, nil
+		local center, size, pivotOffset = frame, Vector3.new(10, 6, 24), nil
 		if model ~= nil then
-			center = model:GetBoundingBox()
+			center, size = model:GetBoundingBox()
 			pivotOffset = center:ToObjectSpace(original)
 		end
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		-- gracz stoi na Pose jachtu dokładnie tak jak na serwerze (Pose + 3 studs) i kołysze się z jachtem
+		local poseFrame = nil
+		local posePart = model and model:FindFirstChild("Pose", true)
+		if posePart ~= nil and posePart:IsA("BasePart") then
+			local ground = posePart.Position + Vector3.new(0, posePart.Size.Y / 2, 0)
+			local look = posePart.CFrame.LookVector
+			local flat = Vector3.new(look.X, 0, look.Z)
+			if flat.Magnitude < 0.1 then
+				flat = Vector3.new(0, 0, -1)
+			end
+			local position = ground + Vector3.new(0, 3, 0)
+			poseFrame = CFrame.lookAt(position, position + flat.Unit)
+		end
+		local ride = nil
+		if poseFrame ~= nil and root ~= nil and model ~= nil then
+			ride = center:ToObjectSpace(poseFrame)
+			root.CFrame = poseFrame
+		end
+		local guest = (poseFrame and poseFrame.Position) or (root and root.Position) or (center.Position + Vector3.new(0, size.Y / 2 + 3, 0))
+
+		-- oś jachtu (dłuższy bok w poziomie), dziób tam, gdzie stoi gracz, i strona lądu
+		local up = Vector3.new(0, 1, 0)
+		local along = center.LookVector
+		local length, width = size.Z, size.X
+		if size.X > size.Z then
+			along = center.RightVector
+			length, width = size.X, size.Z
+		end
+		along = Vector3.new(along.X, 0, along.Z)
+		if along.Magnitude < 0.01 then
+			along = Vector3.new(0, 0, -1)
+		end
+		along = along.Unit
+		local mid = center.Position
+		local base = Vector3.new(mid.X, 0, mid.Z)
+		local bow = along
+		if (guest - base):Dot(along) < 0 then
+			bow = -along
+		end
+		local side = bow:Cross(up)
+		local viewFrom = payload and payload.ViewFrom
+		if typeof(viewFrom) == "Vector3" then
+			local toView = viewFrom - mid
+			if side:Dot(Vector3.new(toView.X, 0, toView.Z)) < 0 then
+				side = -side
+			end
+		end
+		local deckY = guest.Y - 3
+		local topY = mid.Y + size.Y / 2
+		local half = width / 2
+		local guestAlong = (guest - base):Dot(bow)
+		local guestSide = (guest - base):Dot(side)
+		local head = guest + Vector3.new(0, 1.6, 0)
+		local function at(a, s, y)
+			return base + bow * a + side * s + Vector3.new(0, y, 0)
+		end
+		-- każde ujęcie: kamera jedzie od from[1] do from[2] i patrzy od look[1] do look[2]
+		local shots = {
+			wide = {
+				from = { at(-length * 0.3, half + 22, topY + 6), at(length * 0.15, half + 22, topY + 6) },
+				look = { at(-length * 0.05, 0, deckY + 1), at(length * 0.05, 0, deckY + 1) },
+			},
+			dancer = {
+				from = {
+					at(guestAlong + 2, math.max(guestSide + 7, half + 3), deckY + 3.4),
+					at(guestAlong + 1, math.max(guestSide + 5.5, half + 2.5), deckY + 3.8),
+				},
+				look = { head, head },
+			},
+			low = {
+				from = { at(length / 2 + 7, half + 6, deckY - 0.6), at(length / 2 + 5, half + 4.5, deckY - 0.3) },
+				look = { head + up, head + up },
+			},
+			shoulder = {
+				from = { guest - side * 2.2 - bow * 1.6 + up * 2.4, guest - side * 1.8 - bow * 1.2 + up * 2.6 },
+				look = { guest + side * 14 + bow * 2 + up * 0.5, guest + side * 14 - bow * 2 + up * 0.5 },
+			},
+			drone = {
+				from = { at(-length * 0.2, half + 10, topY + length * 0.6 + 10), at(length * 0.15, half + 6, topY + length * 0.6 + 12) },
+				look = { at(0, 0, deckY), at(0, 0, deckY) },
+			},
+			dolly = {
+				from = { at(-length * 0.55, half + 9, deckY + 2), at(length * 0.45, half + 9, deckY + 2.5) },
+				look = { at(-length * 0.2, 0, deckY + 1.5), at(length * 0.3, 0, deckY + 1.5) },
+			},
+		}
+		local order = { "wide", "dancer", "low", "shoulder", "drone", "dancer", "dolly", "wide", "low", "dancer", "drone", "shoulder", "dancer" }
+
 		local nextParty = PARTY_EVERY
 		local colorIndex = 0
 		local nextConfetti = 0
 		local nextPhoto = 1.4
-		local hornAt = math.max(3, duration - 4)
+		local hornAt = math.max(3, duration - 0.9) -- trąbka na sam koniec (serwer kończy sesję po duration)
 		local horned = false
 		local music = Sounds.start("PartyMusic")
 		return {
-			update = function(dt, elapsed, t)
+			update = function(dt, elapsed)
 				if model ~= nil then
 					local heave = math.sin(elapsed * 1.3) * 0.12
 					local roll = math.rad(math.sin(elapsed * 1.1) * 1.2)
 					local pitch = math.rad(math.sin(elapsed * 0.8) * 0.8)
-					model:PivotTo(center * CFrame.new(0, heave, 0) * CFrame.Angles(pitch, 0, roll) * pivotOffset)
+					local rock = center * CFrame.new(0, heave, 0) * CFrame.Angles(pitch, 0, roll)
+					model:PivotTo(rock * pivotOffset)
+					if ride ~= nil and root.Parent ~= nil then
+						root.CFrame = rock * ride
+					end
 				end
 				if elapsed >= nextParty and elapsed < duration - 0.5 then
 					nextParty = nextParty + PARTY_EVERY
@@ -977,7 +1075,7 @@ function Activities.start(hud)
 					partyFlash(PARTY_COLORS[colorIndex])
 				end
 				-- zdjęcia na imprezie: flesz z migawką co kilka sekund, czasem dwa szybko po sobie
-				if elapsed >= nextPhoto and elapsed < duration - 0.8 then
+				if elapsed >= nextPhoto and elapsed < hornAt - 0.4 then
 					nextPhoto = elapsed + between(PARTY_PHOTO_GAP)
 					flash()
 					if math.random() < 0.4 then
@@ -986,7 +1084,9 @@ function Activities.start(hud)
 				end
 				if not horned and elapsed >= hornAt then
 					horned = true
+					music.setVolume(0.35, 0.5) -- muzyka ciszej, żeby trąbka i oklaski było dobrze słychać
 					Sounds.play("PartyHorn")
+					partyFlash(Color3.fromRGB(255, 214, 61))
 					for _ = 1, 40 do
 						spawnConfetti()
 					end
@@ -996,14 +1096,19 @@ function Activities.start(hud)
 					spawnConfetti()
 				end
 				updateConfetti(dt)
-				local angle = math.rad(20 + 200 * t)
-				local offset = Vector3.new(math.cos(angle) * 36, 13 - 3 * t, math.sin(angle) * 36)
-				return CFrame.lookAt(frame:PointToWorldSpace(offset), frame.Position + Vector3.new(0, 5, 0))
+				-- przebitki: co YACHT_SHOT sekund inne ujęcie, a w każdym kamera powoli jedzie
+				local index = math.floor(elapsed / YACHT_SHOT)
+				local shot = shots[order[index % #order + 1]]
+				local p = smooth((elapsed - index * YACHT_SHOT) / YACHT_SHOT)
+				return CFrame.lookAt(shot.from[1]:Lerp(shot.from[2], p), shot.look[1]:Lerp(shot.look[2], p))
 			end,
 			stop = function()
 				music.stop()
 				if model ~= nil and original ~= nil then
 					model:PivotTo(original)
+				end
+				if ride ~= nil and root.Parent ~= nil then
+					root.CFrame = center * ride -- z powrotem dokładnie tam, gdzie postawił serwer
 				end
 				clearConfetti()
 			end,
@@ -1187,6 +1292,7 @@ function Activities.start(hud)
 		local nextRunwayPhoto = 1
 		local nextFlightPhoto = 12 + math.random() * 2
 		local engine = Sounds.start("JetEngine")
+		local music = Sounds.start("JetMusic")
 		Sounds.play("JetCabin")
 		return {
 			update = function(dt, elapsed)
@@ -1273,6 +1379,7 @@ function Activities.start(hud)
 			end,
 			stop = function()
 				engine.stop()
+				music.stop()
 				fogFrame.BackgroundTransparency = 1
 				if jet ~= nil and jet == original then
 					jet:PivotTo(frame0)
@@ -1386,6 +1493,16 @@ function Activities.start(hud)
 			spot = root and nearestSpot(root.Position, kind)
 		end
 
+		-- skąd gracz patrzył przed sesją (strona lądu: tam ustawiają się kamery na jachcie)
+		local viewCamera = Workspace.CurrentCamera
+		if viewCamera ~= nil then
+			payload.ViewFrom = viewCamera.CFrame.Position
+		end
+		-- bez skakania w czasie sesji (skok w chwili, gdy serwer stawia gracza, zostawiał go w powietrzu)
+		local sessionHumanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if sessionHumanoid ~= nil then
+			sessionHumanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+		end
 		fadeTo(0, 0.3)
 		showCaption(kind, half)
 		setSignsHidden(true)
@@ -1448,6 +1565,9 @@ function Activities.start(hud)
 		end
 		State.hidePets = false
 		setSignsHidden(false)
+		if sessionHumanoid ~= nil and sessionHumanoid.Parent ~= nil then
+			sessionHumanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+		end
 		timerHolder.Visible = false
 		fadeTo(1, 0.35)
 	end
@@ -1479,6 +1599,10 @@ function Activities.start(hud)
 			local character = player.Character
 			if KINDS[payload.Activity].hidePlayer and character ~= nil then
 				LocalHide.setAll(character, false, { collide = false })
+			end
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid ~= nil then
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
 			end
 			State.hidePets = false
 			setSignsHidden(false)
