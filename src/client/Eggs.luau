@@ -48,11 +48,7 @@ local PANEL_BODY = 2.7
 local PANEL_TIP = 0.45 -- dzióbek pod panelem
 local PANEL_LIFT = 0.6 -- odstęp panelu od czubka jajka
 local PANEL_EDGE = Color3.fromRGB(205, 210, 222)
--- Połysk panelu: jasne, lekko przechylone paski różnej szerokości (od lewej: szeroki, cienki,
--- średni, cienki) na odrobinę ciemniejszym tle. Liczby to miejsca na szerokości panelu (0–1).
-local PANEL_BASE = Color3.fromRGB(232, 238, 248)
-local PANEL_SHINE = { { 0.14, 0.25 }, { 0.3, 0.33 }, { 0.66, 0.71 }, { 0.76, 0.78 } }
-local PANEL_SHINE_TILT = 20 -- stopnie
+-- Połysk panelu (ukośne paski na jasnoniebieskim tle) rysuje Kit.shine, tak samo jak przy boxach.
 
 -- Animacja (piksele bazowe 1280×720). Jajka i pety stoją na środku ekranu, napisy pod nimi.
 local STAGE_SIZE = Vector2.new(1200, 700)
@@ -267,15 +263,7 @@ function Eggs.start(hud)
 		})
 		Kit.new("UICorner", { CornerRadius = UDim.new(0.2, 0), Parent = body })
 		Kit.stroke(body, 2, Enum.ApplyStrokeMode.Border, PANEL_EDGE)
-		local points = { ColorSequenceKeypoint.new(0, PANEL_BASE) }
-		for _, stripe in ipairs(PANEL_SHINE) do
-			table.insert(points, ColorSequenceKeypoint.new(stripe[1], PANEL_BASE))
-			table.insert(points, ColorSequenceKeypoint.new(stripe[1] + 0.005, Theme.White))
-			table.insert(points, ColorSequenceKeypoint.new(stripe[2], Theme.White))
-			table.insert(points, ColorSequenceKeypoint.new(stripe[2] + 0.005, PANEL_BASE))
-		end
-		table.insert(points, ColorSequenceKeypoint.new(1, PANEL_BASE))
-		Kit.new("UIGradient", { Color = ColorSequence.new(points), Rotation = PANEL_SHINE_TILT, Parent = body })
+		Kit.shine(body)
 		-- dzióbek: obrócony kwadrat, którego górna połowa chowa się w panelu
 		local tip = PANEL_TIP * 1.4
 		Kit.new("Frame", {
@@ -1034,7 +1022,7 @@ function Eggs.start(hud)
 		TweenService:Create(dim, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
 		TweenService:Create(bannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
 		TweenService:Create(subBannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
-		local target = Pets.tileCenter()
+		local target = hud.menuTarget(Pets.tileCenter())
 		local inset = GuiService:GetGuiInset()
 		for i, slot in ipairs(slots) do
 			if target ~= nil then
@@ -1058,6 +1046,7 @@ function Eggs.start(hud)
 				task.delay(delay + 0.42, function()
 					viewport.Visible = false
 					Pets.bump()
+					hud.menuBump()
 				end)
 			end
 			TweenService:Create(slot.holderScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()

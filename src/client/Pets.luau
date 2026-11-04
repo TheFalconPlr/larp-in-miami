@@ -538,12 +538,9 @@ function Pets.start(hud)
 		end
 	end
 
+	-- tylko pety, które są w indeksie (bez Mythic, który jest tylko w jajkach premium)
 	local function indexCount()
-		local n = 0
-		for _ in pairs(indexFound) do
-			n = n + 1
-		end
-		return n
+		return Loop.indexCount({ Index = indexFound })
 	end
 
 	local function secretsFound()
@@ -1019,8 +1016,9 @@ function Pets.start(hud)
 				Parent = indexFrame,
 			})
 			local zoneInfo = Economy.Zones[zone]
+			local rarities = Loop.indexRarities(zone)
 			local found = 0
-			for _, rarity in ipairs(Economy.Pets.RarityOrder) do
+			for _, rarity in ipairs(rarities) do
 				if indexFound[Loop.indexKey(zone, rarity)] then
 					found = found + 1
 				end
@@ -1031,7 +1029,7 @@ function Pets.start(hud)
 				height = 32,
 				items = {
 					{ text = (zoneInfo and zoneInfo.Name) or ("Zone " .. zone), size = 24 },
-					{ text = string.format(TEXT.Count, found, #Economy.Pets.RarityOrder), size = 22, colors = Theme.Gradients.Gold },
+					{ text = string.format(TEXT.Count, found, #rarities), size = 22, colors = Theme.Gradients.Gold },
 				},
 			})
 			local cardsRow = Kit.new("Frame", {
@@ -1046,7 +1044,7 @@ function Pets.start(hud)
 				SortOrder = Enum.SortOrder.LayoutOrder,
 				Parent = cardsRow,
 			})
-			for i, rarity in ipairs(Economy.Pets.RarityOrder) do
+			for i, rarity in ipairs(rarities) do
 				makeIndexCard(cardsRow, zone, rarity, i)
 			end
 		end

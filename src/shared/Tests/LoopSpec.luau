@@ -321,10 +321,30 @@ return function()
 	local _, p2, new2 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
 	local _, _, new3 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
 	check(p1.Egg == "A" and p1.Rarity == "Rare" and p2.Rarity == "Common" and new1 and new2 and not new3, "indeks: pierwszy Rare i Common są nowe, drugi Common już nie")
-	check(Loop.indexCount(d) == 2 and Loop.indexTotal() == 35 and Loop.view(d, {}).IndexCount == 2, "indeks: 2 z 35 (5 stref × 7 rzadkości)")
+	check(Loop.indexCount(d) == 2 and Loop.indexTotal() == 30 and Loop.view(d, {}).IndexCount == 2, "indeks: 2 z 30 (5 stref × 6 rzadkości)")
+	local mythicOk = true
+	for zone in ipairs(Economy.Pets.Eggs) do
+		local list = Loop.indexRarities(zone)
+		if #list ~= 6 or list[6] ~= "Secret" or table.concat(list, ","):find("Mythic", 1, true) then
+			mythicOk = false
+		end
+	end
+	check(mythicOk, "indeks bez Mythic (jest tylko w jajkach premium), z sekretem na końcu")
+	Loop.addToIndex(d, 2, "Mythic")
+	check(Loop.indexCount(d) == 2, "Mythic z komendy /pet nie liczy się do indeksu")
 	d.Index = {}
 	Loop.backfillIndex(d)
 	check(Loop.indexCount(d) == 2, "indeks uzupełnia się z petów, które już są")
+
+	-- tryb testowy /adminluck: ctx.luckBoost; przy ogromnym szczęściu jedno losowanie z rozkładu
+	-- „najrzadszy z n” (sekret w ~98% złotych jajek, reszta to Legendary)
+	local eggB1 = Economy.Pets.Eggs[1].B
+	check(Formulas.roll(eggB1.Odds, 100000, always(0.5)) == "Secret" and Formulas.roll(eggB1.Odds, 100000, always(0.001)) == "Legendary", "szczęście ×100 000: sekret albo Legendary")
+	local lucky = fresh()
+	lucky.Cash = eggB1.Price
+	lucky.Stats.EggsOpened = 1
+	local _, luckyPet = Loop.openEgg(lucky, { luckBoost = 100000 }, 1, "B", always(0.5), 250)
+	check(luckyPet ~= nil and luckyPet.Rarity == "Secret", "/adminluck działa w jajkach (ctx.luckBoost)")
 
 	local sellA = { Zone = 1, Rarity = "Common", Level = 0, Egg = "A" }
 	local sellB = { Zone = 1, Rarity = "Common", Level = 0, Egg = "B" }

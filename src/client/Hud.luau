@@ -53,12 +53,14 @@ local TEXT = {
 	NotEnough = "Not enough L$",
 	Upgraded = "%s → Lv %d",
 	TestMode = "TEST MODE · /cmds",
+	TestLuck = " · LUCK ×%s", -- /adminluck
 	AutoClickOn = "AUTO CLICK",
 	AutoSellOn = "AUTO SELL",
 }
 
 ----------------------------------------------------------------- Skala UI
 local scaleObjects = {}
+local scaleListeners = {} -- funkcje wołane po zmianie skali (np. schowane menu liczy, gdzie stać)
 local currentScale = 1
 
 local function computeScale()
@@ -78,6 +80,9 @@ local function updateScale()
 	currentScale = computeScale()
 	for _, uiScale in ipairs(scaleObjects) do
 		uiScale.Scale = currentScale
+	end
+	for _, fn in ipairs(scaleListeners) do
+		fn(currentScale)
 	end
 end
 
@@ -303,16 +308,27 @@ function Hud.start()
 	local MENU_TILE = Vector2.new(104, 110) -- Kit.tile: 104 × 104 i krawędź 6
 	local MENU_GAP = Vector2.new(16, 28) -- pod kafelkiem jest miejsce na napis, który wystaje w dół
 	local MENU_WIDTH = 2 * MENU_TILE.X + MENU_GAP.X
-	local left = Kit.new("Frame", {
-		Name = "Menu",
+	local MENU_LEFT = 22 -- odstęp menu od lewej krawędzi ekranu (px)
+	local TOGGLE_SIZE = Vector2.new(36, 64) -- przycisk chowania menu, na prawo od siatki
+	local TOGGLE_GAP = 10
+	-- menuRoot trzyma menu i przycisk chowania; menu to lista: siatka kafelków i przełączniki
+	local menuRoot = Kit.new("Frame", {
+		Name = "MenuRoot",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 22, 0.46, 0),
+		Position = UDim2.new(0, MENU_LEFT, 0.46, 0),
 		Size = UDim2.fromOffset(MENU_WIDTH, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
-	registerScale(left)
+	registerScale(menuRoot)
+	local left = Kit.new("Frame", {
+		Name = "Menu",
+		Size = UDim2.fromOffset(MENU_WIDTH, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Parent = menuRoot,
+	})
 	Kit.new("UIListLayout", {
 		Padding = UDim.new(0, 26),
 		SortOrder = Enum.SortOrder.LayoutOrder,
@@ -391,6 +407,58 @@ function Hud.start()
 		order = 11,
 	})
 	autoSellButton.holder.Visible = false
+
+	-- Przycisk „<” na prawo od siatki chowa menu za lewą krawędź ekranu; zostaje sam przycisk „>”,
+	-- który je przywraca. Wybór zapisuje się w zapisie gracza (Settings.HideMenu).
+	local GRID_HEIGHT = 2 * MENU_TILE.Y + MENU_GAP.Y
+	local menuToggle = Kit.button(menuRoot, {
+		name = "MenuToggle",
+		size = TOGGLE_SIZE,
+		text = "<",
+		colors = Theme.Gradients.Gray,
+		radius = 14,
+		edge = 4,
+		textSize = 30,
+		textStroke = 3,
+		anchor = Vector2.new(0, 0.5),
+		position = UDim2.fromOffset(MENU_WIDTH + TOGGLE_GAP, GRID_HEIGHT / 2),
+	})
+	local toggleScale = Kit.new("UIScale", { Parent = menuToggle.body })
+	local menuHidden = false
+	local menuSettingLoaded = false
+	local menuTween = nil
+	-- Schowane: przycisk zostaje 6 px od krawędzi ekranu (menu jest w skali UI, więc liczymy ze skalą).
+	local function menuX(hidden)
+		if hidden then
+			return 6 - (MENU_WIDTH + TOGGLE_GAP) * currentScale
+		end
+		return MENU_LEFT
+	end
+	local function placeMenu(animate)
+		if menuTween ~= nil then
+			menuTween:Cancel()
+			menuTween = nil
+		end
+		local goal = UDim2.new(0, menuX(menuHidden), 0.46, 0)
+		if animate then
+			menuTween = TweenService:Create(menuRoot, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = goal })
+			menuTween:Play()
+		else
+			menuRoot.Position = goal
+		end
+		menuToggle.setText((menuHidden and ">") or "<")
+	end
+	local function setMenuHidden(hidden, animate)
+		menuHidden = hidden
+		placeMenu(animate)
+	end
+	menuToggle.Activated:Connect(function()
+		setMenuHidden(not menuHidden, true)
+		Net.event("SetSetting"):FireServer("HideMenu", menuHidden)
+	end)
+	table.insert(scaleListeners, function()
+		placeMenu(false)
+	end)
 
 	----------------------------------------------------------------- L$ na dole po lewej
 	local cashGroup = Kit.new("Frame", {
@@ -570,7 +638,7 @@ function Hud.start()
 		Parent = topGui,
 	})
 	registerScale(testHolder)
-	Kit.pill(testHolder, {
+	local testPill = Kit.pill(testHolder, {
 		anchor = Vector2.new(0.5, 0),
 		position = UDim2.fromScale(0.5, 0),
 		height = 30,
@@ -581,6 +649,18 @@ function Hud.start()
 		padRight = 14,
 		items = { { text = TEXT.TestMode, size = 16 } },
 	})
+	-- /adminluck: na pigułce widać, że szczęście jest podkręcone (atrybut gracza z serwera)
+	local localPlayer = Players.LocalPlayer
+	local function renderTestPill()
+		local text = TEXT.TestMode
+		local boost = localPlayer:GetAttribute("LarpTestLuck")
+		if type(boost) == "number" and boost > 1 then
+			text = text .. string.format(TEXT.TestLuck, Format.number(boost))
+		end
+		testPill.set({ { text = text, size = 16 } })
+	end
+	localPlayer:GetAttributeChangedSignal("LarpTestLuck"):Connect(renderTestPill)
+	renderTestPill()
 	local fade = Kit.new("Frame", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Color3.new(0, 0, 0),
@@ -986,6 +1066,13 @@ function Hud.start()
 		autoSellButton.holder.Visible = passes.AutoSell == true
 		autoSellButton.setColors(settings.AutoSell and Theme.Gradients.Cyan or Theme.Gradients.Gray)
 		autoFrame.Visible = passes.AutoClick == true or passes.AutoSell == true
+		-- schowane menu z zapisu tylko przy wejściu; potem decyduje przycisk (bez czekania na serwer)
+		if not menuSettingLoaded then
+			menuSettingLoaded = true
+			if settings.HideMenu == true then
+				setMenuHidden(true, false)
+			end
+		end
 
 		testHolder.Visible = view.IsAdmin == true
 		updateHint(view)
@@ -1158,6 +1245,21 @@ function Hud.start()
 	-- Kafelek w siatce menu po lewej (pod SELL i UPGRADES), np. PETS. opts jak Kit.tile; order od 3.
 	function api.addTile(opts)
 		return Kit.tile(tiles, opts)
+	end
+	-- Pet albo ubranie lecące do kafelka w menu: przy schowanym menu leci do przycisku „>”.
+	function api.menuTarget(position)
+		if menuHidden then
+			local holder = menuToggle.holder
+			return holder.AbsolutePosition + holder.AbsoluteSize / 2
+		end
+		return position
+	end
+	-- Podskok przycisku „>”, gdy coś do niego doleciało (przy widocznym menu podskakuje kafelek).
+	function api.menuBump()
+		if menuHidden then
+			toggleScale.Scale = 1.3
+			TweenService:Create(toggleScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		end
 	end
 
 	-- Brak L$ na zakup: dźwięk, czerwony komunikat (jeden, nie kilka naraz) i potrząśnięty przycisk.

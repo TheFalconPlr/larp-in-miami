@@ -115,6 +115,10 @@ return function()
 	check(forced[1].item.Rarity == "UltraSecret" and forced[2].item.Rarity == "Common" and forced[3].item.Rarity == "Common" and d.Stats.UltraSecrets == 2, "/nextbox: pierwszy box daje wybraną rzadkość, reszta losuje")
 	local _, plainItem = Clothes.openBox(d, {}, "Street", always(0.01), 250, "Nonsense")
 	check(plainItem == "NotEnough", "/nextbox: bez L$ i tak nic się nie otwiera")
+	-- /adminluck (ctx.luckBoost): przy szczęściu ×10M z boxa Iced praktycznie zawsze Ultra Secret
+	d.Cash = iced
+	local _, luckyItem = Clothes.openBox(d, { luckBoost = 1e7 }, "Iced", always(0.5), 250)
+	check(luckyItem ~= nil and luckyItem.Rarity == "UltraSecret", "/adminluck działa w boxach (ctx.luckBoost)")
 
 	----------------------------------------------------------------- Zakładanie i warstwa LP
 	d = fresh()

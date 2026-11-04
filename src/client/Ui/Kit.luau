@@ -103,6 +103,26 @@ function Kit.text(parent, props, opts)
 	return label
 end
 
+----------------------------------------------------------------- Połysk w ukośne paski
+-- Jasnoniebieskie tło z białymi ukośnymi paskami, jak w Pet Simulator 99 (panel z szansami nad
+-- jajkiem i boxem). Ramka musi mieć białe tło (BackgroundColor3 = Theme.White): kolor daje gradient.
+-- Paski mają różną szerokość (od lewej: szeroki, cienki, średni, cienki); liczby to miejsca na
+-- szerokości ramki (0–1).
+local SHINE_BASE = Color3.fromRGB(232, 238, 248)
+local SHINE_STRIPES = { { 0.14, 0.25 }, { 0.3, 0.33 }, { 0.66, 0.71 }, { 0.76, 0.78 } }
+local SHINE_TILT = 20 -- stopnie
+function Kit.shine(parent)
+	local points = { ColorSequenceKeypoint.new(0, SHINE_BASE) }
+	for _, stripe in ipairs(SHINE_STRIPES) do
+		table.insert(points, ColorSequenceKeypoint.new(stripe[1], SHINE_BASE))
+		table.insert(points, ColorSequenceKeypoint.new(stripe[1] + 0.005, Theme.White))
+		table.insert(points, ColorSequenceKeypoint.new(stripe[2], Theme.White))
+		table.insert(points, ColorSequenceKeypoint.new(stripe[2] + 0.005, SHINE_BASE))
+	end
+	table.insert(points, ColorSequenceKeypoint.new(1, SHINE_BASE))
+	return Kit.new("UIGradient", { Color = ColorSequence.new(points), Rotation = SHINE_TILT, Parent = parent })
+end
+
 ----------------------------------------------------------------- Przycisk z wypukłą krawędzią
 -- opts: size (Vector2), text, colors, radius, edge, border, textSize, textStroke, name, order,
 -- anchor, position, sound (nazwa z Settings.Sounds, domyślnie "Button"; false = bez dźwięku).

@@ -23,6 +23,7 @@ local GamepassService = require(script.Parent.GamepassService)
 local ZoneService = require(script.Parent.ZoneService)
 
 local LoopService = {}
+LoopService.TestLuckAttribute = "LarpTestLuck" -- /adminluck: mnożnik szczęścia (atrybut gracza)
 
 local sessions = {} -- [player] = stan sesji (limit kliknięć, Auto-Click, teleport, leaderstats)
 local viewHooks = {}
@@ -51,6 +52,11 @@ local function contextFor(player)
 	if data ~= nil then
 		ctx.petLayer = Loop.petLayer(data, ctx) -- wyposażone pety mnożą L$ przy Sell
 		ctx.clothLayer = Clothes.layer(data, ctx) -- założone ubrania mnożą LP (klik i aktywności)
+	end
+	-- tryb testowy: /adminluck mnoży szczęście w jajkach i boxach (atrybut gracza, tylko do wyjścia)
+	local boost = player:GetAttribute(LoopService.TestLuckAttribute)
+	if type(boost) == "number" and boost > 1 then
+		ctx.luckBoost = boost
 	end
 	return ctx
 end
@@ -130,6 +136,7 @@ local function flush(player, s)
 		AutoClick = data.Settings.AutoClick ~= false,
 		AutoSell = data.Settings.AutoSell ~= false,
 		ShowClothes = data.Settings.ShowClothes ~= false,
+		HideMenu = data.Settings.HideMenu == true,
 	}
 	for _, hook in ipairs(viewHooks) do
 		hook(player, view)
@@ -371,8 +378,10 @@ local function buyZone(player, id)
 	return { Ok = true, Zone = id }
 end
 
+local SETTINGS = { AutoClick = true, AutoSell = true, ShowClothes = true, HideMenu = true }
+
 local function setSetting(player, key, value)
-	if (key ~= "AutoClick" and key ~= "AutoSell" and key ~= "ShowClothes") or type(value) ~= "boolean" then
+	if type(key) ~= "string" or not SETTINGS[key] or type(value) ~= "boolean" then
 		return
 	end
 	local data = DataService.get(player)

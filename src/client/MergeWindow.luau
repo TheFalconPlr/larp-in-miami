@@ -657,7 +657,7 @@ function MergeWindow.create(hud, kind)
 		sleep(now + RESULT_TIME - os.clock())
 
 		-- koniec: pet leci do kafelka PETS, napisy i tło znikają
-		local target = helpers.tileCenter()
+		local target = hud.menuTarget(helpers.tileCenter())
 		for _, l in ipairs({ banner, resultName, resultInfo, resultExtra }) do
 			TweenService:Create(l.scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
 		end
@@ -679,6 +679,7 @@ function MergeWindow.create(hud, kind)
 			task.delay(0.42, function()
 				centerView.Visible = false
 				helpers.bump()
+				hud.menuBump()
 			end)
 		end
 		TweenService:Create(centerScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()

@@ -143,11 +143,31 @@ function Formulas.effectiveOdds(odds, luck, order)
 	return out
 end
 
+-- Powyżej tylu losowań roll losuje raz z rozkładu „najrzadszy z n” (effectiveOdds) zamiast n razy:
+-- rozkład ten sam, a przy szczęściu ×100 000 z trybu testowego (/adminluck) serwer się nie zatyka.
+local ROLL_LOOP_MAX = 1000
+
 -- Jedno losowanie z uwzględnieniem szczęścia. random01 = funkcja zwracająca liczbę z [0, 1),
 -- np. function() return rng:NextNumber() end. order jak w effectiveOdds.
 function Formulas.roll(odds, luck, random01, order)
 	luck = luck or 1
 	order = order or Economy.Pets.RarityOrder
+	if luck > ROLL_LOOP_MAX then
+		local effective = Formulas.effectiveOdds(odds, luck, order)
+		local r = random01()
+		local acc, pick = 0, nil
+		for _, rar in ipairs(order) do
+			local p = effective[rar]
+			if p ~= nil then
+				acc = acc + p
+				pick = rar
+				if r < acc then
+					return rar
+				end
+			end
+		end
+		return pick
+	end
 	local n = math.floor(luck)
 	if random01() < luck - n then
 		n = n + 1

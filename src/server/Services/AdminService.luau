@@ -474,6 +474,31 @@ command("luck", "/luck [poziom]", "ustaw ulepszenie Luck z Aury (szczęście w j
 	)
 end)
 
+command("adminluck", "/adminluck [ile|off]", "szczęście ×100 000 w jajkach i boxach (do wyjścia z gry), żeby szybko trafić sekrety; /adminluck off wyłącza", function(player, data, args)
+	local word = string.lower(args[1] or "")
+	if word == "off" or word == "0" or word == "1" then
+		player:SetAttribute(LoopService.TestLuckAttribute, nil)
+		return "Admin luck wyłączone: szczęście jak w zapisie."
+	end
+	local boost = 100000
+	if args[1] ~= nil then
+		boost = needNumber(args[1])
+	end
+	if boost < 1 or boost > 1e7 then
+		error("podaj od 1 do 10M", 0)
+	end
+	player:SetAttribute(LoopService.TestLuckAttribute, boost)
+	local luck = Formulas.luck(data.AuraUpgrades.Luck) * boost
+	local secret = Formulas.effectiveOdds(Economy.Pets.Eggs[1].B.Odds, luck).Secret or 0
+	local ultra = Formulas.effectiveOdds(Economy.Clothes.Boxes.Iced.Odds, luck, Economy.Clothes.RarityOrder).UltraSecret or 0
+	return string.format(
+		"Admin luck ×%s (do wyjścia z gry): sekret ze złotego jajka %s, Ultra Secret z Iced Boxa %s. /adminluck off wyłącza.",
+		Format.number(boost),
+		Format.percent(secret),
+		Format.percent(ultra)
+	)
+end)
+
 command("tier", "/tier [car|yacht|jet] [poziom]", "ustaw tier aktywności, np. /tier yacht 3 (/tier jet 0 = bez odrzutowca)", function(_, data, args)
 	local wanted = string.lower(args[1] or "")
 	local names = {}

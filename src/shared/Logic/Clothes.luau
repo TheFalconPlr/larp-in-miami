@@ -252,6 +252,7 @@ function Clothes.openBox(data, ctx, box, random01, maxItems, forced)
 	if info.LuckApplies ~= false then
 		luck = Formulas.luck(data.AuraUpgrades.Luck)
 	end
+	luck = luck * ((ctx and ctx.luckBoost) or 1) -- tryb testowy: /adminluck
 	local rarity
 	if forced ~= nil and C.RarityBonus[forced] ~= nil then
 		rarity = forced

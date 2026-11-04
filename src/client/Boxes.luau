@@ -321,6 +321,7 @@ function Boxes.start(hud)
 		})
 		Kit.new("UICorner", { CornerRadius = UDim.new(0.2, 0), Parent = body })
 		Kit.stroke(body, 2, Enum.ApplyStrokeMode.Border, PANEL_EDGE)
+		Kit.shine(body) -- ukośne paski jak na panelu jajek
 		local tip = PANEL_TIP * 1.4
 		Kit.new("Frame", {
 			Name = "Tip",
@@ -1072,7 +1073,7 @@ function Boxes.start(hud)
 		TweenService:Create(dim, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
 		TweenService:Create(bannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
 		TweenService:Create(subBannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
-		local target = Wardrobe.tileCenter()
+		local target = hud.menuTarget(Wardrobe.tileCenter())
 		local inset = GuiService:GetGuiInset()
 		for i, slot in ipairs(slots) do
 			if target ~= nil then
@@ -1095,6 +1096,7 @@ function Boxes.start(hud)
 				task.delay(delay + 0.42, function()
 					viewport.Visible = false
 					Wardrobe.bump()
+					hud.menuBump()
 				end)
 			end
 			TweenService:Create(slot.holderScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()

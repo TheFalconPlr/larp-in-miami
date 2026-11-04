@@ -34,6 +34,7 @@ return {
 		AutoClick = true, -- działa tylko z gamepassem Auto-Click
 		AutoSell = true, -- działa tylko z gamepassem Auto-Sell
 		ShowClothes = true, -- ubrania z gry widać na awatarze (false = własny wygląd, bonus zostaje)
+		HideMenu = false, -- menu po lewej schowane przyciskiem „<” (więcej widać ekranu)
 	},
 	TestPasses = {}, -- tryb testowy: gamepassy z /pass ([klucz] = true/false); działają tylko u adminów
 	Stats = {

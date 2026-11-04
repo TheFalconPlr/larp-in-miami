@@ -641,20 +641,44 @@ function Loop.backfillIndex(data)
 	end
 end
 
--- Wszystkie pety w indeksie: strefy z jajkami × rzadkości (Mythic dojdzie z jajkami premium).
-function Loop.indexTotal()
-	local zones = 0
-	for _ in ipairs(Economy.Pets.Eggs) do
-		zones = zones + 1
+-- Rzadkości w indeksie strefy: tylko te, które da się dziś wylosować z jajek za L$ (A i B), więc bez
+-- Mythic. Mythic jest tylko w jajkach premium (Robux): gdy będzie je można kupić, dopisz je tutaj.
+function Loop.indexRarities(zone)
+	local list = {}
+	local eggs = Economy.Pets.Eggs[zone]
+	if eggs == nil then
+		return list
 	end
-	return zones * #Economy.Pets.RarityOrder
+	for _, rarity in ipairs(Economy.Pets.RarityOrder) do
+		for egg in pairs(eggs) do
+			local info = Loop.eggInfo(zone, egg)
+			if info ~= nil and info.Odds[rarity] ~= nil then
+				table.insert(list, rarity)
+				break
+			end
+		end
+	end
+	return list
 end
 
+-- Wszystkie pety w indeksie: suma po strefach (dziś 5 stref × 6 rzadkości).
+function Loop.indexTotal()
+	local n = 0
+	for zone in ipairs(Economy.Pets.Eggs) do
+		n = n + #Loop.indexRarities(zone)
+	end
+	return n
+end
+
+-- Ile petów z indeksu gracz już miał (pety spoza indeksu, np. Mythic z komendy /pet, się nie liczą).
 function Loop.indexCount(data)
 	local n = 0
-	if type(data.Index) == "table" then
-		for _, found in pairs(data.Index) do
-			if found then
+	if type(data.Index) ~= "table" then
+		return n
+	end
+	for zone in ipairs(Economy.Pets.Eggs) do
+		for _, rarity in ipairs(Loop.indexRarities(zone)) do
+			if data.Index[Loop.indexKey(zone, rarity)] then
 				n = n + 1
 			end
 		end
@@ -680,6 +704,7 @@ function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
 		if info.LuckApplies ~= false then
 			luck = Formulas.luck(data.AuraUpgrades.Luck)
 		end
+		luck = luck * ((ctx and ctx.luckBoost) or 1) -- tryb testowy: /adminluck
 		rarity = Formulas.roll(info.Odds, luck, random01)
 	end
 	local id = tostring(data.NextPetId)
