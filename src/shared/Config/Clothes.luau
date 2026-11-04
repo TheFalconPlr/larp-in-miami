@@ -5,9 +5,13 @@
 -- Dopóki nie ma rzeczy z katalogu Roblox, ubrania są zbudowane z klocków (Shared/ClothModels):
 --   Main    główny kolor (włosy, szkła okularów, koszula, spodnie, buty, pasek zegarka, zawieszka)
 --   Accent  drugi kolor (oprawka, ogniwa łańcucha, tarcza zegarka, pasek spodni, podeszwa, wstawki)
---   Finish  wykończenie głównego koloru: Metal (połysk), Ice (lód i blask), Neon (świeci); drugi
---           kolor dostaje to samo (poza Neon), chyba że ma własne AccentFinish
+--   Finish  wykończenie głównego koloru: Metal (połysk), Ice (lód i blask), Neon (świeci), Fabric
+--           (materiał); drugi kolor dostaje to samo (poza Neon i Fabric), chyba że ma własne AccentFinish
+--   Crosses krzyże w drugim kolorze (ubrania „chrome” z Ultra Secret)
 --   oraz kształt zależny od kategorii (opisany przy kategorii).
+--
+-- UltraSecret: ubrania „chrome” tylko z boxa Iced (1 na 250 000): czarne ze srebrnymi i białymi
+-- krzyżami. Tylko styl, bez nazwy prawdziwej marki i bez logo (jak przy autach).
 
 local hex = Color3.fromHex
 
@@ -15,7 +19,7 @@ local Clothes = {}
 
 -- [kategoria][rzadkość] = ubranie
 Clothes.Items = {
-	-- Style: Short (krótkie), Slick (zaczesane do tyłu), Waves (fale), Flow (długie)
+	-- Style: Short (krótkie), Slick (zaczesane do tyłu), Waves (fale), Flow (długie), Beanie (czapka)
 	Hair = {
 		Common = { Name = "Buzz Cut", Main = hex("#3B2A20"), Style = "Short" },
 		Uncommon = { Name = "Fresh Fade", Main = hex("#1E1A18"), Style = "Short" },
@@ -23,6 +27,7 @@ Clothes.Items = {
 		Epic = { Name = "Bleached Waves", Main = hex("#F2E3A0"), Style = "Waves" },
 		Legendary = { Name = "Platinum Flow", Main = hex("#E6ECF5"), Style = "Flow", Finish = "Metal" },
 		Mythic = { Name = "Neon Flow", Main = hex("#FF4FD8"), Style = "Flow", Finish = "Neon" },
+		UltraSecret = { Name = "Chrome Cross Beanie", Main = hex("#141418"), Accent = hex("#DDE2EA"), Style = "Beanie", Finish = "Fabric", AccentFinish = "Metal", Crosses = true },
 	},
 	-- Visor = jedna szeroka szyba zamiast dwóch szkieł
 	Glasses = {
@@ -32,8 +37,9 @@ Clothes.Items = {
 		Epic = { Name = "Lux Frames", Main = hex("#2B2B35"), Accent = hex("#FFC233"), Finish = "Metal" },
 		Legendary = { Name = "Iced Shades", Main = hex("#9BE8FF"), Accent = hex("#FFFFFF"), Finish = "Ice" },
 		Mythic = { Name = "Laser Visor", Main = hex("#FF2E4D"), Accent = hex("#202020"), Visor = true, Finish = "Neon" },
+		UltraSecret = { Name = "Chrome Cross Shades", Main = hex("#0E0E12"), Accent = hex("#DDE2EA"), AccentFinish = "Metal", Crosses = true },
 	},
-	-- Links = grubość ogniw (1 = zwykła), Pendant = zawieszka (Gem albo Plate)
+	-- Links = grubość ogniw (1 = zwykła), Pendant = zawieszka (Gem, Plate albo Cross)
 	Chain = {
 		Common = { Name = "Thin Chain", Main = hex("#C9CED6"), Accent = hex("#C9CED6"), Links = 0.8, Finish = "Metal" },
 		Uncommon = { Name = "Rope Chain", Main = hex("#FFC233"), Accent = hex("#FFC233"), Links = 1, Finish = "Metal" },
@@ -41,6 +47,7 @@ Clothes.Items = {
 		Epic = { Name = "Pendant Chain", Main = hex("#3DA9FF"), Accent = hex("#FFC233"), Links = 1, Pendant = "Gem", Finish = "Metal" },
 		Legendary = { Name = "Iced Cuban", Main = hex("#DFF7FF"), Accent = hex("#DFF7FF"), Links = 1.4, Finish = "Ice" },
 		Mythic = { Name = "Dollar Chain", Main = hex("#2ECC71"), Accent = hex("#FFC233"), Links = 1.3, Pendant = "Plate", Finish = "Metal" },
+		UltraSecret = { Name = "Chrome Cross Chain", Main = hex("#DDE2EA"), Accent = hex("#DDE2EA"), Links = 1.2, Pendant = "Cross", Finish = "Metal" },
 	},
 	Watch = {
 		Common = { Name = "Digital Watch", Main = hex("#222222"), Accent = hex("#7CFC8A") },
@@ -49,6 +56,7 @@ Clothes.Items = {
 		Epic = { Name = "Rose Watch", Main = hex("#E8A07A"), Accent = hex("#FFF1E6"), Finish = "Metal" },
 		Legendary = { Name = "Iced Watch", Main = hex("#DFF7FF"), Accent = hex("#9BE8FF"), Finish = "Ice" },
 		Mythic = { Name = "Moon Watch", Main = hex("#202030"), Accent = hex("#B060FF"), AccentFinish = "Neon" },
+		UltraSecret = { Name = "Chrome Cross Watch", Main = hex("#141418"), Accent = hex("#DDE2EA"), AccentFinish = "Metal", Crosses = true },
 	},
 	-- Sleeves: None (bez rękawów), Short, Long; Bulky = grubsze (futro); Dots = kwiaty z przodu
 	Shirt = {
@@ -58,6 +66,7 @@ Clothes.Items = {
 		Epic = { Name = "Silk Shirt", Main = hex("#7A2CF5"), Accent = hex("#FFC233"), Sleeves = "Long", Finish = "Metal" },
 		Legendary = { Name = "Fur Coat", Main = hex("#F4EBDD"), Accent = hex("#C8B89A"), Sleeves = "Long", Bulky = true },
 		Mythic = { Name = "Iced Jacket", Main = hex("#BDEFFF"), Accent = hex("#FFFFFF"), Sleeves = "Long", Finish = "Ice" },
+		UltraSecret = { Name = "Chrome Cross Tee", Main = hex("#141418"), Accent = hex("#EEF1F5"), Sleeves = "Long", Finish = "Fabric", Crosses = true },
 	},
 	-- Long = długie nogawki (bez tego szorty)
 	Pants = {
@@ -67,6 +76,7 @@ Clothes.Items = {
 		Epic = { Name = "Silk Pants", Main = hex("#1F1530"), Accent = hex("#FFC233"), Long = true, Finish = "Metal" },
 		Legendary = { Name = "Velvet Pants", Main = hex("#8E1B3A"), Accent = hex("#FFC233"), Long = true },
 		Mythic = { Name = "Iced Jeans", Main = hex("#9FD8FF"), Accent = hex("#FFFFFF"), Long = true, Finish = "Ice" },
+		UltraSecret = { Name = "Chrome Cross Jeans", Main = hex("#2E2E34"), Accent = hex("#EEF1F5"), Long = true, Finish = "Fabric", Crosses = true },
 	},
 	-- Flat = płaskie (klapki), bez tego sneakersy
 	Shoes = {
@@ -76,6 +86,7 @@ Clothes.Items = {
 		Epic = { Name = "Runway Sneakers", Main = hex("#FF4F86"), Accent = hex("#FFFFFF") },
 		Legendary = { Name = "Croc Loafers", Main = hex("#4A7A3A"), Accent = hex("#2B1D10"), Finish = "Metal" },
 		Mythic = { Name = "Iced Kicks", Main = hex("#DFF7FF"), Accent = hex("#9BE8FF"), Finish = "Ice" },
+		UltraSecret = { Name = "Chrome Cross Kicks", Main = hex("#141418"), Accent = hex("#F2F2F2"), AccentFinish = "Metal", Crosses = true },
 	},
 }
 

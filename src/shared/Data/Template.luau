@@ -52,6 +52,7 @@ return {
 		MergesFailed = 0, -- nieudane łączenia
 		SecretsHatched = 0, -- sekretne pety z jajek (ranking „Sekrety” w dokumencie projektu)
 		BoxesOpened = 0, -- otwarte boxy z ubraniami (Etap 8)
+		UltraSecrets = 0, -- ubrania Ultra Secret z boxa Iced
 		ClothesSold = 0, -- sprzedane ubrania
 		ClothMerges = 0, -- próby łączenia ubrań
 		ClothMergesFailed = 0, -- nieudane łączenia ubrań

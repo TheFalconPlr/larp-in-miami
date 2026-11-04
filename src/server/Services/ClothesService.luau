@@ -23,6 +23,7 @@ local Net = require(Shared.Net)
 local DataService = require(script.Parent.DataService)
 local GamepassService = require(script.Parent.GamepassService)
 local LoopService = require(script.Parent.LoopService)
+local PetService = require(script.Parent.PetService)
 local ZoneService = require(script.Parent.ZoneService)
 
 local ClothesService = {}
@@ -32,6 +33,7 @@ ClothesService.Zone = 3 -- boxy stoją w Mall
 
 local MAX_DISTANCE = 15 -- tak blisko stoiska trzeba stać, żeby kupić box (studs)
 local ACTION_GAP = 0.25 -- najmniejszy odstęp między sprzedażą a łączeniem (s)
+local SECRET_DELAY = 0.6 + 2.2 -- komunikat o Ultra Secret po animacji otwierania (z dłuższym pokazem)
 
 local stands = {}
 local lastOpen = {} -- [gracz] = czas ostatniego otwarcia
@@ -284,9 +286,20 @@ local function openTime(player)
 	return seconds
 end
 
-local function buyBox(player, box)
-	if type(box) ~= "string" or Clothes.boxInfo(box) == nil then
+-- count: 1 albo 3 (Triple Open, ten sam gamepass co przy jajkach).
+local function buyBox(player, box, count)
+	if count == nil then
+		count = 1
+	end
+	if type(box) ~= "string" or Clothes.boxInfo(box) == nil or type(count) ~= "number" then
 		return { Ok = false, Reason = "BadRequest" }
+	end
+	local triple = Economy.Robux.Gamepasses.TripleOpen.OpenCount
+	if count ~= 1 and count ~= triple then
+		return { Ok = false, Reason = "BadRequest" }
+	end
+	if count > 1 and not GamepassService.owns(player, "TripleOpen") then
+		return { Ok = false, Reason = "NoPass" }
 	end
 	local data = DataService.get(player)
 	if data == nil then
@@ -301,15 +314,27 @@ local function buyBox(player, box)
 		return { Ok = false, Reason = "TooFar" }
 	end
 	local ctx = LoopService.contextFor(player)
-	local id, item, worn = Clothes.openBox(data, ctx, box, random01, ClothesConfig.MaxInventory)
-	if id == nil then
-		return { Ok = false, Reason = item }
+	local list, reason = Clothes.openBoxes(data, ctx, box, count, random01, ClothesConfig.MaxInventory)
+	if list == nil then
+		return { Ok = false, Reason = reason }
 	end
 	lastOpen[player] = now
 	LoopService.markDirty(player)
-	local reply = itemForClient(data, id, item)
-	reply.Worn = worn
-	return { Ok = true, Item = reply, OpenTime = openTime(player) }
+	local seconds = openTime(player)
+	local items = {}
+	for _, entry in ipairs(list) do
+		local reply = itemForClient(data, entry.id, entry.item)
+		reply.Worn = entry.worn
+		table.insert(items, reply)
+		if entry.item.Rarity == "UltraSecret" then
+			-- komunikat na wszystkich serwerach po animacji, żeby nie zdradzić wyniku
+			local item = entry.item
+			task.delay(seconds + SECRET_DELAY, function()
+				PetService.announceSecret(player, { Category = item.Category, Level = item.Level or 0 })
+			end)
+		end
+	end
+	return { Ok = true, Items = items, OpenTime = seconds }
 end
 
 local function wearCloth(player, id, on)
@@ -368,8 +393,9 @@ local function tooSoon(player)
 	return false
 end
 
-local function sellClothes(player, ids)
-	if not validIds(ids, ClothesConfig.MaxInventory) then
+-- Ultra Secret tylko z confirm = true (gracz potwierdził w okienku).
+local function sellClothes(player, ids, confirm)
+	if not validIds(ids, ClothesConfig.MaxInventory) or (confirm ~= nil and type(confirm) ~= "boolean") then
 		return { Ok = false, Reason = "BadRequest" }
 	end
 	local data = DataService.get(player)
@@ -379,7 +405,10 @@ local function sellClothes(player, ids)
 	if tooSoon(player) then
 		return { Ok = false, Reason = "Cooldown" }
 	end
-	local count, cash = Clothes.sell(data, LoopService.contextFor(player), ids)
+	local count, cash = Clothes.sell(data, LoopService.contextFor(player), ids, confirm == true)
+	if count == nil then
+		return { Ok = false, Reason = cash }
+	end
 	LoopService.markDirty(player)
 	return { Ok = true, Count = count, Cash = cash }
 end

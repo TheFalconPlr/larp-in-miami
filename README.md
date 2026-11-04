@@ -227,18 +227,20 @@ Jeszcze nie ma: tytułu „Secret Society” za komplet 5 sekretów i rankingu �
 
 Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania podbijają LP: za klik i w aktywnościach (pety podbijają L$).
 
-- **Mystery boxy w Mall.** Wszystkie trzy stoją w Mall, ale Designer da się kupić dopiero po odblokowaniu plaży, a Iced po odblokowaniu lotniska (wtedy pigułka pokazuje kłódkę i nazwę strefy). Działa jak przy jajkach: pigułka z ceną, panel z szansami nad boxem, duże E i okno kupna. Animacja: box drży 3 razy, wieko odlatuje, a ze środka wyskakuje ubranie z promieniami w kolorze rzadkości i leci do kafelka CLOTHES.
+- **Mystery boxy w Mall.** Wszystkie trzy stoją w Mall, ale Designer da się kupić dopiero po odblokowaniu plaży, a Iced po odblokowaniu lotniska (wtedy pigułka pokazuje kłódkę i nazwę strefy). Działa jak przy jajkach: pigułka z ceną, panel z szansami nad boxem, duże E na boxie i okno kupna z Buy 1 i Buy 3. Buy 3 otwiera trzy boxy naraz z tym samym gamepassem Triple Open co przy jajkach (w teście `/pass TripleOpen`). Animacja: boxy drżą 3 razy, wieka odlatują, a ze środka wyskakują ubrania z promieniami w kolorze rzadkości i lecą do kafelka CLOTHES.
 
 | Box | Cena | Kiedy | Szanse |
 | --- | --- | --- | --- |
 | Street Box | 2,5M L$ | po odblokowaniu Mall | Common 60%, Uncommon 28%, Rare 10%, Epic 2% |
 | Designer Box | 200M L$ | po odblokowaniu plaży | Uncommon 50%, Rare 35%, Epic 13%, Legendary 2% |
-| Iced Box | 80B L$ | po odblokowaniu lotniska | Rare 50%, Epic 35%, Legendary 13%, Mythic 2% |
+| Iced Box | 80B L$ | po odblokowaniu lotniska | Rare 50%, Epic 35%, Legendary 13%, Mythic 2%, Ultra Secret 0,0004% (1 na 250 000) |
+
+- **Ultra Secret** wypada tylko z Iced Boxa, 10 razy rzadziej niż sekretny pet ze złotego jajka (1 na 250 000 zamiast 1 na 25 000). To ubrania „chrome”: czarne ze srebrnymi i białymi krzyżami (czapka, okulary, srebrny łańcuch z krzyżem, zegarek, koszulka z długim rękawem, jeansy i buty, po jednym w każdej kategorii). Tylko styl, bez nazwy prawdziwej marki i bez logo, tak jak przy autach. Bonus +1280% LP (2 razy więcej niż Mythic). Animacja: czarno-srebrne promienie, srebrny błysk, „vine boom”, mocniejsze drżenie, napis ULTRA SECRET! z „1 in 250,000” i dłuższy pokaz. Potem u wszystkich graczy na wszystkich serwerach wjeżdża srebrny pasek, np. „Nasdaq unboxed an ULTRA SECRET Chrome Cross Tee, 1 in 250,000”. Sprzedaż Ultra Secret trzeba potwierdzić, a DUPES ich nie zaznacza.
 
 - **7 kategorii po 1 slocie:** Hair, Glasses, Chain, Watch, Shirt, Pants, Shoes. Kategoria wypada losowo (każda tak samo często). Gamepassy Double Chain i Double Wrist dają drugi łańcuch i drugi zegarek (w teście `/pass DoubleChain`, `/pass DoubleWrist`). Bonus do LP: Common +20%, Uncommon +40%, Rare +80%, Epic +160%, Legendary +320%, Mythic +640%, a Golden ×2 i Diamond ×4. Bonusy założonych ubrań się dodają, np. Rare łańcuch i Epic włosy dają ×3,4 LP. Nowe ubranie samo się zakłada, jeśli w jego kategorii jest wolne miejsce albo jest lepsze od tego, co masz na sobie. Szczęście (Luck z Aury) działa na boxy tak jak na jajka.
 - **Na awatarze:** ubrania widzą wszyscy gracze. Dopóki nie ma rzeczy z katalogu Roblox, są zbudowane z klocków: włosy, okulary, łańcuch na szyi, zegarek na lewym nadgarstku (drugi na prawym), koszula z rękawami, spodnie albo szorty i buty. Działa na R15 i R6. Włosy z gry chowają Twoje włosy. Przycisk AVATAR ON/OFF w oknie chowa ubrania z gry (bonus zostaje).
 - **Okno CLOTHES** (nowy kafelek po lewej): po lewej 7 kategorii z tym, co masz na sobie (kliknij kategorię, żeby zobaczyć tylko jej ubrania), po prawej wszystkie ubrania. Kliknij ubranie, żeby je założyć (zastępuje to z tej samej kategorii) albo zdjąć. WEAR BEST zakłada najlepsze. SELL i MERGE działają jak u petów: sprzedaż za 10% ceny boxa (Common–Epic liczą się od Street, Legendary od Designer, Mythic od Iced; Golden ×5, Diamond ×25), łączenie 1–5 identycznych ubrań po 20% szansy z tym samym oknem i animacją. Ubrania kupione za Robuxy (np. zegarek ze Starter Packa) łączą się tylko przy 100%.
-- **Menu po lewej:** z czwartym kafelkiem przełączniki Auto-Click i Auto-Sell przeszły obok kafelka SELL, a całe menu jest trochę wyżej, żeby nie wchodziło na licznik L$.
+- **Menu po lewej:** kafelki są w siatce 2×2 jak w Pet Simulator 99 (SELL, UPGRADES, a pod nimi PETS, CLOTHES), a przełączniki Auto-Click i Auto-Sell obok siebie pod siatką. W jednej kolumnie CLOTHES wchodził na licznik L$.
 
 **Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia 3 pudełka na podłodze Mall, po tej samej stronie ścieżki co jajka, dalej w głąb strefy.
 
@@ -246,12 +248,12 @@ Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania pod
 
 | Co | Nazwa | Uwagi |
 | --- | --- | --- |
-| Stoiska boxów | `BoxStreet`, `BoxDesigner`, `BoxIced` (model albo część) | W Mall. Panel z szansami wisi nad najwyższym punktem stoiska, pigułka z ceną przy jego spodzie. |
-| Nazwy, kolory i kształty ubrań | `src/shared/Config/Clothes.luau` | Kolory (`Main`, `Accent`), wykończenie (`Finish`: Metal, Ice, Neon) i kształt (np. `Sleeves`, `Long`, `Style`). Nazwy bez „Golden” i „Diamond” na początku. |
+| Stoiska boxów | `BoxStreet`, `BoxDesigner`, `BoxIced` (model albo część) | W Mall. Panel z szansami wisi nad najwyższym punktem stoiska, E na środku, pigułka z ceną przy spodzie. Napisy liczą się od środka całego stoiska, więc obrócone części (np. cokół z walca) już ich nie przesuwają. Tak samo przy jajkach. |
+| Nazwy, kolory i kształty ubrań | `src/shared/Config/Clothes.luau` | Kolory (`Main`, `Accent`), wykończenie (`Finish`: Metal, Ice, Neon, Fabric) i kształt (np. `Sleeves`, `Long`, `Style`); `Crosses` dokleja krzyże (ubrania Ultra Secret). Nazwy bez „Golden” i „Diamond” na początku. |
 | Rzeczy z katalogu Roblox | podeślij mi ID | Gdy znajdziesz włosy, okulary, łańcuchy, zegarki, koszule, spodnie i buty w katalogu, podepnę je zamiast klocków. |
-| Ikona kafelka CLOTHES | `Settings.Ui.Icons.Clothes` (ID z Toolboxa) | Bez niej jest emoji 👕. |
+| Ikona kafelka CLOTHES | `Settings.Ui.Icons.Clothes` | Ustawiona Twoja ikona 14002284211. |
 
-Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/cloth Chain Rare 5` (5 łańcuchów do łączenia), `/cloth all Epic` (po jednym z każdej kategorii), `/cloth Hair Mythic 1 gold` i `/clearclothes`.
+Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/pass TripleOpen` (Buy 3), `/cloth Chain Rare 5` (5 łańcuchów do łączenia), `/cloth all Epic` (po jednym z każdej kategorii), `/cloth Hair Mythic 1 gold`, `/cloth all ultra` (cały strój chrome), `/ultra Shirt` (Ultra Secret z paskiem dla wszystkich) i `/clearclothes`. Animację Ultra Secret zobaczysz tylko z boxa, bo komenda daje ubranie od razu.
 
 ## Co dalej (plan etapów)
 
@@ -293,7 +295,8 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/mergeluck 5` | ustawia ulepszenie Merge Luck (0–5, +1 pkt proc. na peta przy łączeniu) |
 | `/clearpets` | usuwa wszystkie pety (indeks zostaje) |
 | `/clearindex` | czyści indeks petów (zostają w nim pety, które masz), żeby znów zobaczyć NEW! |
-| `/cloth Chain Rare 5` | daje ubranie: kategoria (albo `all`), rzadkość, ile sztuk i poziom (`gold`, `diamond`), np. `/cloth all Epic` albo `/cloth Hair Mythic 1 gold` |
+| `/cloth Chain Rare 5` | daje ubranie: kategoria (albo `all`), rzadkość (do `UltraSecret`, można pisać `ultra`), ile sztuk i poziom (`gold`, `diamond`), np. `/cloth all Epic` albo `/cloth Hair Mythic 1 gold` |
+| `/ultra Shirt` | daje ubranie Ultra Secret z tej kategorii i ogłasza je wszystkim (na wszystkich serwerach, gdy działa MessagingService) |
 | `/clearclothes` | usuwa wszystkie ubrania |
 | `/odds 10000 1 B` | losuje na próbę 10 000 złotych jajek ze strefy 1 i pokazuje, co wypadło (bez L$ i bez petów) |
 | `/luck 20` | ustawia ulepszenie Luck (więcej losowań na jajko, wygrywa najrzadszy pet) |

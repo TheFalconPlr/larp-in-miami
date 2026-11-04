@@ -17,12 +17,13 @@ from final_cfg2 import final_cfg2  # noqa: E402
 OUT = os.path.join(HERE, '..', 'src', 'shared', 'Config', 'Economy.luau')
 VERSION = 'v2 (arkusz z 29.10.2026)'
 
-RAR = {'C': 'Common', 'U': 'Uncommon', 'R': 'Rare', 'E': 'Epic', 'L': 'Legendary', 'M': 'Mythic', 'S': 'Secret'}
+RAR = {'C': 'Common', 'U': 'Uncommon', 'R': 'Rare', 'E': 'Epic', 'L': 'Legendary', 'M': 'Mythic', 'S': 'Secret',
+       'X': 'UltraSecret'}
 RAR_ORDER = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'Secret']
 
 
 def rar_odds(odds):
-    return {RAR[k]: odds[k] for k in ['C', 'U', 'R', 'E', 'L', 'M', 'S'] if k in odds}
+    return {RAR[k]: odds[k] for k in ['C', 'U', 'R', 'E', 'L', 'M', 'S', 'X'] if k in odds}
 
 
 # ---------------------------------------------------------------- serializacja Python -> Luau
@@ -141,6 +142,9 @@ def build():
 
     clothes = {
         'Categories': ['Hair', 'Glasses', 'Chain', 'Watch', 'Shirt', 'Pants', 'Shoes'],
+        # rzadkości ubrań od najczęstszej; UltraSecret tylko w boxie Iced (ubrania „chrome”)
+        'RarityOrder': ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic', 'UltraSecret'],
+        'UltraSecretChance': c['ULTRA_P'],
         'RarityBonus': {RAR[k]: v for k, v in c['CLOTH_BONUS'].items()},
         'Boxes': {
             'Street': {'Price': c['BOX_PRICE']['street'], 'RequiresZone': c['BOX_ANCHOR']['street'][0], 'Odds': rar_odds(c['BOX_ODDS']['street'])},

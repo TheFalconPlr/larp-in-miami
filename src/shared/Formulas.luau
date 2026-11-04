@@ -119,8 +119,10 @@ end
 ----------------------------------------------------------------- Szczęście
 -- Szanse po szczęściu: gra losuje floor(luck) razy i jeszcze raz z szansą = część ułamkowa,
 -- gracz dostaje najrzadszy wynik. Zwraca tabelę rzadkość -> szansa (suma = 1).
-function Formulas.effectiveOdds(odds, luck)
+-- order = kolejność rzadkości od najczęstszej (domyślnie pety; ubrania mają własną z UltraSecret).
+function Formulas.effectiveOdds(odds, luck, order)
 	luck = luck or 1
+	order = order or Economy.Pets.RarityOrder
 	local n0 = math.floor(luck + 1e-12)
 	local fr = luck - n0
 	if n0 < 1 then
@@ -128,7 +130,7 @@ function Formulas.effectiveOdds(odds, luck)
 	end
 	local out = {}
 	local acc, prev = 0, 0
-	for _, rar in ipairs(Economy.Pets.RarityOrder) do
+	for _, rar in ipairs(order) do
 		local p = odds[rar]
 		if p ~= nil then
 			acc = acc + p
@@ -142,9 +144,10 @@ function Formulas.effectiveOdds(odds, luck)
 end
 
 -- Jedno losowanie z uwzględnieniem szczęścia. random01 = funkcja zwracająca liczbę z [0, 1),
--- np. function() return rng:NextNumber() end
-function Formulas.roll(odds, luck, random01)
+-- np. function() return rng:NextNumber() end. order jak w effectiveOdds.
+function Formulas.roll(odds, luck, random01, order)
 	luck = luck or 1
+	order = order or Economy.Pets.RarityOrder
 	local n = math.floor(luck)
 	if random01() < luck - n then
 		n = n + 1
@@ -153,14 +156,14 @@ function Formulas.roll(odds, luck, random01)
 		n = 1
 	end
 	local rank = {}
-	for i, rar in ipairs(Economy.Pets.RarityOrder) do
+	for i, rar in ipairs(order) do
 		rank[rar] = i
 	end
 	local best = nil
 	for _ = 1, n do
 		local r = random01()
 		local acc, pick = 0, nil
-		for _, rar in ipairs(Economy.Pets.RarityOrder) do
+		for _, rar in ipairs(order) do
 			local p = odds[rar]
 			if p ~= nil then
 				acc = acc + p

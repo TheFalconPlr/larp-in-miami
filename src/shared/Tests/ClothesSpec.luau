@@ -88,6 +88,28 @@ return function()
 	check(whyFull == "Inventory" or whyFull == "NotEnough", "pełny ekwipunek albo brak L$ blokuje box")
 	check(not Clothes.isWorn(d, id2), "Common zegarek leży w ekwipunku")
 
+	----------------------------------------------------------------- Triple Open i Ultra Secret
+	d = fresh()
+	d.ZonesUnlocked = 5
+	local iced = boxes.Iced.Price
+	d.Cash = iced * 2
+	local none, whyThree = Clothes.openBoxes(d, {}, "Iced", 3, always(0.5), 250)
+	check(none == nil and whyThree == "NotEnough" and d.Cash == iced * 2, "Triple Open: bez L$ na 3 boxy nic się nie otwiera")
+	d.Cash = iced * 3
+	local _, whyRoom = Clothes.openBoxes(d, {}, "Iced", 3, always(0.5), 2)
+	check(whyRoom == "Inventory", "Triple Open: wszystkie 3 muszą się zmieścić")
+	-- szczęście, rzadkość, kategoria × 3; ostatni to Ultra Secret (0,999999)
+	local three = Clothes.openBoxes(d, {}, "Iced", 3, seq({ 0.5, 0.1, 0.1, 0.5, 0.6, 0.1, 0.5, 0.9999991, 0.1 }), 250)
+	check(#three == 3 and d.Cash == 0 and d.Stats.BoxesOpened == 3, "Triple Open: 3 ubrania za 3 boxy")
+	check(three[3].item.Rarity == "UltraSecret" and three[3].item.Category == "Hair" and d.Stats.UltraSecrets == 1, "Ultra Secret wypada z boxa Iced (szansa 1 na 250 000)")
+	check(three[3].worn and not three[1].worn, "przy trzech naraz zostaje założone najlepsze")
+	check(near(Clothes.bonus({ Rarity = "UltraSecret", Level = 0 }), 12.8) and near(Economy.Clothes.UltraSecretChance * 10, Economy.Pets.SecretChance), "Ultra Secret: +1280% LP, 10× rzadszy niż sekret z jajka")
+	Clothes.unwear(d, three[3].id)
+	local notYet, whySecret = Clothes.sell(d, {}, { three[1].id, three[3].id })
+	check(notYet == nil and whySecret == "ConfirmSecret" and d.Clothes[three[1].id] ~= nil, "sprzedaż Ultra Secret tylko po potwierdzeniu")
+	local soldU, cashU = Clothes.sell(d, {}, { three[3].id }, true)
+	check(soldU == 1 and cashU == iced * 0.1, "Ultra Secret po potwierdzeniu: 10% ceny boxa Iced")
+
 	----------------------------------------------------------------- Zakładanie i warstwa LP
 	d = fresh()
 	d.Clothes = {

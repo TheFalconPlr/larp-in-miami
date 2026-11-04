@@ -1,7 +1,8 @@
--- Komunikat o sekretnym pecie u góry ekranu (dokument projektu: „komunikat na wszystkich serwerach
--- gry: nick, pet i 1 na 25 000”). Serwer (PetService.announceSecret) wysyła wszystkim graczom Notify
--- „SecretHatched”; tu jest tylko wygląd: ciemny pasek z głową awatara, nickiem i petem. Kilka
--- komunikatów naraz czeka w kolejce.
+-- Komunikat o sekrecie u góry ekranu (dokument projektu: „komunikat na wszystkich serwerach gry:
+-- nick, pet i 1 na 25 000”). Serwer (PetService.announceSecret) wysyła wszystkim graczom Notify
+-- „SecretHatched”; tu jest tylko wygląd: ciemny pasek z głową awatara, nickiem i petem albo
+-- ubraniem. Sekretny pet ma fioletowo-złotą ramkę, a ubranie Ultra Secret (chrome z boxa Iced)
+-- srebrną. Kilka komunikatów naraz czeka w kolejce.
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -11,6 +12,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
 local Format = require(Shared.Format)
 local PetsConfig = require(Shared.Config.Pets)
+local ClothesConfig = require(Shared.Config.Clothes)
 local State = require(script.Parent.State)
 local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
@@ -20,18 +22,42 @@ local SecretBanner = {}
 
 local TEXT = {
 	Hatched = "hatched a",
+	Unboxed = "unboxed an",
 	You = "You",
 	Secret = "SECRET",
+	Ultra = "ULTRA SECRET",
 }
 
 local SHOW_TIME = 6 -- tyle sekund widać jeden komunikat
 local HEIGHT = 96
-local SECRET_COLORS = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 170, 255) }
-local EDGE = Color3.fromRGB(176, 70, 255)
+
+-- wygląd paska: sekretny pet i ubranie Ultra Secret
+local LOOKS = {
+	Pet = {
+		colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 170, 255) },
+		edge = { Color3.fromRGB(176, 70, 255), Color3.fromRGB(255, 200, 60) },
+		avatar = Color3.fromRGB(60, 46, 86),
+		avatarEdge = Color3.fromRGB(200, 170, 255),
+	},
+	Cloth = {
+		colors = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(140, 148, 166) }, -- jak Pets.ChromeColors
+		edge = { Color3.fromRGB(120, 128, 146), Color3.fromRGB(255, 255, 255) },
+		avatar = Color3.fromRGB(38, 40, 48),
+		avatarEdge = Color3.fromRGB(214, 220, 230),
+	},
+}
+
+local function edgeSequence(look)
+	return ColorSequence.new({
+		ColorSequenceKeypoint.new(0, look.edge[1]),
+		ColorSequenceKeypoint.new(0.5, look.edge[2]),
+		ColorSequenceKeypoint.new(1, look.edge[1]),
+	})
+end
 
 function SecretBanner.start(hud)
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-	-- nad animacją jajka (16), żeby komunikat było widać także w czasie otwierania
+	-- nad animacją jajka i boxa (16), żeby komunikat było widać także w czasie otwierania
 	local gui = Kit.new("ScreenGui", {
 		Name = "LarpSecretBanner",
 		ResetOnSpawn = false,
@@ -69,26 +95,19 @@ function SecretBanner.start(hud)
 		Parent = inner,
 	})
 	Kit.corner(body, 28)
-	local edge = Kit.stroke(body, 5, Enum.ApplyStrokeMode.Border, EDGE)
-	local edgeGradient = Kit.new("UIGradient", {
-		Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Color3.fromRGB(176, 70, 255)),
-			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 200, 60)),
-			ColorSequenceKeypoint.new(1, Color3.fromRGB(176, 70, 255)),
-		}),
-		Parent = edge,
-	})
+	local edge = Kit.stroke(body, 5, Enum.ApplyStrokeMode.Border, Color3.new(1, 1, 1))
+	local edgeGradient = Kit.new("UIGradient", { Color = edgeSequence(LOOKS.Pet), Parent = edge })
 	local avatar = Kit.new("ImageLabel", {
 		Name = "Avatar",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 12, 0.5, 0),
 		Size = UDim2.fromOffset(HEIGHT - 20, HEIGHT - 20),
-		BackgroundColor3 = Color3.fromRGB(60, 46, 86),
+		BackgroundColor3 = LOOKS.Pet.avatar,
 		ZIndex = 2,
 		Parent = inner,
 	})
 	Kit.corner(avatar, 20)
-	Kit.stroke(avatar, 3, Enum.ApplyStrokeMode.Border, Color3.fromRGB(200, 170, 255))
+	local avatarEdge = Kit.stroke(avatar, 3, Enum.ApplyStrokeMode.Border, LOOKS.Pet.avatarEdge)
 	local top = Kit.line(inner, {
 		name = "Top",
 		anchor = Vector2.new(0, 0.5),
@@ -113,15 +132,33 @@ function SecretBanner.start(hud)
 			name = TEXT.You
 		end
 		local level = message.Level or 0
-		top.set({
-			{ text = name, size = 28, colors = Theme.Gradients.Gold },
-			{ text = TEXT.Hatched, size = 24 },
-			{ text = TEXT.Secret, size = 28, colors = SECRET_COLORS },
-		})
-		bottom.set({
-			{ text = PetsConfig.fullName(message.Zone, "Secret", level), size = 28, colors = SECRET_COLORS },
-			{ text = Format.oneIn(Economy.Pets.SecretChance), size = 22, colors = Theme.Gradients.Gold },
-		})
+		local cloth = message.Item == "Cloth"
+		local look = LOOKS.Pet
+		if cloth then
+			look = LOOKS.Cloth
+			top.set({
+				{ text = name, size = 28, colors = Theme.Gradients.Gold },
+				{ text = TEXT.Unboxed, size = 24 },
+				{ text = TEXT.Ultra, size = 28, colors = look.colors },
+			})
+			bottom.set({
+				{ text = ClothesConfig.fullName(message.Category, "UltraSecret", level), size = 28, colors = look.colors },
+				{ text = Format.oneIn(Economy.Clothes.UltraSecretChance), size = 22, colors = Theme.Gradients.Gold },
+			})
+		else
+			top.set({
+				{ text = name, size = 28, colors = Theme.Gradients.Gold },
+				{ text = TEXT.Hatched, size = 24 },
+				{ text = TEXT.Secret, size = 28, colors = look.colors },
+			})
+			bottom.set({
+				{ text = PetsConfig.fullName(message.Zone, "Secret", level), size = 28, colors = look.colors },
+				{ text = Format.oneIn(Economy.Pets.SecretChance), size = 22, colors = Theme.Gradients.Gold },
+			})
+		end
+		edgeGradient.Color = edgeSequence(look)
+		avatar.BackgroundColor3 = look.avatar
+		avatarEdge.Color = look.avatarEdge
 		local width = math.max(top.holder.Size.X.Offset, bottom.holder.Size.X.Offset)
 		holder.Size = UDim2.fromOffset(HEIGHT + width + 26, HEIGHT)
 		avatar.Image = ""
@@ -136,7 +173,7 @@ function SecretBanner.start(hud)
 			Position = UDim2.new(0.5, 0, 0, 12),
 		}):Play()
 		TweenService:Create(pop, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		-- ramka mieni się fioletem i złotem
+		-- ramka mieni się kolorami (fiolet i złoto albo srebro)
 		local spin = TweenService:Create(edgeGradient, TweenInfo.new(1.6, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1), {
 			Rotation = 360,
 		})
@@ -165,8 +202,18 @@ function SecretBanner.start(hud)
 		showing = false
 	end
 
+	local function valid(payload)
+		if payload.Kind ~= "SecretHatched" or type(payload.Name) ~= "string" then
+			return false
+		end
+		if payload.Item == "Cloth" then
+			return type(payload.Category) == "string"
+		end
+		return type(payload.Zone) == "number"
+	end
+
 	State.onNotify(function(payload)
-		if payload.Kind ~= "SecretHatched" or type(payload.Zone) ~= "number" or type(payload.Name) ~= "string" then
+		if not valid(payload) then
 			return
 		end
 		if #queue >= 5 then

@@ -448,6 +448,8 @@ local Economy = {
 	},
 	Clothes = {
 		Categories = { "Hair", "Glasses", "Chain", "Watch", "Shirt", "Pants", "Shoes" },
+		RarityOrder = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "UltraSecret" },
+		UltraSecretChance = 4e-06,
 		RarityBonus = {
 			Common = 0.2,
 			Uncommon = 0.4,
@@ -455,6 +457,7 @@ local Economy = {
 			Epic = 1.6,
 			Legendary = 3.2,
 			Mythic = 6.4,
+			UltraSecret = 12.8,
 		},
 		Boxes = {
 			Street = {
@@ -481,10 +484,11 @@ local Economy = {
 				Price = 80000000000,
 				RequiresZone = 5,
 				Odds = {
-					Rare = 0.5,
+					Rare = 0.499996,
 					Epic = 0.35,
 					Legendary = 0.13,
 					Mythic = 0.02,
+					UltraSecret = 4e-06,
 				},
 			},
 		},
@@ -499,6 +503,7 @@ local Economy = {
 			Epic = "Street",
 			Legendary = "Designer",
 			Mythic = "Iced",
+			UltraSecret = "Iced",
 		},
 		SellReturn = 0.1,
 		GoldSellX = 5,

@@ -66,7 +66,15 @@ Pets.RarityColors = {
 	Legendary = hex("#FFB21E"),
 	Mythic = hex("#FF4F86"),
 	Secret = hex("#2B2B35"),
+	UltraSecret = hex("#AEB7C6"), -- tylko ubrania „chrome” z boxa Iced
 }
+
+-- Nazwy rzadkości w grze, gdy różnią się od klucza
+Pets.RarityNames = { UltraSecret = "Ultra Secret" }
+
+function Pets.rarityName(rarity)
+	return Pets.RarityNames[rarity] or rarity
+end
 
 -- Poziomy po łączeniu (Level w zapisie): 1 = Złoty, 2 = Diamentowy. Nazwa w grze i kolory kafelka.
 Pets.LevelNames = { [1] = "Golden", [2] = "Diamond" }

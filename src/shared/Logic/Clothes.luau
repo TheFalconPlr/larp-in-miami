@@ -21,6 +21,7 @@ local NO_PASSES = {}
 
 Clothes.Categories = C.Categories
 Clothes.BoxOrder = { "Street", "Designer", "Iced" }
+Clothes.RarityOrder = C.RarityOrder -- od Common do UltraSecret (ubrania „chrome” z boxa Iced)
 
 local CATEGORY = {}
 for i, name in ipairs(C.Categories) do
@@ -250,7 +251,7 @@ function Clothes.openBox(data, ctx, box, random01, maxItems)
 	if info.LuckApplies ~= false then
 		luck = Formulas.luck(data.AuraUpgrades.Luck)
 	end
-	local rarity = Formulas.roll(info.Odds, luck, random01)
+	local rarity = Formulas.roll(info.Odds, luck, random01, C.RarityOrder)
 	local n = #C.Categories
 	local index = math.floor(random01() * n) + 1
 	if index > n then
@@ -261,12 +262,38 @@ function Clothes.openBox(data, ctx, box, random01, maxItems)
 	data.NextClothId = data.NextClothId + 1
 	data.Clothes[id] = item
 	data.Stats.BoxesOpened = (data.Stats.BoxesOpened or 0) + 1
+	if rarity == "UltraSecret" then
+		data.Stats.UltraSecrets = (data.Stats.UltraSecrets or 0) + 1
+	end
 	local worn = false
 	if Clothes.betterThanWorn(data, ctx, item) then
 		Clothes.wear(data, ctx, id)
 		worn = true
 	end
 	return id, item, worn
+end
+
+-- Otwiera count boxów naraz (Triple Open, ten sam gamepass co przy jajkach). Najpierw sprawdza,
+-- czy stać na wszystkie i czy wszystkie się zmieszczą. Zwraca listę { id, item, worn } albo nil
+-- i powód (jak canBuy).
+function Clothes.openBoxes(data, ctx, box, count, random01, maxItems)
+	local ok, reason = Clothes.canBuy(data, box, count, maxItems)
+	if not ok then
+		return nil, reason
+	end
+	local list = {}
+	for _ = 1, count do
+		local id, item, worn = Clothes.openBox(data, ctx, box, random01, maxItems)
+		if id == nil then
+			break
+		end
+		table.insert(list, { id = id, item = item, worn = worn })
+	end
+	-- przy trzech naraz o tym, co założone, decyduje najlepsze z nich
+	for _, entry in ipairs(list) do
+		entry.worn = Clothes.isWorn(data, entry.id)
+	end
+	return list
 end
 
 ----------------------------------------------------------------- Sprzedaż i łączenie
@@ -284,9 +311,18 @@ function Clothes.sellValue(item)
 	return roundHalfUp(Clothes.sourcePrice(item.Rarity) * C.SellReturn * (LEVEL_SELL[item.Level or 0] or 1))
 end
 
--- Sprzedaje ubrania za L$. Założonych nie sprzedaje. Zwraca liczbę sprzedanych i L$.
-function Clothes.sell(data, ctx, ids)
+-- Sprzedaje ubrania za L$. Założonych nie sprzedaje, a Ultra Secret tylko z confirm = true (jak
+-- sekretne pety: u gracza okno „na pewno?”). Zwraca liczbę sprzedanych i L$ albo nil i "ConfirmSecret".
+function Clothes.sell(data, ctx, ids, confirm)
 	data.Worn = Clothes.active(data, ctx)
+	if confirm ~= true then
+		for _, id in ipairs(ids) do
+			local item = data.Clothes[id]
+			if item ~= nil and item.Rarity == "UltraSecret" and not Clothes.isWorn(data, id) then
+				return nil, "ConfirmSecret"
+			end
+		end
+	end
 	local count, cash = 0, 0
 	for _, id in ipairs(ids) do
 		local item = data.Clothes[id]

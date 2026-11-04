@@ -298,23 +298,42 @@ function Hud.start()
 	})
 
 	----------------------------------------------------------------- Kafelki po lewej
+	-- Siatka 2×2 jak w Pet Simulator 99 (SELL, UPGRADES / PETS, CLOTHES), a pod nią przełączniki
+	-- gamepassów. W jednej kolumnie 4 kafelki schodziły na licznik L$.
+	local MENU_TILE = Vector2.new(104, 110) -- Kit.tile: 104 × 104 i krawędź 6
+	local MENU_GAP = Vector2.new(16, 28) -- pod kafelkiem jest miejsce na napis, który wystaje w dół
+	local MENU_WIDTH = 2 * MENU_TILE.X + MENU_GAP.X
 	local left = Kit.new("Frame", {
 		Name = "Menu",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 22, 0.46, 0),
-		Size = UDim2.fromOffset(104, 0),
+		Size = UDim2.fromOffset(MENU_WIDTH, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Parent = gui,
 	})
 	registerScale(left)
 	Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 28),
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		Padding = UDim.new(0, 26),
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = left,
 	})
-	local sellTile = Kit.tile(left, {
+	local tiles = Kit.new("Frame", {
+		Name = "Tiles",
+		LayoutOrder = 1,
+		Size = UDim2.fromOffset(MENU_WIDTH, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Parent = left,
+	})
+	Kit.new("UIGridLayout", {
+		CellSize = UDim2.fromOffset(MENU_TILE.X, MENU_TILE.Y),
+		CellPadding = UDim2.fromOffset(MENU_GAP.X, MENU_GAP.Y),
+		FillDirectionMaxCells = 2,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = tiles,
+	})
+	local sellTile = Kit.tile(tiles, {
 		name = "Sell",
 		icon = "Sell",
 		iconSize = 92, -- banknot ma w obrazku pusty margines, więc trochę większy
@@ -323,7 +342,7 @@ function Hud.start()
 		order = 1,
 	})
 	local sellPulse = makePulser(Kit.new("UIScale", { Parent = sellTile.body }))
-	local upgradesTile = Kit.tile(left, {
+	local upgradesTile = Kit.tile(tiles, {
 		name = "Upgrades",
 		icon = "Upgrades",
 		text = TEXT.Upgrades,
@@ -332,23 +351,25 @@ function Hud.start()
 		textSize = 21,
 	})
 	local upgradesPulse = makePulser(Kit.new("UIScale", { Parent = upgradesTile.body }))
-	-- przełączniki gamepassów obok kafelka SELL (w kolumnie nie mieszczą się przy 4 kafelkach)
+	-- przełączniki gamepassów pod siatką, obok siebie (bez gamepassów cały rząd znika)
 	local autoFrame = Kit.new("Frame", {
 		Name = "AutoToggles",
-		Position = UDim2.new(1, 14, 0, 6),
-		Size = UDim2.fromOffset(116, 0),
+		LayoutOrder = 2,
+		Size = UDim2.fromOffset(MENU_WIDTH, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Parent = sellTile.holder,
+		Visible = false,
+		Parent = left,
 	})
 	Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 8),
+		Padding = UDim.new(0, MENU_GAP.X),
+		FillDirection = Enum.FillDirection.Horizontal,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = autoFrame,
 	})
 	local autoClickButton = Kit.button(autoFrame, {
 		name = "AutoClick",
-		size = Vector2.new(116, 40),
+		size = Vector2.new(MENU_TILE.X, 40),
 		text = TEXT.AutoClickOn,
 		colors = Theme.Gradients.Gray,
 		radius = 14,
@@ -360,7 +381,7 @@ function Hud.start()
 	autoClickButton.holder.Visible = false
 	local autoSellButton = Kit.button(autoFrame, {
 		name = "AutoSell",
-		size = Vector2.new(116, 40),
+		size = Vector2.new(MENU_TILE.X, 40),
 		text = TEXT.AutoSellOn,
 		colors = Theme.Gradients.Gray,
 		radius = 14,
@@ -964,6 +985,7 @@ function Hud.start()
 		autoClickButton.setColors(settings.AutoClick and Theme.Gradients.Cyan or Theme.Gradients.Gray)
 		autoSellButton.holder.Visible = passes.AutoSell == true
 		autoSellButton.setColors(settings.AutoSell and Theme.Gradients.Cyan or Theme.Gradients.Gray)
+		autoFrame.Visible = passes.AutoClick == true or passes.AutoSell == true
 
 		testHolder.Visible = view.IsAdmin == true
 		updateHint(view)
@@ -1133,9 +1155,9 @@ function Hud.start()
 		window.open()
 	end
 
-	-- Kafelek w menu po lewej (pod SELL i UPGRADES), np. PETS. opts jak Kit.tile; order od 3.
+	-- Kafelek w siatce menu po lewej (pod SELL i UPGRADES), np. PETS. opts jak Kit.tile; order od 3.
 	function api.addTile(opts)
-		return Kit.tile(left, opts)
+		return Kit.tile(tiles, opts)
 	end
 
 	-- Brak L$ na zakup: dźwięk, czerwony komunikat (jeden, nie kilka naraz) i potrząśnięty przycisk.

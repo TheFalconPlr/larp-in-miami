@@ -1,9 +1,12 @@
--- Mystery boxy z ubraniami po stronie gracza (Etap 8), jak jajka w Eggs.luau:
+-- Mystery boxy z ubraniami po stronie gracza (Etap 8), tak jak jajka w Eggs.luau:
 --   • przy każdym boxie pigułka z ceną (albo kłódka i strefa, którą trzeba najpierw odblokować),
---   • nad najbliższym panel z szansami rzadkości i bonusem do LP, a przed boxem duże E;
---     E (klawisz albo kliknięcie) otwiera okno kupna,
---   • animacja: box drży 3 razy, wieko odlatuje, a ze środka wyskakuje ubranie z promieniami
---     w kolorze rzadkości; napisy wskakują po kolei, a na koniec ubranie leci do kafelka CLOTHES.
+--   • nad najbliższym panel z szansami rzadkości i bonusem do LP, a na boxie duże E;
+--     E (klawisz albo kliknięcie) otwiera okno kupna z Buy 1 i Buy 3 (Buy 3 z gamepassem
+--     Triple Open, tym samym co przy jajkach),
+--   • animacja: boxy drżą 3 razy, wieka odlatują, a ze środka wyskakują ubrania z promieniami
+--     w kolorze rzadkości; napisy wskakują po kolei, a na koniec ubrania lecą do kafelka CLOTHES.
+--     Ultra Secret (ubrania „chrome” z boxa Iced, 1 na 250 000) ma osobną animację: czarno-srebrne
+--     promienie, srebrny błysk, „vine boom”, mocniejsze drżenie i dłuższy pokaz.
 -- Kupno i losowanie robi serwer (ClothesService); tu jest tylko wygląd.
 
 local Players = game:GetService("Players")
@@ -11,6 +14,7 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
+local MarketplaceService = game:GetService("MarketplaceService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -29,14 +33,17 @@ local Icons = require(script.Parent.Ui.Icons)
 local Sounds = require(script.Parent.Ui.Sounds)
 local Pets = require(script.Parent.Pets)
 local Wardrobe = require(script.Parent.Wardrobe)
+local StandAnchor = require(script.Parent.StandAnchor)
 
 local Boxes = {}
 
 local BOX_TAG = "LarpBox" -- jak ClothesService.BoxTag na serwerze
-local SHOW_DISTANCE = 8
+local SHOW_DISTANCE = 8 -- panel i E pokazują się, gdy stoisz tak blisko boxa (studs od stoiska)
 local HIDE_DISTANCE = 12
-local BIG_RARITY = { Legendary = true, Mythic = true }
+local TRIPLE = Economy.Robux.Gamepasses.TripleOpen.OpenCount
+local BIG_RARITY = { Legendary = true, Mythic = true, UltraSecret = true } -- iskry, drżenie i oklaski
 
+-- Wygląd przy boxie (studs), jak przy jajkach
 local PILL_SIZE = Vector2.new(4.6, 1.4)
 local PILL_HEIGHT = 1.7
 local PANEL_CARD = 2.1
@@ -46,10 +53,15 @@ local PANEL_TIP = 0.45
 local PANEL_LIFT = 0.6
 local PANEL_EDGE = Color3.fromRGB(205, 210, 222)
 
+-- Animacja (piksele bazowe 1280×720)
 local STAGE_SIZE = Vector2.new(1200, 700)
-local SLOT = 420
+local STAGE_Y = 0.5
+local SLOT_BIG = 420 -- jeden box
+local SLOT_SMALL = 330 -- trzy boxy obok siebie
+local SLOT_SPACING = 370
 local BEATS = { 0.27, 0.42, 0.57 } -- drgnięcia (część czasu otwierania)
-local BURST_AT = 0.66 -- wieko odlatuje
+local BURST_AT = 0.66 -- wieka odlatują
+local LID_TIME = 0.32
 local GRAVITY = 1100
 local RAY_FADE = NumberSequence.new({
 	NumberSequenceKeypoint.new(0, 1),
@@ -59,17 +71,32 @@ local RAY_FADE = NumberSequence.new({
 	NumberSequenceKeypoint.new(1, 1),
 })
 
+-- Ultra Secret: czarno-srebrne promienie, srebrny błysk, dłuższy pokaz
+local ULTRA_RAYS = { Color3.fromRGB(28, 28, 34), Color3.fromRGB(222, 228, 238) }
+local ULTRA_FLASH = Color3.fromRGB(236, 240, 248)
+local ULTRA_HOLD = 2.2
+
 local TEXT = {
 	Question = "Would you like to buy a\n%s?",
-	Buy = "Buy",
+	Buy = "Buy %d",
 	Random = "1 random item from 7 categories",
-	Range = "%s to %s LP",
+	To = "to",
 	Locked = "Unlock %s first",
+	Gamepass = "Gamepass",
+	NoPass = "Buy 3 needs the Triple Open gamepass",
+	PassSoon = "Triple Open gamepass is coming soon!",
 	Inventory = "Not enough room for more clothes",
-	New = "NEW %s!",
+	NewOne = "NEW %s!",
+	NewMany = "NEW CLOTHES!",
 	Rare = "%s ITEM!",
+	Ultra = "ULTRA SECRET!",
 	Wearing = "Wearing!",
 }
+
+local RANK = {}
+for i, rarity in ipairs(Economy.Clothes.RarityOrder) do
+	RANK[rarity] = i
+end
 
 local function boxInfo(box)
 	local info = Economy.Clothes.Boxes[box]
@@ -86,7 +113,7 @@ end
 
 local function raritiesOf(info)
 	local list = {}
-	for _, rarity in ipairs(Economy.Pets.RarityOrder) do
+	for _, rarity in ipairs(Economy.Clothes.RarityOrder) do
 		if info.Odds[rarity] ~= nil then
 			table.insert(list, rarity)
 		end
@@ -105,6 +132,14 @@ end
 
 local function percentText(bonus)
 	return "+" .. Format.small(bonus * 100) .. "%"
+end
+
+-- Mniejszy napis, gdy się nie mieści (przy trzech boxach długie nazwy wchodziły na sąsiednie).
+local function fitSize(text, size, maxWidth)
+	while size > 16 and Kit.measure(text, size).X > maxWidth do
+		size = size - 2
+	end
+	return size
 end
 
 local function distanceToPart(part, position)
@@ -127,37 +162,6 @@ local function distanceToStand(stand, position)
 		end
 	end
 	return best
-end
-
-local function biggestPart(stand)
-	if stand:IsA("BasePart") then
-		return stand
-	end
-	local best, bestSize = nil, -1
-	for _, d in ipairs(stand:GetDescendants()) do
-		if d:IsA("BasePart") then
-			local size = d.Size.X * d.Size.Y * d.Size.Z
-			if size > bestSize then
-				best, bestSize = d, size
-			end
-		end
-	end
-	return best
-end
-
-local function standBounds(stand)
-	local part = biggestPart(stand)
-	if part == nil then
-		return nil, 0, 0
-	end
-	local top = part.Position.Y + part.Size.Y / 2
-	local bottom = part.Position.Y - part.Size.Y / 2
-	if stand:IsA("Model") then
-		local box, size = stand:GetBoundingBox()
-		top = box.Position.Y + size.Y / 2
-		bottom = box.Position.Y - size.Y / 2
-	end
-	return part, top - part.Position.Y, bottom - part.Position.Y
 end
 
 local function showModel(view, model, distanceScale)
@@ -190,6 +194,11 @@ function Boxes.start(hud)
 		return info ~= nil and view ~= nil and (view.ZonesUnlocked or 1) >= info.RequiresZone
 	end
 
+	local function zoneName(info)
+		local zone = info and Economy.Zones[info.RequiresZone]
+		return (zone and zone.Name) or "zone"
+	end
+
 	------------------------------------------------------------- Cena przy każdym boxie
 	local pills = {} -- [stoisko] = { gui, render }
 	local pillsHidden = false
@@ -199,7 +208,7 @@ function Boxes.start(hud)
 		if entry == nil then
 			return
 		end
-		local part, _, bottom = standBounds(stand)
+		local part, _, bottom = StandAnchor.get(stand)
 		entry.gui.Adornee = part
 		if part ~= nil then
 			entry.gui.StudsOffsetWorldSpace = Vector3.new(0, bottom + PILL_HEIGHT, 0)
@@ -233,7 +242,7 @@ function Boxes.start(hud)
 		Kit.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = face })
 		local gradient = Kit.gradient(face, Theme.Gradients.Yellow, 90)
 		Kit.stroke(face, 3, Enum.ApplyStrokeMode.Border)
-		local holder = Kit.new("Frame", {
+		local iconHolder = Kit.new("Frame", {
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.fromScale(0.05, 0.5),
 			Size = UDim2.fromScale(0.26, 0.9),
@@ -241,7 +250,7 @@ function Boxes.start(hud)
 			ZIndex = 2,
 			Parent = face,
 		})
-		Kit.new("UIAspectRatioConstraint", { AspectRatio = 1, Parent = holder })
+		Kit.new("UIAspectRatioConstraint", { AspectRatio = 1, Parent = iconHolder })
 		local label = Kit.text(face, {
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.fromScale(0.34, 0.5),
@@ -255,10 +264,10 @@ function Boxes.start(hud)
 				return
 			end
 			iconName = name
-			for _, child in ipairs(holder:GetChildren()) do
+			for _, child in ipairs(iconHolder:GetChildren()) do
 				child:Destroy()
 			end
-			Icons.make(name, { Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = holder })
+			Icons.make(name, { Size = UDim2.fromScale(1, 1), ZIndex = 2, Parent = iconHolder })
 		end
 		-- zablokowany box: kłódka i nazwa strefy, którą trzeba odblokować
 		local function render()
@@ -268,8 +277,7 @@ function Boxes.start(hud)
 				gradient.Color = ColorSequence.new(Theme.Gradients.Yellow[1], Theme.Gradients.Yellow[2])
 			else
 				setIcon("Lock")
-				local zone = Economy.Zones[info.RequiresZone]
-				label.Text = (zone and zone.Name) or ("Zone " .. info.RequiresZone)
+				label.Text = zoneName(info)
 				gradient.Color = ColorSequence.new(Theme.Gradients.Gray[1], Theme.Gradients.Gray[2])
 			end
 		end
@@ -345,11 +353,16 @@ function Boxes.start(hud)
 				Parent = card,
 			})
 			Kit.new("UICorner", { CornerRadius = UDim.new(0.22, 0), Parent = tileFrame })
+			if rarity == "UltraSecret" then
+				-- chrom: srebrny kafelek, jak w oknie CLOTHES
+				tileFrame.BackgroundColor3 = Theme.White
+				Kit.gradient(tileFrame, Pets.ChromeColors, 90)
+			end
 			Kit.text(tileFrame, {
 				AnchorPoint = Vector2.new(0.5, 0),
 				Position = UDim2.fromScale(0.5, 0.08),
 				Size = UDim2.fromScale(0.9, 0.42),
-				Text = rarity,
+				Text = PetsConfig.rarityName(rarity),
 				ZIndex = 5,
 			}, { maxSize = 40, stroke = 2.5 })
 			Kit.text(tileFrame, {
@@ -370,7 +383,7 @@ function Boxes.start(hud)
 		end
 	end
 
-	------------------------------------------------------------- Duże E przed boxem
+	------------------------------------------------------------- Duże E na boxie
 	local promptGui = Kit.new("BillboardGui", {
 		Name = "BoxPrompt",
 		Size = UDim2.fromOffset(190, 190),
@@ -436,8 +449,9 @@ function Boxes.start(hud)
 	end
 	TweenService:Create(promptBob, TweenInfo.new(0.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.07 }):Play()
 
+	-- Panel nad boxem, E na środku boxa (jak przy jajkach).
 	local function placePrompt(stand)
-		local part, top, bottom = standBounds(stand)
+		local part, top, bottom = StandAnchor.get(stand)
 		panelGui.Adornee = part
 		promptGui.Adornee = part
 		if part ~= nil then
@@ -475,12 +489,13 @@ function Boxes.start(hud)
 			pills[stand].gui:Destroy()
 			pills[stand] = nil
 		end
+		StandAnchor.forget(stand)
 	end
 
 	------------------------------------------------------------- Okno kupna
 	local dialog = Kit.panel(hud.gui, {
 		name = "BoxBuy",
-		size = Vector2.new(620, 460),
+		size = Vector2.new(620, 500),
 		title = "",
 		padding = 30,
 		top = 28,
@@ -501,8 +516,8 @@ function Boxes.start(hud)
 	local boxView = Kit.new("ViewportFrame", {
 		Name = "Box",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 106),
-		Size = UDim2.fromOffset(200, 140),
+		Position = UDim2.new(0.5, 0, 0, 104),
+		Size = UDim2.fromOffset(200, 128),
 		BackgroundTransparency = 1,
 		Ambient = Color3.fromRGB(205, 205, 215),
 		LightColor = Color3.new(1, 1, 1),
@@ -511,31 +526,39 @@ function Boxes.start(hud)
 	})
 	local infoLine = Kit.line(dialog.content, {
 		anchor = Vector2.new(0.5, 0.5),
-		position = UDim2.new(0.5, 0, 0, 266),
+		position = UDim2.new(0.5, 0, 0, 250),
 		height = 30,
 	})
 	infoLine.holder.ZIndex = 4
 	local rangeLine = Kit.line(dialog.content, {
 		anchor = Vector2.new(0.5, 0.5),
-		position = UDim2.new(0.5, 0, 0, 298),
-		height = 30,
+		position = UDim2.new(0.5, 0, 0, 284),
+		height = 32,
 	})
 	rangeLine.holder.ZIndex = 4
-	local priceLine = Kit.line(dialog.content, {
-		anchor = Vector2.new(0.5, 1),
-		position = UDim2.new(0.5, 0, 1, -76),
-		height = 44,
-	})
-	priceLine.holder.ZIndex = 4
-	local buyButton = Kit.button(dialog.content, {
-		name = "Buy",
-		size = Vector2.new(260, 66),
-		text = TEXT.Buy,
-		colors = Theme.Gradients.Green,
-		anchor = Vector2.new(0.5, 1),
-		position = UDim2.new(0.5, 0, 1, 0),
-		textSize = 36,
-	})
+	local columns = {}
+	for i, count in ipairs({ 1, TRIPLE }) do
+		local x = 0.26
+		if i == 2 then
+			x = 0.74
+		end
+		local priceLine = Kit.line(dialog.content, {
+			anchor = Vector2.new(0.5, 1),
+			position = UDim2.new(x, 0, 1, -78),
+			height = 44,
+		})
+		priceLine.holder.ZIndex = 4
+		local button = Kit.button(dialog.content, {
+			name = "Buy" .. count,
+			size = Vector2.new(230, 66),
+			text = string.format(TEXT.Buy, count),
+			colors = Theme.Gradients.Green,
+			anchor = Vector2.new(0.5, 1),
+			position = UDim2.new(x, 0, 1, 0),
+			textSize = 36,
+		})
+		columns[i] = { count = count, price = priceLine, button = button }
+	end
 	local dialogBox = nil
 	local dialogBoxKind = nil
 
@@ -550,26 +573,30 @@ function Boxes.start(hud)
 		local list = raritiesOf(info)
 		rangeLine.set({
 			{ text = percentText(Formulas.clothBonus(list[1], 0)), size = 24, colors = Theme.Gradients.Gold },
-			{ text = "to", size = 22 },
+			{ text = TEXT.To, size = 22 },
 			{ text = percentText(Formulas.clothBonus(list[#list], 0)) .. " LP", size = 24, colors = Theme.Gradients.Gold },
 		})
-		if unlocked(current.box) then
-			priceLine.set({
-				{ icon = "Cash", size = 40 },
-				{ text = Format.number(info.Price), size = 32, colors = Theme.Gradients.Gold },
-			})
-			if view.Cash >= info.Price then
-				buyButton.setColors(Theme.Gradients.Green)
+		local passes = view.Passes or {}
+		local open = unlocked(current.box)
+		for _, column in ipairs(columns) do
+			local total = info.Price * column.count
+			if not open then
+				column.price.set({ { icon = "Lock", size = 32 }, { text = zoneName(info), size = 24 } })
+				column.button.setColors(Theme.Gradients.Gray)
+			elseif column.count > 1 and not passes.TripleOpen then
+				column.price.set({ { icon = "Lock", size = 36 }, { text = TEXT.Gamepass, size = 28 } })
+				column.button.setColors(Theme.Gradients.Gray)
 			else
-				buyButton.setColors(Theme.Gradients.Gray)
+				column.price.set({
+					{ icon = "Cash", size = 40 },
+					{ text = Format.number(total), size = 32, colors = Theme.Gradients.Gold },
+				})
+				if view.Cash >= total then
+					column.button.setColors(Theme.Gradients.Green)
+				else
+					column.button.setColors(Theme.Gradients.Gray)
+				end
 			end
-		else
-			local zone = Economy.Zones[info.RequiresZone]
-			priceLine.set({
-				{ icon = "Lock", size = 36 },
-				{ text = string.format(TEXT.Locked, (zone and zone.Name) or ("zone " .. info.RequiresZone)), size = 26 },
-			})
-			buyButton.setColors(Theme.Gradients.Gray)
 		end
 	end
 
@@ -588,6 +615,7 @@ function Boxes.start(hud)
 		dialog.open()
 	end
 
+	-- box w oknie lekko się kołysze
 	RunService.RenderStepped:Connect(function()
 		if dialogBox ~= nil and dialog.isOpen() then
 			dialogBox:PivotTo(CFrame.Angles(0, math.sin(os.clock() * 1.3) * 0.4, 0))
@@ -615,7 +643,7 @@ function Boxes.start(hud)
 	local stage = Kit.new("Frame", {
 		Name = "Stage",
 		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, STAGE_Y),
 		Size = UDim2.fromOffset(STAGE_SIZE.X, STAGE_SIZE.Y),
 		BackgroundTransparency = 1,
 		ZIndex = 2,
@@ -632,91 +660,29 @@ function Boxes.start(hud)
 		ZIndex = 20,
 		Parent = openGui,
 	})
-	local function stageLine(y, height)
-		local l = Kit.line(stage, { anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, y), height = height })
-		l.holder.ZIndex = 8
-		l.scale = Kit.new("UIScale", { Scale = 0, Parent = l.holder })
-		return l
-	end
-	local center = Vector2.new(STAGE_SIZE.X / 2, STAGE_SIZE.Y / 2 - 20)
-	local banner = stageLine(center.Y - SLOT / 2 - 44, 60)
-	local nameLine = stageLine(center.Y + SLOT / 2 + 24, 52)
-	local infoLine2 = stageLine(center.Y + SLOT / 2 + 66, 40)
-	local wornLine = stageLine(center.Y + SLOT / 2 + 102, 34)
+	local banner = Kit.line(stage, { name = "Banner", anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 96), height = 60 })
+	banner.holder.ZIndex = 8
+	local bannerScale = Kit.new("UIScale", { Scale = 0, Parent = banner.holder })
+	local subBanner = Kit.line(stage, { name = "SubBanner", anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 140), height = 40 })
+	subBanner.holder.ZIndex = 8
+	local subBannerScale = Kit.new("UIScale", { Scale = 0, Parent = subBanner.holder })
 
-	local holder = Kit.new("Frame", {
-		Name = "Slot",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromOffset(center.X, center.Y),
-		Size = UDim2.fromOffset(SLOT, SLOT),
-		BackgroundTransparency = 1,
-		ZIndex = 2,
-		Parent = stage,
-	})
-	local holderScale = Kit.new("UIScale", { Parent = holder })
-	local rays = Kit.new("Frame", {
-		Name = "Rays",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(SLOT * 1.55, SLOT * 1.55),
-		BackgroundTransparency = 1,
-		Visible = false,
-		ZIndex = 2,
-		Parent = holder,
-	})
-	local raysScale = Kit.new("UIScale", { Parent = rays })
-	local bars = {}
-	for i = 1, 8 do
-		local bar = Kit.new("Frame", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromScale(0.5, 0.5),
-			Size = UDim2.new(0, math.floor(SLOT * 0.15), 1, 0),
-			BorderSizePixel = 0,
-			Rotation = (i - 1) * 22.5,
-			ZIndex = 2,
-			Parent = rays,
-		})
-		Kit.new("UIGradient", { Rotation = 90, Transparency = RAY_FADE, Parent = bar })
-		bars[i] = bar
-	end
-	local glow = Kit.new("Frame", {
-		Name = "Glow",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(SLOT * 0.84, SLOT * 0.84),
-		BackgroundTransparency = 0.5,
-		BorderSizePixel = 0,
-		Visible = false,
-		ZIndex = 3,
-		Parent = holder,
-	})
-	Kit.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = glow })
-	local glowStroke = Kit.stroke(glow, 8, Enum.ApplyStrokeMode.Border)
-	glowStroke.Transparency = 0.3
-	local glowScale = Kit.new("UIScale", { Parent = glow })
-	local jolt = Kit.new("Frame", {
-		Name = "Jolt",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		ZIndex = 4,
-		Parent = holder,
-	})
-	local joltScale = Kit.new("UIScale", { Parent = jolt })
-	local view = Kit.new("ViewportFrame", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		Ambient = Color3.fromRGB(210, 210, 220),
-		LightColor = Color3.new(1, 1, 1),
-		ZIndex = 4,
-		Parent = jolt,
-	})
-	local pop = Kit.new("UIScale", { Parent = view })
-
+	local slots = {}
 	local particles = {}
+	local phase = "idle" -- idle, shake, lid, reveal, exit
+	local shakeStart, shakeLength = 0, 1
+	local kickTime, kickDir = -math.huge, 1
+	local shakeUntil = 0
+	local lidStart = 0
+	local connection = nil
+
+	local function popIn(uiScale, delay, time)
+		uiScale.Scale = 0
+		task.delay(delay, function()
+			TweenService:Create(uiScale, TweenInfo.new(time or 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		end)
+	end
+
 	local function spawnParticle(kind, position, velocity, color, size, life)
 		local frame = Kit.new("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -772,80 +738,211 @@ function Boxes.start(hud)
 		end
 	end
 
-	local phase = "idle" -- idle, shake, reveal, exit
-	local shakeStart, shakeLength = 0, 1
-	local kickTime, kickDir = -math.huge, 1
-	local shakeUntil = 0
-	local revealStart = 0
-	local boxModel = nil
-	local itemModel = nil
-	local lidParts = {}
-	local lidCenter = Vector3.new()
-	local nextSpark = 0
-	local revealItem = nil
-	local connection = nil
+	-- Miejsce na jeden box i ubranie (1 na środku albo 3 obok siebie).
+	local function makeSlot(index, count, item)
+		local big = count == 1
+		local size, spacing = SLOT_SMALL, SLOT_SPACING
+		if big then
+			size, spacing = SLOT_BIG, 0
+		end
+		local x = (index - (count + 1) / 2) * spacing
+		local ultra = item.Rarity == "UltraSecret"
+		local color = PetsConfig.RarityColors[item.Rarity] or Theme.White
+		if ultra then
+			color = ULTRA_RAYS[2]
+		end
+		local holder = Kit.new("Frame", {
+			Name = "Slot" .. index,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0.5, x, 0.5, 0),
+			Size = UDim2.fromOffset(size, size),
+			BackgroundTransparency = 1,
+			ZIndex = 2,
+			Parent = stage,
+		})
+		local holderScale = Kit.new("UIScale", { Parent = holder })
+		local rays = Kit.new("Frame", {
+			Name = "Rays",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(size * 1.55, size * 1.55),
+			BackgroundTransparency = 1,
+			Visible = false,
+			ZIndex = 2,
+			Parent = holder,
+		})
+		local raysScale = Kit.new("UIScale", { Parent = rays })
+		local bars = {}
+		for i = 1, 8 do
+			local barColor = color
+			if ultra then
+				barColor = ULTRA_RAYS[(i % 2) + 1]
+			end
+			local bar = Kit.new("Frame", {
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(0.5, 0.5),
+				Size = UDim2.new(0, math.floor(size * 0.15), 1, 0),
+				BackgroundColor3 = barColor,
+				BorderSizePixel = 0,
+				Rotation = (i - 1) * 22.5,
+				ZIndex = 2,
+				Parent = rays,
+			})
+			Kit.new("UIGradient", { Rotation = 90, Transparency = RAY_FADE, Parent = bar })
+			bars[i] = bar
+		end
+		local glow = Kit.new("Frame", {
+			Name = "Glow",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromOffset(size * 0.84, size * 0.84),
+			BackgroundColor3 = color,
+			BackgroundTransparency = 0.5,
+			BorderSizePixel = 0,
+			Visible = false,
+			ZIndex = 3,
+			Parent = holder,
+		})
+		Kit.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = glow })
+		local glowStroke = Kit.stroke(glow, 8, Enum.ApplyStrokeMode.Border, color)
+		glowStroke.Transparency = 0.3
+		local glowScale = Kit.new("UIScale", { Parent = glow })
+		local jolt = Kit.new("Frame", {
+			Name = "Jolt",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			ZIndex = 4,
+			Parent = holder,
+		})
+		local joltScale = Kit.new("UIScale", { Parent = jolt })
+		local viewport = Kit.new("ViewportFrame", {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Ambient = Color3.fromRGB(210, 210, 220),
+			LightColor = Color3.new(1, 1, 1),
+			ZIndex = 4,
+			Parent = jolt,
+		})
+		local pop = Kit.new("UIScale", { Parent = viewport })
+		local function line(y, height)
+			local l = Kit.line(holder, {
+				anchor = Vector2.new(0.5, 0.5),
+				position = UDim2.new(0.5, 0, 0, y + height / 2),
+				height = height,
+			})
+			l.holder.ZIndex = 6
+			l.scale = Kit.new("UIScale", { Scale = 0, Parent = l.holder })
+			return l
+		end
+		local nameH, infoH, wornH = 38, 32, 28
+		if big then
+			nameH, infoH, wornH = 52, 40, 34
+		end
+		local sparkColor = rarityColors(item.Rarity)[1]
+		if ultra then
+			sparkColor = ULTRA_RAYS[2]
+		end
+		return {
+			big = big,
+			size = size,
+			item = item,
+			ultra = ultra,
+			center = Vector2.new(STAGE_SIZE.X / 2 + x, STAGE_SIZE.Y / 2),
+			holder = holder,
+			holderScale = holderScale,
+			rays = rays,
+			raysScale = raysScale,
+			bars = bars,
+			glow = glow,
+			glowScale = glowScale,
+			jolt = jolt,
+			joltScale = joltScale,
+			viewport = viewport,
+			pop = pop,
+			nameLine = line(size + 4, nameH),
+			infoLine = line(size + 4 + nameH, infoH),
+			wornLine = line(size + 6 + nameH + infoH, wornH),
+			sparkColor = sparkColor,
+			wobble = math.random() * 6.28,
+			nextSpark = 0,
+			lidParts = {},
+			lidCenter = Vector3.new(),
+		}
+	end
 
 	local function animate(dt)
 		local now = os.clock()
-		if phase == "shake" and boxModel ~= nil then
+		if phase == "shake" then
 			local e = now - shakeStart
 			local progress = math.clamp(e / shakeLength, 0, 1)
 			local impulse = math.exp(-(now - kickTime) * 9)
-			local angle = math.sin(e * (11 + 16 * progress)) * math.rad(3 + 8 * progress) + kickDir * impulse * math.rad(12)
-			boxModel:PivotTo(CFrame.Angles(0, math.rad(25), angle))
-			jolt.Position = UDim2.new(0.5, 0, 0.5, -20 * impulse)
-			joltScale.Scale = 1 + 0.1 * impulse
+			for _, slot in ipairs(slots) do
+				if slot.boxModel ~= nil then
+					local angle = math.sin(e * (11 + 16 * progress) + slot.wobble) * math.rad(3 + 8 * progress)
+						+ kickDir * impulse * math.rad(12)
+					slot.boxModel:PivotTo(CFrame.Angles(0, math.rad(25), angle))
+				end
+				slot.jolt.Position = UDim2.new(0.5, 0, 0.5, -20 * impulse)
+				slot.joltScale.Scale = 1 + 0.1 * impulse
+			end
 		elseif phase == "lid" then
-			-- wieko odlatuje w górę, kręcąc się wokół swojego środka (wszystkie części razem)
-			local e = now - revealStart
-			local k = math.min(1, e / 0.45)
-			local turn = CFrame.new(0, k * 6, 0) * CFrame.new(lidCenter) * CFrame.Angles(k * 1.4, 0, k * 0.9) * CFrame.new(-lidCenter)
-			for _, entry in ipairs(lidParts) do
-				entry.part.CFrame = turn * entry.base
-				entry.part.Transparency = k
+			-- wieka odlatują w górę, kręcąc się wokół swojego środka (wszystkie części razem)
+			local k = math.min(1, (now - lidStart) / 0.45)
+			for _, slot in ipairs(slots) do
+				local turn = CFrame.new(0, k * 6, 0) * CFrame.new(slot.lidCenter) * CFrame.Angles(k * 1.4, 0, k * 0.9) * CFrame.new(-slot.lidCenter)
+				for _, entry in ipairs(slot.lidParts) do
+					entry.part.CFrame = turn * entry.base
+					entry.part.Transparency = k
+				end
 			end
 		elseif phase == "reveal" or phase == "exit" then
-			local e = now - revealStart
-			if itemModel ~= nil then
-				local yaw
-				if e < 0.6 then
-					yaw = -2 * math.pi * (1 - e / 0.6) ^ 3
-				else
-					yaw = math.sin((e - 0.6) * 1.6) * 0.35
+			for _, slot in ipairs(slots) do
+				local e = now - (slot.revealStart or now)
+				if slot.itemModel ~= nil then
+					local yaw
+					if e < 0.6 then
+						yaw = -2 * math.pi * (1 - e / 0.6) ^ 3
+					else
+						yaw = math.sin((e - 0.6) * 1.6) * 0.35
+					end
+					slot.itemModel:PivotTo(CFrame.new(0, math.sin(e * 3) * 0.08, 0) * CFrame.Angles(0, yaw, 0))
 				end
-				itemModel:PivotTo(CFrame.new(0, math.sin(e * 3) * 0.08, 0) * CFrame.Angles(0, yaw, 0))
-			end
-			for i, bar in ipairs(bars) do
-				bar.Rotation = (i - 1) * 22.5 + e * 28
-			end
-			if phase == "reveal" and e > 0.45 then
-				glowScale.Scale = 1 + math.sin(e * 4) * 0.04
-			end
-			if phase == "reveal" and revealItem ~= nil and BIG_RARITY[revealItem.Rarity] and now >= nextSpark then
-				nextSpark = now + 0.07
-				local angle = math.random() * math.pi * 2
-				local radius = SLOT * (0.2 + math.random() * 0.32)
-				local position = center + Vector2.new(math.cos(angle), math.sin(angle)) * radius
-				local color = Theme.White
-				if math.random() < 0.5 then
-					color = rarityColors(revealItem.Rarity)[1]
+				for i, bar in ipairs(slot.bars) do
+					bar.Rotation = (i - 1) * 22.5 + e * 28
 				end
-				spawnParticle("spark", position, Vector2.new(0, -40), color, math.random(16, 28), 0.6)
+				if phase == "reveal" and e > 0.45 then
+					slot.glowScale.Scale = 1 + math.sin(e * 4) * 0.04
+				end
+				if phase == "reveal" and BIG_RARITY[slot.item.Rarity] and now >= slot.nextSpark then
+					local gap = 0.07
+					if slot.ultra then
+						gap = 0.03
+					end
+					slot.nextSpark = now + gap
+					local angle = math.random() * math.pi * 2
+					local radius = slot.size * (0.2 + math.random() * 0.32)
+					local position = slot.center + Vector2.new(math.cos(angle), math.sin(angle)) * radius
+					local color = Theme.White
+					local roll = math.random()
+					if slot.ultra and roll < 0.33 then
+						color = ULTRA_RAYS[1]
+					elseif roll < 0.5 then
+						color = slot.sparkColor
+					end
+					spawnParticle("spark", position, Vector2.new(0, -40), color, math.random(16, 28), 0.6)
+				end
 			end
 		end
 		updateParticles(dt)
 		if now < shakeUntil then
-			stage.Position = UDim2.new(0.5, math.random(-7, 7), 0.5, math.random(-7, 7))
+			stage.Position = UDim2.new(0.5, math.random(-7, 7), STAGE_Y, math.random(-7, 7))
 		else
-			stage.Position = UDim2.fromScale(0.5, 0.5)
+			stage.Position = UDim2.fromScale(0.5, STAGE_Y)
 		end
-	end
-
-	local function popIn(l, delay, time)
-		l.scale.Scale = 0
-		task.delay(delay, function()
-			TweenService:Create(l.scale, TweenInfo.new(time or 0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		end)
 	end
 
 	local function clearOpen()
@@ -853,26 +950,15 @@ function Boxes.start(hud)
 			p.frame:Destroy()
 		end
 		particles = {}
-		for _, child in ipairs(view:GetChildren()) do
-			child:Destroy()
+		for _, slot in ipairs(slots) do
+			slot.holder:Destroy()
+			slot.viewport:Destroy()
 		end
-		for _, l in ipairs({ banner, nameLine, infoLine2, wornLine }) do
-			l.set({})
-			l.scale.Scale = 0
-		end
-		boxModel, itemModel, revealItem = nil, nil, nil
-		lidParts = {}
-		rays.Visible = false
-		glow.Visible = false
-		holderScale.Scale = 1
-		view.Visible = true
-		view.Parent = jolt
-		view.AnchorPoint = Vector2.new(0.5, 0.5)
-		view.Position = UDim2.fromScale(0.5, 0.5)
-		view.Size = UDim2.fromScale(1, 1)
-		view.ZIndex = 4
-		jolt.Position = UDim2.fromScale(0.5, 0.5)
-		joltScale.Scale = 1
+		slots = {}
+		banner.set({})
+		bannerScale.Scale = 0
+		subBanner.set({})
+		subBannerScale.Scale = 0
 		shakeUntil = 0
 	end
 
@@ -883,18 +969,160 @@ function Boxes.start(hud)
 		end
 	end
 
-	local function runOpen(box, item, total)
-		clearOpen()
-		boxModel = boxForView(box)
-		showModel(view, boxModel, 1.35)
-		lidParts = {}
-		for _, part in ipairs(boxModel:GetChildren()) do
-			if part:IsA("BasePart") and part:GetAttribute("Lid") then
-				table.insert(lidParts, { part = part, base = part.CFrame })
+	-- Wieka odlatują, a ubrania wyskakują z promieniami. Zwraca true przy Ultra Secret.
+	local function burst(box)
+		local boxColor = (ClothesConfig.Boxes[box] or ClothesConfig.Boxes.Street).Color
+		local best = nil
+		for _, slot in ipairs(slots) do
+			if best == nil or (RANK[slot.item.Rarity] or 0) > (RANK[best] or 0) then
+				best = slot.item.Rarity
 			end
 		end
-		pop.Scale = 0.35
-		TweenService:Create(pop, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+		local ultra = best == "UltraSecret"
+		local now = os.clock()
+		if ultra then
+			flash.BackgroundColor3 = ULTRA_FLASH
+			TweenService:Create(dim, TweenInfo.new(0.4), { BackgroundTransparency = 0.08 }):Play()
+		else
+			flash.BackgroundColor3 = Color3.new(1, 1, 1)
+		end
+		flash.BackgroundTransparency = 0
+		TweenService:Create(flash, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+		Sounds.play("Hatch")
+		if ultra then
+			Sounds.play("SecretReveal")
+			shakeUntil = now + 1
+			task.delay(0.35, function()
+				Sounds.play("Reward")
+			end)
+		elseif BIG_RARITY[best] then
+			shakeUntil = now + 0.45
+			task.delay(0.2, function()
+				Sounds.play("Reward")
+			end)
+		end
+		for i, slot in ipairs(slots) do
+			local item = slot.item
+			slot.jolt.Position = UDim2.fromScale(0.5, 0.5)
+			slot.joltScale.Scale = 1
+			for n = 1, 12 do
+				local angle = math.rad(n * 30 + math.random(-12, 12))
+				local dir = Vector2.new(math.cos(angle), math.sin(angle))
+				spawnParticle("chip", slot.center + dir * slot.size * 0.15, dir * math.random(300, 520), boxColor, math.random(9, 16), 0.9)
+			end
+			slot.boxModel = nil
+			slot.itemModel = ClothModels.display(item.Category, item.Rarity, item.Level or 0)
+			showModel(slot.viewport, slot.itemModel, 1.6)
+			slot.revealStart = now
+			slot.pop.Scale = 0.15
+			TweenService:Create(slot.pop, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			slot.glow.Visible = true
+			slot.glowScale.Scale = 0.3
+			TweenService:Create(slot.glowScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			slot.rays.Visible = true
+			slot.raysScale.Scale = 0
+			TweenService:Create(slot.raysScale, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			local delay = 0.1 + (i - 1) * 0.06
+			local nameSize, infoSize, bonusSize, wornSize = 30, 22, 21, 19
+			local maxWidth = SLOT_SPACING - 24
+			if slot.big then
+				nameSize, infoSize, bonusSize, wornSize = 44, 30, 28, 24
+				maxWidth = STAGE_SIZE.X - 80
+			end
+			local name = ClothesConfig.fullName(item.Category, item.Rarity, item.Level)
+			slot.nameLine.set({ { text = name, size = fitSize(name, nameSize, maxWidth) } })
+			popIn(slot.nameLine.scale, delay)
+			slot.infoLine.set({
+				Pets.rarityItem(item.Rarity, infoSize),
+				{ text = Wardrobe.bonusText(item), size = bonusSize, colors = Theme.Gradients.Gold },
+			})
+			popIn(slot.infoLine.scale, delay + 0.12)
+			if item.Worn then
+				slot.wornLine.set({ { text = TEXT.Wearing, size = wornSize, colors = Theme.Gradients.Green } })
+				popIn(slot.wornLine.scale, delay + 0.24)
+			end
+		end
+		local text = TEXT.NewMany
+		if #slots == 1 then
+			text = string.format(TEXT.NewOne, string.upper(slots[1].item.Category))
+		end
+		local colors = Theme.Gradients.Gold
+		local bannerSize = 46
+		if ultra then
+			text = TEXT.Ultra
+			colors = Pets.ChromeColors
+			bannerSize = 58
+		elseif BIG_RARITY[best] then
+			text = string.format(TEXT.Rare, string.upper(PetsConfig.rarityName(best)))
+			colors = rarityColors(best)
+		end
+		banner.set({ { text = text, size = bannerSize, colors = colors } })
+		popIn(bannerScale, 0, 0.35)
+		if ultra then
+			subBanner.set({ { text = Format.oneIn(Economy.Clothes.UltraSecretChance), size = 32, colors = Theme.Gradients.Gold } })
+			popIn(subBannerScale, 0.25, 0.35)
+		end
+		return ultra
+	end
+
+	-- Koniec: HUD wraca, a ubrania lecą do kafelka CLOTHES (kafelek podskakuje).
+	local function exit()
+		phase = "exit"
+		hud.setVisible(true)
+		TweenService:Create(dim, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(bannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		TweenService:Create(subBannerScale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		local target = Wardrobe.tileCenter()
+		local inset = GuiService:GetGuiInset()
+		for i, slot in ipairs(slots) do
+			if target ~= nil then
+				local viewport = slot.viewport
+				local position, size = viewport.AbsolutePosition, viewport.AbsoluteSize
+				viewport.AnchorPoint = Vector2.new(0.5, 0.5)
+				viewport.Position = UDim2.fromOffset(position.X + size.X / 2, position.Y + size.Y / 2)
+				viewport.Size = UDim2.fromOffset(size.X, size.Y)
+				viewport.ZIndex = 12
+				viewport.Parent = openGui
+				local goal = target + inset
+				local fly = TweenService:Create(viewport, TweenInfo.new(0.42, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+					Position = UDim2.fromOffset(goal.X, goal.Y),
+					Size = UDim2.fromOffset(40, 40),
+				})
+				local delay = (i - 1) * 0.07
+				task.delay(delay, function()
+					fly:Play()
+				end)
+				task.delay(delay + 0.42, function()
+					viewport.Visible = false
+					Wardrobe.bump()
+				end)
+			end
+			TweenService:Create(slot.holderScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		end
+	end
+
+	local function runOpen(box, items, total)
+		clearOpen()
+		for i, item in ipairs(items) do
+			local slot = makeSlot(i, #items, item)
+			slot.boxModel = boxForView(box)
+			showModel(slot.viewport, slot.boxModel, 1.35)
+			for _, part in ipairs(slot.boxModel:GetChildren()) do
+				if part:IsA("BasePart") and part:GetAttribute("Lid") then
+					table.insert(slot.lidParts, { part = part, base = part.CFrame })
+				end
+			end
+			slot.pop.Scale = 0.35
+			TweenService:Create(slot.pop, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			slots[i] = slot
+		end
+		local slotSize = SLOT_SMALL
+		if #items == 1 then
+			slotSize = SLOT_BIG
+		end
+		banner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 - 44)
+		subBanner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 + 4)
+		stage.Position = UDim2.fromScale(0.5, STAGE_Y)
 		dim.BackgroundTransparency = 1
 		openGui.Enabled = true
 		TweenService:Create(dim, TweenInfo.new(0.25), { BackgroundTransparency = 0.3 }):Play()
@@ -910,122 +1138,50 @@ function Boxes.start(hud)
 			Sounds.play("Crack", { pitch = 0.8 + 0.1 * (k - 1), volume = 0.9 })
 			kickTime = os.clock()
 			kickDir = -kickDir
-			for _ = 1, 2 + k do
-				local angle = math.rad(math.random(200, 340))
-				local dir = Vector2.new(math.cos(angle), math.sin(angle))
-				spawnParticle("chip", center + dir * SLOT * 0.25, dir * math.random(200, 360), boxColor, math.random(7, 12), 0.7)
+			for _, slot in ipairs(slots) do
+				for _ = 1, 2 + k do
+					local angle = math.rad(math.random(200, 340))
+					local dir = Vector2.new(math.cos(angle), math.sin(angle))
+					spawnParticle("chip", slot.center + dir * slot.size * 0.25, dir * math.random(200, 360), boxColor, math.random(7, 12), 0.7)
+				end
 			end
 		end
 		waitUntil(start + BURST_AT * total)
 
-		-- wieko odlatuje (box jest już przekręcony, więc liczymy od tego położenia)
-		local sum = Vector3.new()
-		for _, entry in ipairs(lidParts) do
-			entry.base = entry.part.CFrame
-			sum = sum + entry.base.Position
-		end
-		if #lidParts > 0 then
-			lidCenter = sum / #lidParts
+		-- wieka odlatują (boxy są już przekręcone, więc liczymy od tego położenia)
+		for _, slot in ipairs(slots) do
+			local sum = Vector3.new()
+			for _, entry in ipairs(slot.lidParts) do
+				entry.base = entry.part.CFrame
+				sum = sum + entry.base.Position
+			end
+			if #slot.lidParts > 0 then
+				slot.lidCenter = sum / #slot.lidParts
+			end
 		end
 		phase = "lid"
-		revealStart = os.clock()
+		lidStart = os.clock()
 		Sounds.play("Crack", { pitch = 0.75, volume = 1.2 })
-		flash.BackgroundTransparency = 0.2
-		TweenService:Create(flash, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
-		task.wait(0.32)
+		task.wait(LID_TIME)
 
-		-- ubranie wyskakuje z promieniami w kolorze rzadkości
-		local color = PetsConfig.RarityColors[item.Rarity] or Theme.White
-		for _, bar in ipairs(bars) do
-			bar.BackgroundColor3 = color
-		end
-		glow.BackgroundColor3 = color
-		glowStroke.Color = color
-		revealItem = item
 		phase = "reveal"
-		revealStart = os.clock()
-		Sounds.play("Hatch")
-		if BIG_RARITY[item.Rarity] then
-			shakeUntil = os.clock() + 0.45
-			task.delay(0.2, function()
-				Sounds.play("Reward")
-			end)
+		local hold = math.max(1.2, total * 0.55)
+		if burst(box) then
+			hold = hold + ULTRA_HOLD
 		end
-		flash.BackgroundTransparency = 0
-		TweenService:Create(flash, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
-		for n = 1, 14 do
-			local angle = math.rad(n * (360 / 14) + math.random(-10, 10))
-			local dir = Vector2.new(math.cos(angle), math.sin(angle))
-			spawnParticle("chip", center + dir * SLOT * 0.15, dir * math.random(300, 520), boxColor, math.random(9, 16), 0.9)
-		end
-		itemModel = ClothModels.display(item.Category, item.Rarity, item.Level or 0)
-		showModel(view, itemModel, 1.6)
-		boxModel = nil
-		pop.Scale = 0.15
-		TweenService:Create(pop, TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		glow.Visible = true
-		glowScale.Scale = 0.3
-		TweenService:Create(glowScale, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		rays.Visible = true
-		raysScale.Scale = 0
-		TweenService:Create(raysScale, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 }):Play()
-		local text = string.format(TEXT.New, string.upper(item.Category))
-		local colors = Theme.Gradients.Gold
-		if BIG_RARITY[item.Rarity] then
-			text = string.format(TEXT.Rare, string.upper(item.Rarity))
-			colors = rarityColors(item.Rarity)
-		end
-		banner.set({ { text = text, size = 46, colors = colors } })
-		popIn(banner, 0, 0.35)
-		nameLine.set({ { text = ClothesConfig.fullName(item.Category, item.Rarity, item.Level), size = 44 } })
-		popIn(nameLine, 0.1)
-		infoLine2.set({
-			Pets.rarityItem(item.Rarity, 30),
-			{ text = Wardrobe.bonusText(item), size = 28, colors = Theme.Gradients.Gold },
-		})
-		popIn(infoLine2, 0.22)
-		if item.Worn then
-			wornLine.set({ { text = TEXT.Wearing, size = 24, colors = Theme.Gradients.Green } })
-			popIn(wornLine, 0.34)
-		end
-		task.wait(math.max(1.2, total * 0.55))
-
-		-- koniec: HUD wraca, a ubranie leci do kafelka CLOTHES
-		phase = "exit"
-		hud.setVisible(true)
-		TweenService:Create(dim, TweenInfo.new(0.35), { BackgroundTransparency = 1 }):Play()
-		for _, l in ipairs({ banner, nameLine, infoLine2, wornLine }) do
-			TweenService:Create(l.scale, TweenInfo.new(0.2, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
-		end
-		local target = Wardrobe.tileCenter()
-		if target ~= nil then
-			local position, size = view.AbsolutePosition, view.AbsoluteSize
-			view.AnchorPoint = Vector2.new(0.5, 0.5)
-			view.Position = UDim2.fromOffset(position.X + size.X / 2, position.Y + size.Y / 2)
-			view.Size = UDim2.fromOffset(size.X, size.Y)
-			view.ZIndex = 12
-			view.Parent = openGui
-			local goal = target + GuiService:GetGuiInset()
-			TweenService:Create(view, TweenInfo.new(0.42, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-				Position = UDim2.fromOffset(goal.X, goal.Y),
-				Size = UDim2.fromOffset(40, 40),
-			}):Play()
-			task.delay(0.42, function()
-				view.Visible = false
-				Wardrobe.bump()
-			end)
-		end
-		TweenService:Create(holderScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), { Scale = 0 }):Play()
+		task.wait(hold)
+		exit()
 		task.wait(0.6)
 	end
 
-	local function open(box, item, total)
+	-- Cała animacja; State.busy blokuje w tym czasie klikanie i okna. Po błędzie stan i tak wraca.
+	local function open(box, items, total)
 		opening = true
 		State.busy = true
 		panelGui.Enabled = false
 		promptGui.Enabled = false
 		hud.setVisible(false)
-		local ok, err = pcall(runOpen, box, item, total)
+		local ok, err = pcall(runOpen, box, items, total)
 		if not ok then
 			warn("[Boxy] animacja otwierania: " .. tostring(err))
 		end
@@ -1043,41 +1199,64 @@ function Boxes.start(hud)
 
 	------------------------------------------------------------- Kupno
 	local requesting = false
-	buyButton.Activated:Connect(function()
+	local function buy(column)
 		if requesting or opening or current == nil then
 			return
 		end
 		local box = current.box
+		local info = boxInfo(box)
 		if not unlocked(box) then
-			local info = boxInfo(box)
-			local zone = info and Economy.Zones[info.RequiresZone]
 			Sounds.play("NotEnough")
-			hud.toast({ { icon = "Lock", size = 40 }, { text = string.format(TEXT.Locked, (zone and zone.Name) or "zone"), size = 26 } }, "BoxLocked")
+			hud.toast({ { icon = "Lock", size = 40 }, { text = string.format(TEXT.Locked, zoneName(info)), size = 26 } }, "BoxLocked")
+			return
+		end
+		local view = State.view
+		local passes = (view and view.Passes) or {}
+		if column.count > 1 and not passes.TripleOpen then
+			local id = Economy.Robux.Gamepasses.TripleOpen.Id
+			if type(id) == "number" and id > 0 then
+				pcall(function()
+					MarketplaceService:PromptGamePassPurchase(player, id)
+				end)
+			else
+				Sounds.play("NotEnough")
+				hud.toast({ { text = TEXT.PassSoon, size = 26, colors = Theme.Gradients.Gold } }, "TripleOpen")
+			end
 			return
 		end
 		requesting = true
 		local ok, result = pcall(function()
-			return Net.func("BuyBox"):InvokeServer(box)
+			return Net.func("BuyBox"):InvokeServer(box, column.count)
 		end)
 		requesting = false
 		if not ok or type(result) ~= "table" then
 			return
 		end
-		if result.Ok and type(result.Item) == "table" then
+		if result.Ok and type(result.Items) == "table" and #result.Items > 0 then
 			dialog.hide()
-			open(box, result.Item, result.OpenTime or Economy.OpenTimeSeconds)
+			open(box, result.Items, result.OpenTime or Economy.OpenTimeSeconds)
 		elseif result.Reason == "NotEnough" then
-			hud.notEnough(buyButton)
+			hud.notEnough(column.button)
 		elseif result.Reason == "Inventory" then
 			Sounds.play("NotEnough")
 			hud.toast({ { text = TEXT.Inventory, size = 26, colors = Theme.Gradients.Red } }, "ClothInventory")
+		elseif result.Reason == "NoPass" then
+			Sounds.play("NotEnough")
+			hud.toast({ { text = TEXT.NoPass, size = 26, colors = Theme.Gradients.Red } }, "TripleOpen")
 		end
-	end)
+	end
+
+	for _, column in ipairs(columns) do
+		column.button.Activated:Connect(function()
+			buy(column)
+		end)
+	end
 
 	promptButton.Activated:Connect(function()
 		Sounds.play("Button")
 		openDialog()
 	end)
+	-- klawisz E: otwiera okno kupna przy boxie, a drugie E je zamyka
 	UserInputService.InputBegan:Connect(function(input, processed)
 		if processed or input.KeyCode ~= Enum.KeyCode.E or opening then
 			return

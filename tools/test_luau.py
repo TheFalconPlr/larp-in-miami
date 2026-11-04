@@ -136,7 +136,8 @@ for L in range(0, 151):
 for z in range(1, 6):
     for egg in ('A', 'B'):
         ok(Economy.Pets.Eggs[z][egg].Price == cfg['EGG_PRICE'][(z, egg)], 'cena jajka %d%s' % (z, egg))
-names = {'C': 'Common', 'U': 'Uncommon', 'R': 'Rare', 'E': 'Epic', 'L': 'Legendary', 'M': 'Mythic', 'S': 'Secret'}
+names = {'C': 'Common', 'U': 'Uncommon', 'R': 'Rare', 'E': 'Epic', 'L': 'Legendary', 'M': 'Mythic', 'S': 'Secret',
+         'X': 'UltraSecret'}
 odds_b = Economy.Pets.Eggs[5].B.Odds
 for lam in (1.0, 1.25, 1.5, 2.0, 2.35, 3.0, 4.5):
     py = v2.eff_odds(cfg['EGG_ODDS']['B'], lam)
@@ -215,7 +216,7 @@ for trial in range(200):
         pets[key] = pets.get(key, 0) + 1
         d.Pets['p%d' % i] = lua.table_from({'Zone': key[0], 'Rarity': names[key[2]], 'Level': key[3], 'Egg': key[1]})
     for i in range(rng.randint(0, 14)):
-        key = (rng.choice(E.CATS), rng.choice(RARS[:6]), rng.choice([0, 0, 0, 1, 2]))
+        key = (rng.choice(E.CATS), rng.choice(RARS[:6] + ['X']), rng.choice([0, 0, 0, 1, 2]))
         clothes[key] = clothes.get(key, 0) + 1
         d.Clothes['c%d' % i] = lua.table_from({'Category': key[0].capitalize(), 'Rarity': names[key[1]], 'Level': key[2], 'Box': 'Street'})
     p.pets, p.clothes = pets, clothes
@@ -226,7 +227,7 @@ for trial in range(200):
     got_c, exp_c = Clothes.layer(d, ctx), p.cloth_layer()
     ok(abs(got_p - exp_p) <= 1e-9 * max(1, exp_p), 'warstwa petów (próba %d): Luau %s, model %s' % (trial, got_p, exp_p))
     ok(abs(got_c - exp_c) <= 1e-9 * max(1, exp_c), 'warstwa ubrań (próba %d): Luau %s, model %s' % (trial, got_c, exp_c))
-for rar in RARS[:6]:
+for rar in RARS[:6] + ['X']:
     for lvl in (0, 1):
         key_fee = cfg['BOX_PRICE'][E.cloth_source(rar)] * cfg['MERGE_FEE'][lvl]
         d = deep_copy(Template)

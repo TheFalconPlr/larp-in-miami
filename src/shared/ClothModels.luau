@@ -22,6 +22,7 @@ local FINISH = {
 	Metal = Enum.Material.Foil,
 	Ice = Enum.Material.Glass,
 	Neon = Enum.Material.Neon,
+	Fabric = Enum.Material.Fabric,
 }
 
 ----------------------------------------------------------------- Ciało
@@ -98,9 +99,27 @@ end
 -- Disc (walec osią do przodu) i Ring (walec osią w bok, np. tarcza zegarka).
 local BUILD = {}
 
+local FACE_SIDE = CFrame.Angles(0, math.rad(90), 0) -- krzyż na boku (np. rękaw, but) zamiast z przodu
+
+-- Krzyż (jak na ubraniach „chrome”): pionowa belka i krótsza poprzeczka nad środkiem, cienkie
+-- w osi Z, więc leżą płasko na przodzie. at = środek krzyża, h = wysokość, depth = grubość.
+local function cross(add, body, at, h, role, depth)
+	local d = depth or 0.05
+	add(body, "Block", Vector3.new(h * 0.22, h, d), at, role)
+	add(body, "Block", Vector3.new(h * 0.68, h * 0.22, d), at * CFrame.new(0, h * 0.18, 0), role)
+end
+
 function BUILD.Hair(add, S, item)
 	local s = S("Head")
 	local style = item.Style or "Short"
+	if style == "Beanie" then
+		add("Head", "Egg", Vector3.new(s.X * 1.14, s.Y * 0.68, s.Z * 1.18), CFrame.new(0, s.Y * 0.3, s.Z * 0.02), "Main")
+		add("Head", "Block", Vector3.new(s.X * 1.1, s.Y * 0.16, s.Z * 1.12), CFrame.new(0, s.Y * 0.1, s.Z * 0.02), "Main")
+		if item.Crosses then
+			cross(add, "Head", CFrame.new(0, s.Y * 0.28, -s.Z * 0.6), s.Y * 0.26, "Accent")
+		end
+		return
+	end
 	local h = 0.42
 	if style == "Slick" then
 		h = 0.5
@@ -143,6 +162,13 @@ function BUILD.Glasses(add, S, item)
 	end
 	for _, x in ipairs({ -0.43, 0.43 }) do
 		add("Head", "Block", Vector3.new(0.05, 0.05, s.Z * 0.55), CFrame.new(s.X * x, y + 0.02, z + s.Z * 0.27), "Accent")
+		if item.Crosses then
+			local side = 1
+			if x < 0 then
+				side = -1
+			end
+			cross(add, "Head", CFrame.new(s.X * (x + side * 0.03), y + 0.02, z + s.Z * 0.3) * FACE_SIDE, 0.2, "Accent", 0.03)
+		end
 	end
 end
 
@@ -167,6 +193,8 @@ function BUILD.Chain(add, S, item, slot)
 	elseif item.Pendant == "Plate" then
 		add("UpperTorso", "Block", Vector3.new(0.42, 0.42, 0.08), CFrame.new(0, bottom - 0.24, z), "Main")
 		add("UpperTorso", "Block", Vector3.new(0.48, 0.48, 0.06), CFrame.new(0, bottom - 0.24, z + 0.02), "Accent")
+	elseif item.Pendant == "Cross" then
+		cross(add, "UpperTorso", CFrame.new(0, bottom - 0.34, z - 0.01), 0.56, "Main", 0.09)
 	end
 end
 
@@ -180,6 +208,9 @@ function BUILD.Watch(add, S, item, slot)
 	add(arm, "Block", Vector3.new(s.X * 1.1, s.Y * 0.16, s.Z * 1.1), CFrame.new(0, y, 0), "Main")
 	add(arm, "Ring", Vector3.new(0.1, 0.44, 0.44), CFrame.new(side * s.X * 0.56, y, 0), "Accent")
 	add(arm, "Ring", Vector3.new(0.06, 0.52, 0.52), CFrame.new(side * s.X * 0.53, y, 0), "Main")
+	if item.Crosses then
+		cross(add, arm, CFrame.new(side * s.X * 0.62, y, 0) * FACE_SIDE, 0.26, "Main", 0.03)
+	end
 end
 
 function BUILD.Shirt(add, S, item)
@@ -202,6 +233,9 @@ function BUILD.Shirt(add, S, item)
 			add("UpperTorso", "Disc", Vector3.new(0.04, 0.32, 0.32), CFrame.new(t.X * p[1], t.Y * p[2], front - 0.01), "Accent")
 		end
 	end
+	if item.Crosses then
+		cross(add, "UpperTorso", CFrame.new(0, -t.Y * 0.02, front - 0.02), t.Y * 0.5, "Accent")
+	end
 	if item.Sleeves == "Short" then
 		for _, arm in ipairs({ "LeftUpperArm", "RightUpperArm" }) do
 			local a = S(arm)
@@ -215,6 +249,17 @@ function BUILD.Shirt(add, S, item)
 		for _, arm in ipairs({ "LeftLowerArm", "RightLowerArm" }) do
 			local a = S(arm)
 			add(arm, "Block", Vector3.new(a.X * 1.1 * bulk, a.Y * 0.9, a.Z * 1.1 * bulk), CFrame.new(0, a.Y * 0.05, 0), "Main")
+		end
+		-- krzyże wzdłuż rękawów, po zewnętrznej stronie
+		if item.Crosses then
+			for _, arm in ipairs({ "LeftUpperArm", "LeftLowerArm", "RightUpperArm", "RightLowerArm" }) do
+				local a = S(arm)
+				local side = 1
+				if string.sub(arm, 1, 4) == "Left" then
+					side = -1
+				end
+				cross(add, arm, CFrame.new(side * a.X * 0.58 * bulk, 0, 0) * FACE_SIDE, a.Y * 0.5, "Accent", 0.04)
+			end
 		end
 	end
 end
@@ -233,6 +278,17 @@ function BUILD.Pants(add, S, item)
 			add(leg, "Block", Vector3.new(s.X * 1.1, s.Y * 0.98, s.Z * 1.1), CFrame.new(0, s.Y * 0.02, 0), "Main")
 		end
 	end
+	-- naszywki w krzyże z przodu nogawek
+	if item.Crosses then
+		local legs = { "LeftUpperLeg", "RightUpperLeg" }
+		if item.Long then
+			legs = { "LeftUpperLeg", "RightUpperLeg", "LeftLowerLeg", "RightLowerLeg" }
+		end
+		for _, leg in ipairs(legs) do
+			local s = S(leg)
+			cross(add, leg, CFrame.new(0, 0, -s.Z * 0.57), s.Y * 0.42, "Accent")
+		end
+	end
 end
 
 function BUILD.Shoes(add, S, item)
@@ -244,6 +300,13 @@ function BUILD.Shoes(add, S, item)
 		else
 			add(foot, "Block", Vector3.new(s.X * 1.14, s.Y * 1.15, s.Z * 1.2), CFrame.new(0, s.Y * 0.05, -s.Z * 0.06), "Main")
 			add(foot, "Block", Vector3.new(s.X * 1.18, s.Y * 0.36, s.Z * 1.26), CFrame.new(0, -s.Y * 0.5, -s.Z * 0.08), "Accent")
+			if item.Crosses then
+				local side = 1
+				if foot == "LeftFoot" then
+					side = -1
+				end
+				cross(add, foot, CFrame.new(side * s.X * 0.59, s.Y * 0.12, -s.Z * 0.06) * FACE_SIDE, s.Y * 0.8, "Accent", 0.03)
+			end
 		end
 	end
 end
@@ -256,7 +319,7 @@ local function look(item, level, role)
 		-- drugi kolor ma to samo wykończenie, ale nie świeci (np. oprawka wizjera), chyba że
 		-- ubranie mówi inaczej (AccentFinish, np. świecąca tarcza zegarka)
 		finish = item.AccentFinish
-		if finish == nil and item.Finish ~= "Neon" then
+		if finish == nil and item.Finish ~= "Neon" and item.Finish ~= "Fabric" then
 			finish = item.Finish
 		end
 	end

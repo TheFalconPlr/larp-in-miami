@@ -29,6 +29,7 @@ local Icons = require(script.Parent.Ui.Icons)
 local Sounds = require(script.Parent.Ui.Sounds)
 local PetModels = require(script.Parent.PetModels)
 local Pets = require(script.Parent.Pets)
+local StandAnchor = require(script.Parent.StandAnchor)
 
 local Eggs = {}
 
@@ -153,37 +154,6 @@ local function distanceToStand(stand, position)
 	return best
 end
 
-local function biggestPart(stand)
-	if stand:IsA("BasePart") then
-		return stand
-	end
-	local best, bestSize = nil, -1
-	for _, d in ipairs(stand:GetDescendants()) do
-		if d:IsA("BasePart") then
-			local size = d.Size.X * d.Size.Y * d.Size.Z
-			if size > bestSize then
-				best, bestSize = d, size
-			end
-		end
-	end
-	return best
-end
-
--- Część, do której przypinamy napisy, oraz góra i dół stoiska względem jej środka (studs).
-local function standBounds(stand)
-	local part = biggestPart(stand)
-	if part == nil then
-		return nil, 0, 0
-	end
-	local top = part.Position.Y + part.Size.Y / 2
-	local bottom = part.Position.Y - part.Size.Y / 2
-	if stand:IsA("Model") then
-		local box, size = stand:GetBoundingBox()
-		top = box.Position.Y + size.Y / 2
-		bottom = box.Position.Y - size.Y / 2
-	end
-	return part, top - part.Position.Y, bottom - part.Position.Y
-end
 
 function Eggs.start(hud)
 	local player = Players.LocalPlayer
@@ -208,7 +178,7 @@ function Eggs.start(hud)
 		if gui == nil then
 			return
 		end
-		local part, _, bottom = standBounds(stand)
+		local part, _, bottom = StandAnchor.get(stand)
 		gui.Adornee = part
 		if part ~= nil then
 			gui.StudsOffsetWorldSpace = Vector3.new(0, bottom + PILL_HEIGHT, 0)
@@ -433,7 +403,7 @@ function Eggs.start(hud)
 
 	-- Panel nad czubkiem jajka, E na środku jajka.
 	local function placePrompt(stand)
-		local part, top, bottom = standBounds(stand)
+		local part, top, bottom = StandAnchor.get(stand)
 		panelGui.Adornee = part
 		promptGui.Adornee = part
 		if part ~= nil then
@@ -472,6 +442,7 @@ function Eggs.start(hud)
 			pills[stand]:Destroy()
 			pills[stand] = nil
 		end
+		StandAnchor.forget(stand)
 	end
 
 	------------------------------------------------------------- Okno kupna

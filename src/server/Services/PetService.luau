@@ -242,12 +242,27 @@ local function syncPets(player)
 end
 
 ----------------------------------------------------------------- Sekret na wszystkich serwerach
+local function knownCategory(category)
+	for _, name in ipairs(Economy.Clothes.Categories) do
+		if name == category then
+			return true
+		end
+	end
+	return false
+end
+
 -- Każdy gracz na serwerze dostaje komunikat (u siebie pokazuje go jako baner u góry ekranu).
 local function deliverSecret(message)
-	if type(message) ~= "table" or type(message.Name) ~= "string" or type(message.Zone) ~= "number" then
+	if type(message) ~= "table" or type(message.Name) ~= "string" then
 		return
 	end
-	if Economy.Pets.Eggs[message.Zone] == nil then
+	-- pet: strefa jajka; ubranie (Ultra Secret z boxa Iced): kategoria
+	local cloth = message.Kind == "Cloth"
+	if cloth then
+		if not knownCategory(message.Category) then
+			return
+		end
+	elseif type(message.Zone) ~= "number" or Economy.Pets.Eggs[message.Zone] == nil then
 		return
 	end
 	local level = message.Level
@@ -261,9 +276,11 @@ local function deliverSecret(message)
 	for _, other in ipairs(Players:GetPlayers()) do
 		LoopService.notify(other, {
 			Kind = "SecretHatched",
+			Item = (cloth and "Cloth") or "Pet",
 			Name = string.sub(message.Name, 1, 40),
 			UserId = userId,
 			Zone = message.Zone,
+			Category = message.Category,
 			Level = level,
 			Mine = other.UserId == userId,
 		})
@@ -274,6 +291,10 @@ end
 -- MessagingService nie działa (np. w Studio bez dostępu do API), komunikat dostaje tylko ten serwer.
 function PetService.announceSecret(player, pet)
 	local message = { Name = player.DisplayName, UserId = player.UserId, Zone = pet.Zone, Level = pet.Level or 0 }
+	if pet.Category ~= nil then
+		-- ubranie Ultra Secret (ClothesService): ten sam komunikat, tylko z kategorią zamiast strefy
+		message = { Kind = "Cloth", Name = player.DisplayName, UserId = player.UserId, Category = pet.Category, Level = pet.Level or 0 }
+	end
 	local sent = false
 	if secretsSubscribed then
 		sent = pcall(function()

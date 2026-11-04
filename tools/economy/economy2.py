@@ -6,7 +6,7 @@ import math, copy, statistics, random
 import economy as E
 from final_cfg import final_cfg
 
-ORDER = {'C': 0, 'U': 1, 'R': 2, 'E': 3, 'L': 4, 'M': 5, 'S': 6}
+ORDER = {'C': 0, 'U': 1, 'R': 2, 'E': 3, 'L': 4, 'M': 5, 'S': 6, 'X': 7}  # X = Ultra Secret (ubrania)
 
 
 def v2_cfg(cfg=None):
@@ -19,6 +19,14 @@ def v2_cfg(cfg=None):
     b['U'] = round(b['U'] - cfg['SECRET_P'], 8)
     b['S'] = cfg['SECRET_P']
     cfg['EGG_ODDS'] = dict(cfg['EGG_ODDS'], B=b)
+    # --- Ultra Secret (4.11.2026): tylko w boxie Iced, 10× rzadszy niż sekret z jajka, ubrania „chrome”,
+    # bonus 2× Mythic (jak sekret u petów: ×64 przy Mythic ×32). Odejmujemy go od Rare, jak sekret od Uncommon.
+    cfg['ULTRA_P'] = round(cfg['SECRET_P'] / 10, 12)
+    cfg['CLOTH_BONUS'] = dict(cfg['CLOTH_BONUS'], X=cfg['CLOTH_BONUS']['M'] * 2)
+    iced = dict(cfg['BOX_ODDS']['iced'])
+    iced['R'] = round(iced['R'] - cfg['ULTRA_P'], 8)
+    iced['X'] = cfg['ULTRA_P']
+    cfg['BOX_ODDS'] = dict(cfg['BOX_ODDS'], iced=iced)
     # --- Aura: źródła
     cfg['AURA_REB'] = 100          # Rebirth N daje 100 x N (po limicie poziomów: 100 x limit)
     cfg['REB_CAP'] = 10            # poziomy Rebirth na premierę
@@ -200,7 +208,10 @@ class AuraPlayer(E.Player):
             for k, v in eo.items():
                 o = {r: p for r, p in v.items() if r != 'S'}
                 ev_eggs[k] = eff_odds(o, lam) if lam > 1.0 else o
-            ev_boxes = {k: (eff_odds(v, lam) if lam > 1.0 else v) for k, v in bo.items()}
+            ev_boxes = {}
+            for k, v in bo.items():
+                o = {r: p for r, p in v.items() if r != 'X'}  # na Ultra Secret też nie poluje
+                ev_boxes[k] = eff_odds(o, lam) if lam > 1.0 else o
             cache[key] = (ev_eggs, ev_boxes)
         cfg['EGG_ODDS'], cfg['BOX_ODDS'] = cache[key]
         try:

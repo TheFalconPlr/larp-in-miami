@@ -320,31 +320,42 @@ command("clearindex", "/clearindex", "wyczyść indeks petów (znów pokażą si
 	return string.format("Indeks: %d/%d (zostały pety, które masz)", Loop.indexCount(data), Loop.indexTotal())
 end)
 
+local function needCategory(arg)
+	local wanted = string.lower(arg or "")
+	for _, name in ipairs(Clothes.Categories) do
+		if string.lower(name) == wanted then
+			return name
+		end
+	end
+	error("kategorie: " .. table.concat(Clothes.Categories, ", "), 0)
+end
+
+-- Rzadkości ubrań: jak u petów, tylko bez Secret, a na końcu UltraSecret (można wpisać „ultra”).
+local function needClothRarity(arg)
+	local wanted = string.lower(arg or "")
+	if wanted == "ultra" then
+		wanted = "ultrasecret"
+	end
+	for _, name in ipairs(Economy.Clothes.RarityOrder) do
+		if string.lower(name) == wanted then
+			return name
+		end
+	end
+	error("rzadkości ubrań: " .. table.concat(Economy.Clothes.RarityOrder, ", ") .. " (albo ultra)", 0)
+end
+
 command(
 	"cloth",
 	"/cloth [kategoria|all] [rzadkość] [ile] [gold|diamond]",
-	"daj ubranie, np. /cloth Chain Rare 5 (5 do łączenia), /cloth Hair Mythic 1 gold; /cloth all Epic = po jednym z każdej kategorii",
+	"daj ubranie, np. /cloth Chain Rare 5 (5 do łączenia), /cloth Hair Mythic 1 gold, /cloth Shirt ultra; /cloth all Epic = po jednym z każdej kategorii",
 	function(_, data, args)
-		local wanted = string.lower(args[1] or "")
-		local categories = {}
-		if wanted == "all" then
-			categories = Clothes.Categories
-		else
-			for _, name in ipairs(Clothes.Categories) do
-				if string.lower(name) == wanted then
-					categories = { name }
-				end
-			end
-			if #categories == 0 then
-				error("kategorie: " .. table.concat(Clothes.Categories, ", ") .. " albo all", 0)
-			end
+		local categories = Clothes.Categories
+		if string.lower(args[1] or "") ~= "all" then
+			categories = { needCategory(args[1]) }
 		end
 		local rarity = "Common"
 		if args[2] ~= nil then
-			rarity = needRarity(args[2])
-		end
-		if Economy.Clothes.RarityBonus[rarity] == nil then
-			error("ubrania mają rzadkości od Common do Mythic", 0)
+			rarity = needClothRarity(args[2])
 		end
 		local count = 1
 		local level = 0
@@ -376,6 +387,24 @@ command(
 		)
 	end
 )
+
+command("ultra", "/ultra [kategoria]", "daj ubranie Ultra Secret (chrome) i ogłoś je (na wszystkich serwerach, gdy działa MessagingService), np. /ultra Shirt", function(player, data, args)
+	local category = "Shirt"
+	if args[1] ~= nil then
+		category = needCategory(args[1])
+	end
+	if Clothes.count(data) + 1 > ClothesConfig.MaxInventory then
+		error(string.format("nie zmieści się (najwyżej %d ubrań)", ClothesConfig.MaxInventory), 0)
+	end
+	ClothesService.give(data, category, "UltraSecret", 0)
+	data.Stats.UltraSecrets = (data.Stats.UltraSecrets or 0) + 1
+	PetService.announceSecret(player, { Category = category, Level = 0 })
+	return string.format(
+		"Ultra Secret: %s (+%s%% LP). Komunikat poszedł do wszystkich graczy.",
+		ClothesConfig.name(category, "UltraSecret"),
+		Format.small(Formulas.clothBonus("UltraSecret", 0) * 100)
+	)
+end)
 
 command("clearclothes", "/clearclothes", "usuń wszystkie ubrania", function(_, data)
 	local n = Clothes.count(data)
@@ -511,7 +540,7 @@ end)
 
 command("stats", "/stats", "pokaż swój zapis", function(player, data)
 	return string.format(
-		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d, indeks %d/%d, sprzedane %d, łączenia %d, nieudane %d, sekrety %d) · ubrania %d (założone %d, boxy %d, warstwa ×%s) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
+		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d, indeks %d/%d, sprzedane %d, łączenia %d, nieudane %d, sekrety %d) · ubrania %d (założone %d, boxy %d, Ultra Secret %d, warstwa ×%s) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
 		Format.number(data.Cash),
 		Format.number(data.Bag),
 		data.ClickLevel,
@@ -536,6 +565,7 @@ command("stats", "/stats", "pokaż swój zapis", function(player, data)
 		Clothes.count(data),
 		#data.Worn,
 		data.Stats.BoxesOpened or 0,
+		data.Stats.UltraSecrets or 0,
 		Format.small(Clothes.layer(data, LoopService.contextFor(player))),
 		data.RebirthCount,
 		data.RebirthLevel,

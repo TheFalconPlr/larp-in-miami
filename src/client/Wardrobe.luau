@@ -70,6 +70,11 @@ local TEXT = {
 	AvatarShown = "Clothes visible on your avatar",
 	SlotEmpty = "Empty",
 	Wearing2 = "Wearing!",
+	ConfirmTitle = "Sell an Ultra Secret?",
+	ConfirmText = "You're selling an ULTRA SECRET: %s!",
+	UltraName = "a chrome item",
+	ConfirmYes = "SELL IT",
+	ConfirmNo = "KEEP IT",
 }
 
 local PANEL_SIZE = Vector2.new(860, 520)
@@ -84,7 +89,7 @@ local PURPLE = Color3.fromRGB(176, 70, 255)
 local EMPTY = Color3.fromRGB(214, 216, 226)
 
 local RANK = {}
-for i, rarity in ipairs(Economy.Pets.RarityOrder) do
+for i, rarity in ipairs(Economy.Clothes.RarityOrder) do
 	RANK[rarity] = i
 end
 
@@ -341,6 +346,47 @@ function Wardrobe.start(hud)
 		Visible = false,
 		ZIndex = 4,
 	}, { maxSize = 26, stroke = 3 })
+
+	------------------------------------------------------------- Potwierdzenie sprzedaży Ultra Secret
+	local confirm = Kit.panel(hud.gui, {
+		name = "SellUltra",
+		size = Vector2.new(640, 270),
+		title = TEXT.ConfirmTitle,
+		padding = 30,
+		top = 44,
+		bottom = 24,
+	})
+	confirm.holder.ZIndex = 5
+	hud.registerScale(confirm.holder)
+	local confirmLine = Kit.line(confirm.content, {
+		anchor = Vector2.new(0.5, 0.5),
+		position = UDim2.new(0.5, 0, 0, 40),
+		height = 40,
+	})
+	local confirmSub = Kit.line(confirm.content, {
+		anchor = Vector2.new(0.5, 0.5),
+		position = UDim2.new(0.5, 0, 0, 84),
+		height = 36,
+	})
+	local keepButton = Kit.button(confirm.content, {
+		name = "Keep",
+		size = Vector2.new(200, 52),
+		text = TEXT.ConfirmNo,
+		colors = Theme.Gradients.Green,
+		anchor = Vector2.new(0.5, 1),
+		position = UDim2.new(0.5, -115, 1, 0),
+		textSize = 24,
+	})
+	local sellUltraButton = Kit.button(confirm.content, {
+		name = "SellIt",
+		size = Vector2.new(200, 52),
+		text = TEXT.ConfirmYes,
+		colors = Theme.Gradients.Red,
+		anchor = Vector2.new(0.5, 1),
+		position = UDim2.new(0.5, 115, 1, 0),
+		textSize = 24,
+	})
+	local onConfirm = nil
 
 	------------------------------------------------------------- Stan okna
 	local busy = false
@@ -696,6 +742,10 @@ function Wardrobe.start(hud)
 		if levelColors ~= nil then
 			tileFrame.BackgroundColor3 = Theme.White
 			Kit.gradient(tileFrame, levelColors, 90)
+		elseif item.Rarity == "UltraSecret" then
+			-- chrom: srebrny kafelek, na którym czarne ubranie dobrze widać
+			tileFrame.BackgroundColor3 = Theme.White
+			Kit.gradient(tileFrame, Pets.ChromeColors, 90)
 		end
 		local view = Kit.new("ViewportFrame", {
 			Position = UDim2.fromOffset(5, 3),
@@ -948,7 +998,7 @@ function Wardrobe.start(hud)
 	end)
 
 	-- DUPES: z każdego rodzaju (kategoria, rzadkość, poziom) zostaje jedno ubranie (założone albo
-	-- najstarsze), a pozostałe niezałożone idą do sprzedaży.
+	-- najstarsze), a pozostałe niezałożone idą do sprzedaży. Ultra Secret nigdy (jak sekretne pety).
 	dupesButton.Activated:Connect(function()
 		local groups = {}
 		for _, item in ipairs(inventory) do
@@ -961,7 +1011,7 @@ function Wardrobe.start(hud)
 		selected = {}
 		local any = false
 		for _, list in pairs(groups) do
-			if #list > 1 then
+			if #list > 1 and list[1].Rarity ~= "UltraSecret" then
 				local keep = nil
 				for _, item in ipairs(list) do
 					if worn[item.Id] then
@@ -1040,38 +1090,85 @@ function Wardrobe.start(hud)
 		renderBars()
 	end)
 
+	-- Okienko „na pewno?” przed sprzedażą Ultra Secret. item może być nil (wtedy bez nazwy).
+	local sell
+	local function askUltra(item)
+		local name = TEXT.UltraName
+		if item ~= nil then
+			name = ClothesConfig.fullName(item.Category, item.Rarity, item.Level)
+		end
+		confirmLine.set({ { text = string.format(TEXT.ConfirmText, name), size = 24 } })
+		confirmSub.set({ { text = Format.oneIn(Economy.Clothes.UltraSecretChance), size = 26, colors = Pets.ChromeColors } })
+		onConfirm = function()
+			sell(true)
+		end
+		confirm.open()
+	end
+
+	-- Sprzedaż zaznaczonych. Ultra Secret: najpierw okienko „na pewno?”, potem serwer dostaje confirm.
+	sell = function(sure)
+		if busy then
+			return
+		end
+		local ids = selectedIds()
+		if #ids == 0 then
+			Sounds.play("NotEnough")
+			return
+		end
+		if not sure then
+			for _, id in ipairs(ids) do
+				local item = byId[id]
+				if item ~= nil and item.Rarity == "UltraSecret" then
+					askUltra(item)
+					return
+				end
+			end
+		end
+		busy = true
+		local ok, result = pcall(function()
+			return Net.func("SellClothes"):InvokeServer(ids, sure == true)
+		end)
+		busy = false
+		if not ok or type(result) ~= "table" then
+			return
+		end
+		if result.Ok then
+			Sounds.play("Sell")
+			local text = string.format(TEXT.SoldMany, result.Count or #ids)
+			if result.Count == 1 then
+				text = TEXT.SoldOne
+			end
+			hud.toast({
+				{ icon = "Sell", size = 44 },
+				{ text = text, size = 26 },
+				{ icon = "Cash", size = 38 },
+				{ text = Format.number(result.Cash or 0), size = 28, colors = Theme.Gradients.Gold },
+			})
+			hud.cashGain(result.Cash or 0)
+			clearSelection()
+			paintAll()
+			renderBars()
+		elseif result.Reason == "ConfirmSecret" then
+			askUltra(nil)
+		end
+	end
+
+	keepButton.Activated:Connect(function()
+		onConfirm = nil
+		confirm.hide()
+	end)
+	sellUltraButton.Activated:Connect(function()
+		local fn = onConfirm
+		onConfirm = nil
+		confirm.hide()
+		if fn ~= nil then
+			fn()
+		end
+	end)
+
 	confirmButton.Activated:Connect(function()
 		if mode == "sell" then
-			if busy then
-				return
-			end
-			local ids = selectedIds()
-			if #ids == 0 then
-				Sounds.play("NotEnough")
-				return
-			end
-			busy = true
-			local ok, result = pcall(function()
-				return Net.func("SellClothes"):InvokeServer(ids)
-			end)
-			busy = false
-			if ok and type(result) == "table" and result.Ok then
-				Sounds.play("Sell")
-				local text = string.format(TEXT.SoldMany, result.Count or #ids)
-				if result.Count == 1 then
-					text = TEXT.SoldOne
-				end
-				hud.toast({
-					{ icon = "Sell", size = 44 },
-					{ text = text, size = 26 },
-					{ icon = "Cash", size = 38 },
-					{ text = Format.number(result.Cash or 0), size = 28, colors = Theme.Gradients.Gold },
-				})
-				hud.cashGain(result.Cash or 0)
-				clearSelection()
-				paintAll()
-				renderBars()
-			end
+			sell(false)
 			return
 		end
 		if mode ~= "merge" or merger.isOpen() then
@@ -1103,6 +1200,12 @@ function Wardrobe.start(hud)
 	panel.close.Activated:Connect(function()
 		mode = "items"
 		clearSelection()
+		confirm.hide()
+	end)
+	panel.holder:GetPropertyChangedSignal("Visible"):Connect(function()
+		if not panel.holder.Visible then
+			confirm.hide()
+		end
 	end)
 
 	State.onNotify(function(payload)

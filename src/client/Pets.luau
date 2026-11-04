@@ -91,6 +91,7 @@ local GREEN = Color3.fromRGB(70, 200, 60)
 local RED = Color3.fromRGB(235, 50, 70)
 local PURPLE = Color3.fromRGB(176, 70, 255)
 local SECRET_COLORS = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 170, 255) }
+local CHROME_COLORS = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(140, 148, 166) } -- Ultra Secret (ubrania)
 
 local RANK = {}
 for i, rarity in ipairs(Economy.Pets.RarityOrder) do
@@ -110,14 +111,18 @@ local function powerText(pet)
 	return "+" .. Format.small(power(pet) * 100) .. TEXT.PowerSuffix
 end
 
--- Napis rzadkości w kolorze rzadkości (sekret: biało-fioletowy, bo kulka jest ciemna).
+-- Napis rzadkości w kolorze rzadkości (sekret: biało-fioletowy, bo kulka jest ciemna; Ultra Secret
+-- z ubrań: srebrny jak chrom).
 local function rarityItem(rarity, size)
 	if rarity == "Secret" then
 		return { text = rarity, size = size, colors = SECRET_COLORS }
+	elseif rarity == "UltraSecret" then
+		return { text = PetsConfig.rarityName(rarity), size = size, colors = CHROME_COLORS }
 	end
-	return { text = rarity, size = size, color = PetsConfig.RarityColors[rarity] }
+	return { text = PetsConfig.rarityName(rarity), size = size, color = PetsConfig.RarityColors[rarity] }
 end
 Pets.rarityItem = rarityItem
+Pets.ChromeColors = CHROME_COLORS
 Pets.powerText = powerText
 
 local function sameKind(a, b)
