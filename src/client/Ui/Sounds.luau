@@ -58,11 +58,21 @@ local function pool(name)
 	return created
 end
 
--- Wczytuje dźwięki z góry, żeby pierwsze kliknięcie nie było ciche.
+-- Czy dźwięk ma ID w Settings (bez ID nic nie gra, np. dźwięk, którego jeszcze nie wybraliśmy).
+function Sounds.has(name)
+	local info = Settings.Sounds and Settings.Sounds[name]
+	return info ~= nil and info.Id ~= nil
+end
+
+-- Wczytuje dźwięki z góry, żeby pierwsze kliknięcie nie było ciche. Długich dźwięków w pętli (Looped,
+-- np. muzyka) nie wczytujemy od razu: dochodzą przy starcie i nie spowalniają wejścia do gry.
 function Sounds.preload()
 	local list = {}
-	for name in pairs(Settings.Sounds or {}) do
-		local p = pool(name)
+	for name, info in pairs(Settings.Sounds or {}) do
+		local p = nil
+		if not info.Looped then
+			p = pool(name)
+		end
 		if p ~= nil then
 			table.insert(list, p.list[1])
 		end
@@ -130,6 +140,71 @@ function Sounds.play(name, opts)
 			end
 		end)
 	end
+end
+
+-- Dźwięk na dłużej (muzyka imprezy, silnik odrzutowca): osobna kopia, która gra aż do stop().
+-- Z Settings: Looped (gra w pętli), FadeIn (przez tyle sekund rośnie od ciszy do pełnej głośności,
+-- jak rozkręcający się silnik), FadeOut (tyle trwa wyciszanie przy stop) i Start.
+-- opts: volume (mnożnik), pitch (prędkość). Zwraca uchwyt { setSpeed(x), stop(fade) }; bez ID dźwięku
+-- uchwyt też działa, tylko nic nie gra.
+function Sounds.start(name, opts)
+	opts = opts or {}
+	local handle = {}
+	function handle.setSpeed() end
+	function handle.stop() end
+	local info = Settings.Sounds and Settings.Sounds[name]
+	if info == nil or info.Id == nil then
+		return handle
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "Larp" .. name .. "Long"
+	sound.SoundId = "rbxassetid://" .. string.format("%d", info.Id)
+	sound.Looped = info.Looped == true
+	sound.PlaybackSpeed = opts.pitch or 1
+	local volume = (info.Volume or 0.5) * (opts.volume or 1)
+	local fadeIn = info.FadeIn or 0
+	if fadeIn > 0 then
+		sound.Volume = 0
+	else
+		sound.Volume = volume
+	end
+	sound.Parent = SoundService
+	sound.TimePosition = info.Start or 0
+	sound:Play()
+	local tween = nil
+	local function volumeTo(target, seconds, direction)
+		if tween ~= nil then
+			tween:Cancel()
+		end
+		tween = TweenService:Create(sound, TweenInfo.new(seconds, Enum.EasingStyle.Quad, direction), { Volume = target })
+		tween:Play()
+	end
+	if fadeIn > 0 then
+		-- Quad In: długo cicho, potem coraz szybciej głośniej
+		volumeTo(volume, fadeIn, Enum.EasingDirection.In)
+	end
+	local stopped = false
+	function handle.setSpeed(speed)
+		if not stopped then
+			sound.PlaybackSpeed = speed
+		end
+	end
+	function handle.stop(fade)
+		if stopped then
+			return
+		end
+		stopped = true
+		fade = fade or info.FadeOut or 0
+		if fade > 0 then
+			volumeTo(0, fade, Enum.EasingDirection.Out)
+			task.delay(fade, function()
+				sound:Destroy()
+			end)
+		else
+			sound:Destroy()
+		end
+	end
+	return handle
 end
 
 return Sounds

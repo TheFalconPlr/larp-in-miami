@@ -75,6 +75,27 @@ local Settings = {
 		-- (kolejne ticki coraz wyżej, jak przy zbieraniu monet)
 		CashPop = { Id = 72264591133889, Volume = 0.4, MinGap = 0.03 },
 		CashTick = { Id = 8646410774, Volume = 0.45, MinGap = 0.03, Rise = { Step = 1, Max = 10, Reset = 0.5 } },
+
+		-- Dźwięki na dłużej (Sounds.start): Looped = gra w pętli do końca sesji, FadeIn = przez tyle
+		-- sekund rośnie od ciszy do pełnej głośności, FadeOut = tyle trwa wyciszanie na końcu.
+		-- odrzutowiec: silnik przez cały lot, na pasie się rozkręca (cicho → normalnie, wyżej)
+		JetEngine = { Id = 116765821564780, Volume = 0.6, Looped = true, FadeIn = 8, FadeOut = 1.5 },
+		JetCabin = { Id = 76104215304832, Volume = 0.6, MinGap = 1 }, -- „ding” w kabinie, gdy samolot rusza
+		-- jacht: muzyka przez całą imprezę i trąbka pod koniec (razem z wybuchem konfetti)
+		PartyMusic = { Id = 128285936198049, Volume = 0.45, Looped = true, FadeIn = 2, FadeOut = 2.5 },
+		PartyHorn = { Id = 118248543183940, Volume = 0.7, MinGap = 0.3 },
+
+		-- Wywiad. Bez ID na razie nic nie gra: wpisz Id, gdy znajdziesz dźwięk w Toolboxie.
+		InterviewIntro = { Volume = 0.6 }, -- dżingiel na wejście na wizję
+		AnswerPick = { Volume = 0.6, MinGap = 0.1 }, -- wybór odpowiedzi (bez ID gra zwykły Button)
+		AnswerTick = { Volume = 0.5, MinGap = 0.2 }, -- tykanie w ostatnich 3 sekundach na odpowiedź
+		ReactBoom = { Volume = 0.8 }, -- „vine boom” przy zbliżeniu na prowadzącego
+		ReactLaugh = { Volume = 0.6 }, -- śmiech publiczności
+		ReactCrickets = { Volume = 0.7 }, -- świerszcze przy niezręcznej ciszy
+		ReactBruh = { Volume = 0.8 }, -- „bruh”
+		Comment = { Volume = 0.35, MinGap = 0.08 }, -- nowy komentarz w czacie
+		ClipPosted = { Volume = 0.6 }, -- klip wrzucony do sieci, wyświetlenia lecą w górę
+		InterviewFlop = { Volume = 0.7 }, -- ocena FLOP (smutna trąbka); bez ID gra NotEnough
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

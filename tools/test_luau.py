@@ -3,7 +3,7 @@
 Sprawdza:
   1. czy wszystkie pliki .luau się kompilują (nasz kod piszemy w podzbiorze zgodnym z Lua 5.1,
      więc to też poprawny Luau; biblioteki z folderów Vendor pomijamy, bo używają pełnego Luau),
-  2. ConfigSpec i LoopSpec (te same testy, które w Studio uruchamia ConfigCheck),
+  2. ConfigSpec, LoopSpec i InterviewSpec (te same testy, które w Studio uruchamia ConfigCheck),
   3. zgodność wzorów i pętli z modelem ekonomii w Pythonie (koszty, LP za klik, Bag, szanse, ceny),
   4. losowanie ze szczęściem (Monte Carlo) względem wzoru na szanse.
 Uruchom z głównego folderu projektu:  python tools/test_luau.py
@@ -117,6 +117,7 @@ def run_spec(name, result):
 
 run_spec('ConfigSpec', req(Shared.Tests.ConfigSpec)(Economy, Formulas, Format))
 run_spec('LoopSpec', req(Shared.Tests.LoopSpec)())
+run_spec('InterviewSpec', req(Shared.Tests.InterviewSpec)())
 
 # ---------------------------------------------------------------- 3. zgodność z modelem w Pythonie
 cfg = final_cfg2()

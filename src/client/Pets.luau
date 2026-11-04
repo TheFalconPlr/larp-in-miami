@@ -141,8 +141,9 @@ local function updateFollowers(dt)
 	for player, entry in pairs(followers) do
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		-- w czasie aktywności pety innych graczy znikają razem z nimi
-		local hidden = root == nil or (State.busy and player ~= me)
+		-- w czasie aktywności pety innych graczy znikają razem z nimi, a w czasie lotu też nasze
+		-- (lecą z nami w samolocie)
+		local hidden = root == nil or (State.busy and player ~= me) or (player == me and State.hidePets)
 		local count = #entry.list
 		for i, pet in ipairs(entry.list) do
 			if hidden ~= pet.hidden then

@@ -3,9 +3,11 @@
 -- Jet1 … Jet3; inne są u niego niewidoczne). Nad miejscem wisi tablica, a przy nim otwiera się okno:
 -- start sesji, nagroda i kupno lepszego modelu (przy wywiadzie szanse ocen).
 -- Sesja: zaciemnienie z napisem, kamera (krąży wokół auta i jachtu, przełącza ujęcia w studiu albo
--- leci za samolotem), efekty (flesze, światła imprezy i konfetti, ON AIR z licznikiem wyświetleń,
--- start i lot ponad chmurami), pasek czasu, inni gracze są ukryci, kliknięcia nie działają, a na
--- końcu jest nagroda (przy wywiadzie najpierw ocena). Start i nagrodę sprawdza serwer (ActivityService).
+-- leci za samolotem), efekty (flesze ze zdjęciami, muzyka, światła imprezy i konfetti, pytania
+-- i odpowiedzi w wywiadzie z czatem i licznikiem wyświetleń, start i lot wśród chmur), pasek czasu,
+-- inni gracze i tablice są ukryci, kliknięcia nie działają, a na końcu jest nagroda (przy wywiadzie
+-- najpierw ocena). Start i nagrodę sprawdza serwer (ActivityService), a program wywiadu prowadzi
+-- InterviewShow.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -23,6 +25,7 @@ local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
 local Sounds = require(script.Parent.Ui.Sounds)
 local LocalHide = require(script.Parent.LocalHide)
+local InterviewShow = require(script.Parent.InterviewShow)
 
 local Activities = {}
 
@@ -31,7 +34,26 @@ local OPEN_DISTANCE = 5.5 -- okno otwiera się, gdy stoisz przy modelu albo przy
 local CLOSE_DISTANCE = 10 -- tak daleko okno się zamyka
 local FLASH_EVERY = 1.6 -- co tyle sekund błyska flesz (zdjęcia)
 local PARTY_EVERY = 0.9 -- co tyle sekund zmienia się kolor świateł (jacht)
-local SHOT_SECONDS = 4.2 -- tyle trwa jedno ujęcie w studiu (wywiad)
+local SHOT_SECONDS = 4.2 -- przez tyle sekund kamera w studiu powoli się zbliża (wywiad)
+local PARTY_PHOTO_GAP = { 2, 3.6 } -- odstęp między zdjęciami na imprezie (s, losowy)
+local JET_RUNWAY_PHOTOS = { 2.2, 3.6, 4.8, 5.9, 6.9, 7.8 } -- zdjęcia, gdy samolot rusza i startuje (s)
+local JET_FLIGHT_PHOTO_GAP = { 3.6, 5.8 } -- zdjęcia w locie (s, losowo)
+local JET_CRUISE = 140 -- wysokość lotu nad pasem (studs)
+
+-- Chmury w locie (tylko u gracza), w trzech warstwach wokół trasy: pod samolotem, po bokach na
+-- wysokości lotu i kilka na samej trasie (samolot przez nie przelatuje). Liczby w studs:
+-- puffs = ile kul w chmurze, width/height = wielkość kuli, spread = jak szeroko leżą kule,
+-- lateral = odległość w bok od trasy, altitude = wysokość względem wysokości lotu, from = najbliżej
+-- przed samolotem na starcie.
+local CLOUD_KINDS = {
+	{ count = 26, puffs = { 5, 8 }, width = { 34, 64 }, height = { 12, 20 }, spread = 46, lateral = { 0, 380 }, altitude = { -85, -45 }, from = 520 },
+	{ count = 32, puffs = { 3, 6 }, width = { 18, 36 }, height = { 12, 22 }, spread = 22, lateral = { 70, 280 }, altitude = { -25, 35 }, from = 260 },
+	{ count = 5, puffs = { 3, 5 }, width = { 22, 34 }, height = { 14, 22 }, spread = 14, lateral = { 0, 30 }, altitude = { -8, 12 }, from = 420, path = true },
+}
+local CLOUD_AHEAD = 1700 -- na starcie chmury stoją najdalej tyle przed samolotem
+local CLOUD_RESPAWN = { 1250, 1700 } -- chmura, która została za samolotem, przeskakuje tak daleko do przodu
+local CLOUD_BEHIND = 220 -- tak daleko za samolotem chmura przeskakuje do przodu
+local CLOUD_WIDE = 470 -- tak daleko w bok (np. po zakręcie) też przeskakuje do przodu
 
 local TEXT = {
 	Reward = "Reward:",
@@ -70,7 +92,7 @@ local KINDS = {
 		title = "Celebrity Interview",
 		sign = "LIVE INTERVIEW",
 		per = "per interview",
-		about = "Live TV talk show",
+		about = "Answer questions live on TV",
 		busy = "LIVE INTERVIEW",
 		done = "Interview done!",
 		tooFar = "Get closer to the studio",
@@ -153,6 +175,10 @@ end
 local function smooth(x)
 	x = math.clamp(x, 0, 1)
 	return x * x * (3 - 2 * x)
+end
+
+local function between(range)
+	return range[1] + math.random() * (range[2] - range[1])
 end
 
 ----------------------------------------------------------------- Modele według tieru
@@ -263,6 +289,7 @@ function Activities.start(hud)
 
 	------------------------------------------------------------- Tablice nad miejscami
 	local signs = {} -- [miejsce] = { gui, reward }
+	local signsHidden = false -- w czasie sesji tablice znikają (nachodziłyby na napisy sesji)
 	-- Tablica wisi nad częścią „SignAnchor” (gdy jest), a bez niej nad największą częścią miejsca.
 	local function biggestPart(spot)
 		if spot:IsA("BasePart") then
@@ -312,9 +339,16 @@ function Activities.start(hud)
 		local view = State.view
 		local adornee = biggestPart(spot)
 		sign.gui.Adornee = adornee
-		sign.gui.Enabled = adornee ~= nil and zoneUnlocked(kind)
+		sign.gui.Enabled = adornee ~= nil and zoneUnlocked(kind) and not signsHidden
 		local info = view and view.Activities and view.Activities[kind]
 		sign.reward.Text = signText(kind, info)
+	end
+
+	local function setSignsHidden(hidden)
+		signsHidden = hidden
+		for spot in pairs(signs) do
+			updateSign(spot)
+		end
 	end
 
 	local function makeSign(spot)
@@ -693,6 +727,22 @@ function Activities.start(hud)
 		ZIndex = 1,
 		Parent = cinemaGui,
 	})
+	-- biała mgła, gdy kamera przelatuje przez chmurę (odrzutowiec)
+	local fogFrame = Kit.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundColor3 = Color3.fromRGB(245, 248, 255),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		ZIndex = 1,
+		Parent = cinemaGui,
+	})
+	-- emoji w wywiadzie (serduszka i reakcje lecą z prawego dolnego rogu)
+	local reactionLayer = Kit.new("Frame", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		ZIndex = 1,
+		Parent = cinemaGui,
+	})
 
 	-- pasek czasu sesji u góry ekranu (pod nim licznik wyświetleń w czasie wywiadu)
 	local timerHolder = Kit.new("Frame", {
@@ -726,17 +776,17 @@ function Activities.start(hud)
 	Kit.gradient(timerFill, Theme.Gradients.LP, 90)
 	local viewsLine = Kit.line(timerHolder, { anchor = Vector2.new(0.5, 0), position = UDim2.new(0.5, 0, 0, 90), height = 36 })
 
-	-- ON AIR w lewym górnym rogu (wywiad)
+	-- ON AIR na lewo od paska czasu (wywiad); w rogu ekranu zasłaniał przycisk SELL
 	local onAir = Kit.new("Frame", {
 		Name = "OnAir",
-		Position = UDim2.fromOffset(22, 18),
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(0, 20, 0, 69),
 		Size = UDim2.fromOffset(150, 46),
 		BackgroundColor3 = Color3.fromRGB(220, 30, 45),
 		BorderSizePixel = 0,
 		Visible = false,
-		Parent = hud.gui,
+		Parent = timerHolder,
 	})
-	hud.registerScale(onAir)
 	Kit.corner(onAir, 23)
 	Kit.stroke(onAir, 4, Enum.ApplyStrokeMode.Border)
 	local onAirDot = Kit.new("Frame", {
@@ -753,6 +803,21 @@ function Activities.start(hud)
 		Size = UDim2.new(1, -46, 1, -12),
 		Text = TEXT.OnAir,
 	}, { maxSize = 26, stroke = 2.5 })
+
+	-- program wywiadu: okienko z pytaniami, odpowiedzi, czat i emoji (InterviewShow)
+	local interviewShow = InterviewShow.create(hud, reactionLayer)
+
+	local function playEmote(name)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid ~= nil then
+			task.spawn(function()
+				pcall(function()
+					humanoid:PlayEmote(name)
+				end)
+			end)
+		end
+	end
 
 	local function fadeTo(transparency, seconds)
 		blackout.Visible = true
@@ -879,7 +944,8 @@ function Activities.start(hud)
 		}
 	end
 
-	-- Jacht: szeroki lot kamery wokół basenu, jacht lekko się kołysze, kolorowe światła i konfetti.
+	-- Jacht: szeroki lot kamery wokół basenu, jacht lekko się kołysze, muzyka, kolorowe światła,
+	-- konfetti i zdjęcia (flesze z migawką). Pod koniec trąbka i wybuch konfetti.
 	SCENES.Yacht = function(spot, duration)
 		local frame = pivotOf(spot)
 		local model = itemModel(spot, "Yacht", shownTier("Yacht"))
@@ -893,6 +959,10 @@ function Activities.start(hud)
 		local nextParty = PARTY_EVERY
 		local colorIndex = 0
 		local nextConfetti = 0
+		local nextPhoto = 1.4
+		local hornAt = math.max(3, duration - 4)
+		local horned = false
+		local music = Sounds.start("PartyMusic")
 		return {
 			update = function(dt, elapsed, t)
 				if model ~= nil then
@@ -906,6 +976,21 @@ function Activities.start(hud)
 					colorIndex = colorIndex % #PARTY_COLORS + 1
 					partyFlash(PARTY_COLORS[colorIndex])
 				end
+				-- zdjęcia na imprezie: flesz z migawką co kilka sekund, czasem dwa szybko po sobie
+				if elapsed >= nextPhoto and elapsed < duration - 0.8 then
+					nextPhoto = elapsed + between(PARTY_PHOTO_GAP)
+					flash()
+					if math.random() < 0.4 then
+						task.delay(0.24, flash)
+					end
+				end
+				if not horned and elapsed >= hornAt then
+					horned = true
+					Sounds.play("PartyHorn")
+					for _ = 1, 40 do
+						spawnConfetti()
+					end
+				end
 				if elapsed >= nextConfetti and elapsed < duration - 1 then
 					nextConfetti = elapsed + 0.12
 					spawnConfetti()
@@ -916,6 +1001,7 @@ function Activities.start(hud)
 				return CFrame.lookAt(frame:PointToWorldSpace(offset), frame.Position + Vector3.new(0, 5, 0))
 			end,
 			stop = function()
+				music.stop()
 				if model ~= nil and original ~= nil then
 					model:PivotTo(original)
 				end
@@ -924,8 +1010,10 @@ function Activities.start(hud)
 		}
 	end
 
-	-- Wywiad: ujęcia jak w telewizji (plan ogólny, gość, prowadzący, z boku), ON AIR i licznik
-	-- wyświetleń, który rośnie do wartości zależnej od oceny (ocenę zna już serwer).
+	-- Wywiad: prowadzący pyta, gracz wybiera głupią odpowiedź, studio reaguje (program prowadzi
+	-- InterviewShow). Ujęcia jak w telewizji: plan ogólny, gość, prowadzący, z boku i dramatyczne
+	-- zbliżenie na prowadzącego. Licznik wyświetleń skacze po odpowiedziach i na koniec dobija do
+	-- wartości zależnej od oceny (ocenę zna już serwer).
 	SCENES.Interview = function(spot, duration, payload)
 		local frame = pivotOf(spot)
 		local pose = spotPose(spot, "Interview")
@@ -935,49 +1023,83 @@ function Activities.start(hud)
 			return frame:PointToWorldSpace(Vector3.new(x, y, z))
 		end
 		local shots = {
-			{ from = at(0, 7, -22), to = at(0, 4, 1) }, -- cały plan
-			{ from = posePosition + front * 7 + frame.RightVector * 1.5 + Vector3.new(0, 4.6, 0), to = posePosition + Vector3.new(0, 4.3, 0) }, -- gość
-			{ from = at(8, 5, -7), to = at(4, 4.6, 1.2) }, -- prowadzący
-			{ from = at(-13, 5.5, -8), to = at(1, 4, 1) }, -- z boku
+			wide = { from = at(0, 7, -22), to = at(0, 4, 1) }, -- cały plan
+			guest = { from = posePosition + front * 7 + frame.RightVector * 1.5 + Vector3.new(0, 4.6, 0), to = posePosition + Vector3.new(0, 4.3, 0) },
+			host = { from = at(8, 5, -7), to = at(4, 4.6, 1.2) }, -- prowadzący
+			side = { from = at(-13, 5.5, -8), to = at(1, 4, 1) }, -- z boku
 		}
-		local order = { 1, 2, 3, 2, 4, 1, 2, 3 }
-		local grade = GRADES[payload.Grade or 2] or GRADES[2]
-		local target = grade.views * (0.85 + math.random() * 0.3)
-		local nextViews = 0
+		local grade = payload.Grade or 2
+		local style = GRADES[grade] or GRADES[2]
+		local show = interviewShow.begin({
+			duration = duration,
+			grade = grade,
+			target = style.views * (0.85 + math.random() * 0.3),
+			onEmote = playEmote,
+		})
+		local shown = 0
+		local nextLabel = 0
 		onAir.Visible = true
 		viewsLine.set({})
 		return {
-			update = function(_, elapsed, t)
-				local shot = shots[order[math.floor(elapsed / SHOT_SECONDS) % #order + 1]]
-				local within = (elapsed % SHOT_SECONDS) / SHOT_SECONDS
-				if elapsed >= nextViews then
-					nextViews = elapsed + 0.1
-					local views = math.floor(target * t ^ 2.2)
-					viewsLine.set({ { text = Format.number(views) .. " " .. TEXT.Views, size = 28, colors = Theme.Gradients.LP } })
+			update = function(dt, elapsed)
+				local state = show.state
+				local since = os.clock() - state.shotAt
+				local from, to
+				if state.shot == "hostZoom" then
+					-- szybki najazd na twarz prowadzącego (jak w memach) z krótkim drżeniem
+					local shot = shots.host
+					from = shot.from:Lerp(shot.to, 0.62 * smooth(since / 0.16))
+					to = shot.to
+					local shake = math.max(0, 1 - since / 0.45) * 0.18
+					from = from + Vector3.new((math.random() - 0.5) * shake, (math.random() - 0.5) * shake, (math.random() - 0.5) * shake)
+				else
+					local shot = shots[state.shot] or shots.wide
+					local push = 0.08
+					if state.shot == "guest" then
+						push = 0.16 -- gracz myśli nad odpowiedzią, a kamera powoli się zbliża
+					end
+					from = shot.from:Lerp(shot.to, push * math.min(1, since / SHOT_SECONDS))
+					to = shot.to
+				end
+				shown = shown + (state.views - shown) * math.min(1, dt * 3.5)
+				if elapsed >= nextLabel then
+					nextLabel = elapsed + 0.1
+					viewsLine.set({ { text = Format.number(math.floor(shown + 0.5)) .. " " .. TEXT.Views, size = 28, colors = Theme.Gradients.LP } })
 					onAirDot.Visible = math.floor(elapsed * 2) % 2 == 0 -- kropka miga
 				end
-				return CFrame.lookAt(shot.from:Lerp(shot.to, 0.08 * within), shot.to)
+				return CFrame.lookAt(from, to)
 			end,
 			stop = function()
+				show.stop()
 				onAir.Visible = false
 				viewsLine.set({})
 			end,
 		}
 	end
 
-	-- Chmury do lotu (tylko u gracza): kilka białych kul.
-	local function makeCloud(parent, center)
+	-- Chmura do lotu (tylko u gracza): kilka spłaszczonych kul (elipsoid), punkt obrotu w środku.
+	local function makeCloud(parent, kind)
 		local model = Instance.new("Model")
 		model.Name = "Cloud"
-		for _ = 1, 4 do
+		local radius = 0
+		for _ = 1, math.random(kind.puffs[1], kind.puffs[2]) do
 			local part = Instance.new("Part")
-			part.Shape = Enum.PartType.Ball
-			local size = math.random(14, 26)
-			part.Size = Vector3.new(size, size, size)
-			part.CFrame = CFrame.new(center + Vector3.new(math.random(-14, 14), math.random(-4, 4), math.random(-10, 10)))
+			local width = between(kind.width)
+			local height = between(kind.height)
+			part.Size = Vector3.new(width, height, width * (0.7 + math.random() * 0.5))
+			local mesh = Instance.new("SpecialMesh")
+			mesh.MeshType = Enum.MeshType.Sphere
+			mesh.Parent = part
+			local offset = Vector3.new(
+				(math.random() - 0.5) * 2 * kind.spread,
+				(math.random() - 0.5) * height * 0.6,
+				(math.random() - 0.5) * 1.4 * kind.spread
+			)
+			part.CFrame = CFrame.new(offset)
+			radius = math.max(radius, offset.Magnitude + width * 0.5)
 			part.Color = Color3.fromRGB(250, 252, 255)
 			part.Material = Enum.Material.SmoothPlastic
-			part.Transparency = 0.12
+			part.Transparency = 0.06
 			part.Anchored = true
 			part.CanCollide = false
 			part.CanQuery = false
@@ -985,16 +1107,60 @@ function Activities.start(hud)
 			part.CastShadow = false
 			part.Parent = model
 		end
-		model.WorldPivot = CFrame.new(center) -- punkt obrotu w środku chmury (do przesuwania)
+		model.WorldPivot = CFrame.new() -- punkt obrotu w środku chmury (do przesuwania)
 		model.Parent = parent
-		return model
+		return { model = model, kind = kind, radius = radius, center = Vector3.new() }
 	end
 
-	-- Lot: samolot (tylko u gracza) rozpędza się na pasie, startuje i leci ponad chmurami lekkimi
-	-- łukami. Kamera najpierw z boku pasa, potem za samolotem. Na koniec samolot wraca na miejsce.
-	SCENES.Jet = function(spot)
-		local jet = itemModel(spot, "Jet", shownTier("Jet"))
-		local frame0 = (jet and jet:GetPivot()) or pivotOf(spot)
+	-- Stawia chmurę przed samolotem: ahead studs do przodu, w bok i w górę według jej warstwy.
+	local function placeCloud(cloud, origin, dir, ahead)
+		local kind = cloud.kind
+		local right = dir:Cross(Vector3.new(0, 1, 0))
+		local lateral = between(kind.lateral)
+		if math.random() < 0.5 then
+			lateral = -lateral
+		end
+		local position = origin + dir * ahead + right * lateral + Vector3.new(0, between(kind.altitude), 0)
+		cloud.model:PivotTo(CFrame.new(position) * CFrame.Angles(0, math.random() * 6.28, 0))
+		cloud.center = position
+	end
+
+	-- Lot: samolot rozpędza się na pasie (seria zdjęć przy starcie), startuje i leci wśród chmur
+	-- lekkimi łukami, a w locie co kilka sekund jest zdjęcie. Silnik rozkręca się razem z samolotem.
+	-- Kamera najpierw z boku pasa, potem za samolotem.
+	-- Leci lokalna kopia samolotu (tylko u gracza), a prawdziwy jest w tym czasie ukryty: przy
+	-- StreamingEnabled Roblox usuwa u gracza części z serwera, które są daleko od jego postaci, więc
+	-- prawdziwy samolot znikał po kilkuset studs lotu. Kopii to nie dotyczy.
+	SCENES.Jet = function(spot, duration)
+		local original = itemModel(spot, "Jet", shownTier("Jet"))
+		local frame0 = (original and original:GetPivot()) or pivotOf(spot)
+		local folder = Instance.new("Folder")
+		folder.Name = "LarpFlight"
+		folder.Parent = Workspace
+		local jet = nil
+		if original ~= nil then
+			local ok, copy = pcall(function()
+				return original:Clone()
+			end)
+			if ok and copy ~= nil then
+				for _, d in ipairs(copy:GetDescendants()) do
+					if d:IsA("BasePart") then
+						d.Anchored = true
+						d.CanCollide = false
+						d.CanQuery = false
+						d.CanTouch = false
+					elseif d:IsA("BaseScript") then
+						d:Destroy()
+					end
+				end
+				copy.Parent = folder
+				copy:PivotTo(frame0)
+				LocalHide.setAll(original, true, { collide = false })
+				jet = copy
+			else
+				jet = original -- bez kopii (np. model z Archivable = false) leci prawdziwy
+			end
+		end
 		local look = frame0.LookVector
 		local forward0 = Vector3.new(look.X, 0, look.Z)
 		if forward0.Magnitude < 0.01 then
@@ -1007,11 +1173,21 @@ function Activities.start(hud)
 		local lastAltitude = 0
 		local camera = nil
 		local sideCamera = (frame0 * CFrame.new(24, 7, -12)).Position
-		local folder = Instance.new("Folder")
-		folder.Name = "LarpClouds"
-		folder.Parent = Workspace
+		-- chmury od razu w całej okolicy trasy (samolot wznosi się między nimi), potem te, które
+		-- zostały za samolotem, przeskakują do przodu według aktualnego kursu
 		local clouds = {}
-		local CLOUD_GAP, CLOUD_COUNT = 60, 24
+		local cruiseOrigin = Vector3.new(position.X, baseY + JET_CRUISE, position.Z)
+		for _, kind in ipairs(CLOUD_KINDS) do
+			for _ = 1, kind.count do
+				local cloud = makeCloud(folder, kind)
+				placeCloud(cloud, cruiseOrigin, forward0, kind.from + math.random() * (CLOUD_AHEAD - kind.from))
+				table.insert(clouds, cloud)
+			end
+		end
+		local nextRunwayPhoto = 1
+		local nextFlightPhoto = 12 + math.random() * 2
+		local engine = Sounds.start("JetEngine")
+		Sounds.play("JetCabin")
 		return {
 			update = function(dt, elapsed)
 				local speed
@@ -1025,9 +1201,22 @@ function Activities.start(hud)
 				-- wznoszenie zaczyna się jeszcze na pasie, żeby samolot przeleciał nad ścianą na końcu strefy
 				local altitude = 0
 				if elapsed >= 20 then
-					altitude = 140 + math.sin((elapsed - 20) * 0.35) * 6
+					altitude = JET_CRUISE + math.sin((elapsed - 20) * 0.35) * 6
 				elseif elapsed >= 7 then
-					altitude = 140 * smooth((elapsed - 7) / 13)
+					altitude = JET_CRUISE * smooth((elapsed - 7) / 13)
+				end
+				engine.setSpeed(0.86 + 0.16 * smooth(elapsed / 14)) -- silnik wchodzi na obroty razem z samolotem
+				-- zdjęcia: seria, gdy samolot rusza i startuje, potem co kilka sekund w locie
+				if nextRunwayPhoto <= #JET_RUNWAY_PHOTOS and elapsed >= JET_RUNWAY_PHOTOS[nextRunwayPhoto] then
+					nextRunwayPhoto = nextRunwayPhoto + 1
+					flash()
+				end
+				if elapsed >= nextFlightPhoto and elapsed < duration - 2 then
+					nextFlightPhoto = elapsed + between(JET_FLIGHT_PHOTO_GAP)
+					flash()
+					if math.random() < 0.35 then
+						task.delay(0.22, flash)
+					end
 				end
 				-- w locie lekkie łuki w prawo i w lewo (samolot przechyla się w zakręcie)
 				local turn = 0
@@ -1046,21 +1235,15 @@ function Activities.start(hud)
 				if jet ~= nil then
 					jet:PivotTo(jetFrame)
 				end
-				-- chmury przed samolotem; te za nim przeskakują do przodu
-				if elapsed > 14 and #clouds == 0 then
-					local right = dir:Cross(Vector3.new(0, 1, 0))
-					for i = 1, CLOUD_COUNT do
-						local center = Vector3.new(position.X, baseY + 140, position.Z)
-							+ dir * (120 + i * CLOUD_GAP)
-							+ right * math.random(-140, 140)
-							+ Vector3.new(0, math.random(-40, 20), 0)
-						table.insert(clouds, makeCloud(folder, center))
-					end
-				end
+				-- chmury, które zostały za samolotem albo za daleko w bok (po zakręcie), przeskakują do
+				-- przodu, więc wokół trasy zawsze jest ich tyle samo
+				local origin = Vector3.new(position.X, baseY + JET_CRUISE, position.Z)
 				for _, cloud in ipairs(clouds) do
-					local pivot = cloud:GetPivot()
-					if (pivot.Position - spot3):Dot(dir) < -150 then
-						cloud:PivotTo(pivot + dir * (CLOUD_COUNT * CLOUD_GAP))
+					local offset = cloud.center - origin
+					local along = offset:Dot(dir)
+					local across = (Vector3.new(offset.X, 0, offset.Z) - dir * along).Magnitude
+					if along < -CLOUD_BEHIND or across > CLOUD_WIDE then
+						placeCloud(cloud, origin, dir, between(CLOUD_RESPAWN))
 					end
 				end
 				local target
@@ -1074,11 +1257,28 @@ function Activities.start(hud)
 				else
 					camera = camera:Lerp(target, math.min(1, dt * 2.5))
 				end
+				-- biała mgła, gdy kamera przelatuje przez chmurę na trasie
+				local fog = 0
+				local eye = camera.Position
+				for _, cloud in ipairs(clouds) do
+					if cloud.kind.path then
+						local inside = 1 - (eye - cloud.center).Magnitude / (cloud.radius * 1.1)
+						if inside > fog then
+							fog = inside
+						end
+					end
+				end
+				fogFrame.BackgroundTransparency = 1 - 0.7 * math.clamp(fog, 0, 1)
 				return camera
 			end,
 			stop = function()
-				if jet ~= nil then
+				engine.stop()
+				fogFrame.BackgroundTransparency = 1
+				if jet ~= nil and jet == original then
 					jet:PivotTo(frame0)
+				end
+				if original ~= nil and jet ~= original then
+					LocalHide.setAll(original, false, { collide = false })
 				end
 				folder:Destroy()
 			end,
@@ -1129,6 +1329,8 @@ function Activities.start(hud)
 		TweenService:Create(verdictScale, TweenInfo.new(0.35, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 		if index >= 2 then
 			Sounds.play("Reward")
+		elseif Sounds.has("InterviewFlop") then
+			Sounds.play("InterviewFlop")
 		else
 			Sounds.play("NotEnough")
 		end
@@ -1157,6 +1359,21 @@ function Activities.start(hud)
 		hud.toast(items)
 	end
 
+	local sessionScene = nil -- scena i jej połączenie co klatkę (żeby po błędzie dało się posprzątać)
+	local sessionConnection = nil
+
+	local function stopScene()
+		if sessionConnection ~= nil then
+			sessionConnection:Disconnect()
+			sessionConnection = nil
+		end
+		if sessionScene ~= nil then
+			local scene = sessionScene
+			sessionScene = nil
+			scene.stop()
+		end
+	end
+
 	local function runSession(payload)
 		local kind = payload.Activity
 		local cfg = KINDS[kind]
@@ -1171,6 +1388,7 @@ function Activities.start(hud)
 
 		fadeTo(0, 0.3)
 		showCaption(kind, half)
+		setSignsHidden(true)
 		task.wait(half + 0.1) -- serwer w tym czasie stawia gracza na miejscu
 		hideCaption()
 		local camera = Workspace.CurrentCamera
@@ -1178,11 +1396,11 @@ function Activities.start(hud)
 		if spot ~= nil and SCENES[kind] ~= nil then
 			scene = SCENES[kind](spot, duration, payload)
 		end
-		local connection = nil
+		sessionScene = scene
 		if scene ~= nil and camera ~= nil then
 			local startTime = os.clock()
 			camera.CameraType = Enum.CameraType.Scriptable
-			connection = RunService.RenderStepped:Connect(function(dt)
+			sessionConnection = RunService.RenderStepped:Connect(function(dt)
 				local elapsed = os.clock() - startTime
 				local frame = scene.update(dt, elapsed, math.clamp(elapsed / duration, 0, 1))
 				if frame ~= nil then
@@ -1194,6 +1412,7 @@ function Activities.start(hud)
 		local character = player.Character
 		if cfg.hidePlayer and character ~= nil then
 			LocalHide.setAll(character, true, { collide = false })
+			State.hidePets = true -- pety „siedzą” z graczem w samolocie
 		end
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if humanoid ~= nil and cfg.emote ~= nil then
@@ -1214,12 +1433,7 @@ function Activities.start(hud)
 		end
 		fadeTo(0, 0.3)
 		task.wait(0.32)
-		if connection ~= nil then
-			connection:Disconnect()
-		end
-		if scene ~= nil then
-			scene.stop()
-		end
+		stopScene()
 		if camera ~= nil then
 			camera.CameraType = Enum.CameraType.Custom
 			local current = player.Character
@@ -1232,6 +1446,8 @@ function Activities.start(hud)
 		if cfg.hidePlayer and character ~= nil and character.Parent ~= nil then
 			LocalHide.setAll(character, false, { collide = false })
 		end
+		State.hidePets = false
+		setSignsHidden(false)
 		timerHolder.Visible = false
 		fadeTo(1, 0.35)
 	end
@@ -1248,6 +1464,7 @@ function Activities.start(hud)
 		local ok, err = pcall(runSession, payload)
 		if not ok then
 			warn("[Aktywności] sesja: " .. tostring(err))
+			pcall(stopScene)
 			hideCaption()
 			fadeTo(1, 0.2)
 			local camera = Workspace.CurrentCamera
@@ -1256,8 +1473,15 @@ function Activities.start(hud)
 			end
 			timerHolder.Visible = false
 			onAir.Visible = false
+			fogFrame.BackgroundTransparency = 1
 			clearConfetti()
 			hideOthers(false)
+			local character = player.Character
+			if KINDS[payload.Activity].hidePlayer and character ~= nil then
+				LocalHide.setAll(character, false, { collide = false })
+			end
+			State.hidePets = false
+			setSignsHidden(false)
 		end
 		State.busy = false
 		local kind = session

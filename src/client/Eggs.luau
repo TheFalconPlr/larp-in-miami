@@ -190,6 +190,9 @@ function Eggs.start(hud)
 
 	------------------------------------------------------------- Cena przy każdym jajku
 	local pills = {} -- [stoisko] = BillboardGui
+	-- w czasie aktywności i otwierania jajka pigułki znikają (są zawsze na wierzchu, więc wchodziłyby
+	-- w kadr kamery i na napisy sesji)
+	local pillsHidden = false
 
 	local function updatePill(stand)
 		local gui = pills[stand]
@@ -201,7 +204,7 @@ function Eggs.start(hud)
 		if part ~= nil then
 			gui.StudsOffsetWorldSpace = Vector3.new(0, bottom + PILL_HEIGHT, 0)
 		end
-		gui.Enabled = part ~= nil and zoneUnlocked(stand:GetAttribute("Zone"))
+		gui.Enabled = part ~= nil and zoneUnlocked(stand:GetAttribute("Zone")) and not pillsHidden
 	end
 
 	local function makePill(stand)
@@ -1202,6 +1205,13 @@ function Eggs.start(hud)
 			return
 		end
 		timer = 0
+		local hide = hatching or State.busy
+		if hide ~= pillsHidden then
+			pillsHidden = hide
+			for _, stand in ipairs(stands) do
+				updatePill(stand)
+			end
+		end
 		if hatching then
 			return
 		end
