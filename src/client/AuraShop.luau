@@ -30,11 +30,19 @@ local AuraShop = {}
 local STAND_TAG = "LarpAuraShop" -- jak RebirthService.ShopTag na serwerze
 local SHOW_DISTANCE = 8
 local HIDE_DISTANCE = 12
+-- Napis nad stoiskiem jak nad portalem Rebirth: rozmiar w studs (Kit.worldFrame) i widoczny z bliska.
 local LABEL_HEIGHT = 1.2
+local LABEL_DESIGN = Vector2.new(420, 56)
+local LABEL_PIXELS_PER_STUD = 56
+local LABEL_DISTANCE = 45
 
-local WINDOW = Vector2.new(820, 560)
+-- Okno: karty 2×2, pod nimi od razu Aura Level i poświata (bez pustego paska na dole).
 local CARD = Vector2.new(372, 206)
 local CARD_GAP = Vector2.new(16, 14)
+local GRID_HEIGHT = 2 * CARD.Y + CARD_GAP.Y
+local FOOTER_GAP, FOOTER_HEIGHT = 6, 34
+local WINDOW_TOP, WINDOW_BOTTOM = 44, 16
+local WINDOW = Vector2.new(820, WINDOW_TOP + GRID_HEIGHT + FOOTER_GAP + FOOTER_HEIGHT + WINDOW_BOTTOM)
 
 local TEXT = {
 	Title = "Aura Shop",
@@ -166,15 +174,15 @@ function AuraShop.start(hud)
 	local function makeLabel(stand)
 		local gui = Kit.new("BillboardGui", {
 			Name = "AuraShopLabel",
-			Size = UDim2.fromOffset(420, 56),
 			LightInfluence = 0,
 			AlwaysOnTop = true,
-			MaxDistance = 90,
+			MaxDistance = LABEL_DISTANCE,
 			ResetOnSpawn = false,
 			Enabled = false,
 			Parent = playerGui,
 		})
-		local line = Kit.line(gui, { anchor = Vector2.new(0.5, 0.5), position = UDim2.fromScale(0.5, 0.5), height = 50 })
+		local frame = Kit.worldFrame(gui, LABEL_DESIGN, LABEL_PIXELS_PER_STUD)
+		local line = Kit.line(frame, { anchor = Vector2.new(0.5, 0.5), position = UDim2.fromScale(0.5, 0.5), height = 50 })
 		labels[stand] = { gui = gui, line = line }
 		updateLabel(stand)
 	end
@@ -258,8 +266,8 @@ function AuraShop.start(hud)
 		title = TEXT.Title,
 		icon = "Aura",
 		padding = 30,
-		top = 44,
-		bottom = 26,
+		top = WINDOW_TOP,
+		bottom = WINDOW_BOTTOM,
 	})
 	hud.registerScale(window.holder)
 	hud.addPopup(window)
@@ -272,7 +280,7 @@ function AuraShop.start(hud)
 	balanceLine.holder.ZIndex = 6
 	local grid = Kit.new("Frame", {
 		Name = "Cards",
-		Size = UDim2.new(1, 0, 0, 2 * CARD.Y + CARD_GAP.Y),
+		Size = UDim2.new(1, 0, 0, GRID_HEIGHT),
 		BackgroundTransparency = 1,
 		ZIndex = 3,
 		Parent = window.content,
@@ -286,9 +294,9 @@ function AuraShop.start(hud)
 	})
 	local footer = Kit.line(window.content, {
 		name = "Footer",
-		anchor = Vector2.new(0.5, 1),
-		position = UDim2.new(0.5, 0, 1, -4),
-		height = 36,
+		anchor = Vector2.new(0.5, 0),
+		position = UDim2.new(0.5, 0, 0, GRID_HEIGHT + FOOTER_GAP),
+		height = FOOTER_HEIGHT,
 	})
 	footer.holder.ZIndex = 4
 

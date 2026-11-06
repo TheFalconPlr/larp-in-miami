@@ -108,8 +108,12 @@ local function makeLeaderstats(player)
 	local rebirths = Instance.new("IntValue")
 	rebirths.Name = "Rebirths"
 	rebirths.Parent = folder
+	-- Aura w tabeli graczy (Tab): część całkowita, jak licznik w HUD
+	local aura = Instance.new("StringValue")
+	aura.Name = "Aura"
+	aura.Parent = folder
 	folder.Parent = player
-	return { cash = cash, rebirths = rebirths }
+	return { cash = cash, rebirths = rebirths, aura = aura }
 end
 
 local function updateLeaderstats(s, data)
@@ -119,6 +123,10 @@ local function updateLeaderstats(s, data)
 	end
 	if s.stats.rebirths.Value ~= data.RebirthCount then
 		s.stats.rebirths.Value = data.RebirthCount
+	end
+	local auraText = Format.number(math.floor((data.Aura or 0) + 1e-9))
+	if s.stats.aura.Value ~= auraText then
+		s.stats.aura.Value = auraText
 	end
 end
 

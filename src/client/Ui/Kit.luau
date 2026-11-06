@@ -5,6 +5,7 @@
 
 local TweenService = game:GetService("TweenService")
 local TextService = game:GetService("TextService")
+local RunService = game:GetService("RunService")
 
 local Theme = require(script.Parent.Theme)
 local Icons = require(script.Parent.Icons)
@@ -401,6 +402,45 @@ function Kit.line(parent, opts)
 		api.set(opts.items)
 	end
 	return api
+end
+
+----------------------------------------------------------------- Napis w świecie, który maleje z odległością
+-- BillboardGui z rozmiarem w pikselach (UDim2.fromOffset) ma na ekranie zawsze ten sam rozmiar, więc
+-- z daleka wygląda na wielki. Tu BillboardGui ma rozmiar w studs (jak część w świecie), a w środku jest
+-- ramka w pikselach bazowych (design), którą UIScale co klatkę dopasowuje do wysokości BillboardGui
+-- na ekranie. Klocki Kit (Kit.line, Kit.pill…) w tej ramce wyglądają jak w HUD, tylko z daleka są
+-- mniejsze. pixelsPerStud: ile pikseli bazowych ma jeden stud (50: ramka 60 px ma 1,2 studs).
+-- Zwraca ramkę (środek w środku BillboardGui).
+local worldFrames = {}
+local worldLoop = nil
+function Kit.worldFrame(gui, design, pixelsPerStud)
+	gui.Size = UDim2.fromScale(design.X / pixelsPerStud, design.Y / pixelsPerStud)
+	local frame = Kit.new("Frame", {
+		Name = "World",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(design.X, design.Y),
+		BackgroundTransparency = 1,
+		Parent = gui,
+	})
+	local entry = { gui = gui, scale = Kit.new("UIScale", { Scale = 0.5, Parent = frame }), height = design.Y }
+	worldFrames[entry] = true
+	gui.Destroying:Connect(function()
+		worldFrames[entry] = nil
+	end)
+	if worldLoop == nil then
+		worldLoop = RunService.RenderStepped:Connect(function()
+			for e in pairs(worldFrames) do
+				if e.gui.Enabled then
+					local size = e.gui.AbsoluteSize
+					if size.Y > 0 then
+						e.scale.Scale = size.Y / e.height
+					end
+				end
+			end
+		end)
+	end
+	return frame
 end
 
 ----------------------------------------------------------------- Pigułka (np. TEST MODE)

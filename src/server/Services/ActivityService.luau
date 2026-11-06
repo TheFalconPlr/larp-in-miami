@@ -27,6 +27,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
 local Loop = require(Shared.Logic.Loop)
 local Net = require(Shared.Net)
+local Stand = require(Shared.Stand)
 
 local DataService = require(script.Parent.DataService)
 local LoopService = require(script.Parent.LoopService)
@@ -119,37 +120,46 @@ local function findPose(spot, kind, tier)
 	return nil
 end
 
--- Gdzie stoi gracz w czasie sesji: na części „Pose” albo 9 studs w bok od miejsca (na ziemi).
-local function poseCFrame(spot, kind, tier)
+-- Gdzie stoi gracz w czasie sesji: na podłodze pod częścią „Pose” (Shared/Stand: pierwsza widoczna
+-- powierzchnia i wysokość według awatara) albo 9 studs w bok od miejsca (na ziemi).
+local function poseCFrame(spot, kind, tier, character)
 	local pose = findPose(spot, kind, tier)
-	local ground, look
 	if pose ~= nil then
-		ground = pose.Position + Vector3.new(0, pose.Size.Y / 2, 0)
-		look = pose.CFrame.LookVector
-	else
-		local pivot = pivotOf(spot)
-		local side = (pivot * CFrame.new(9, 0, 0)).Position
-		ground = side
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		local ignore = { spot }
-		for _, player in ipairs(Players:GetPlayers()) do
-			if player.Character ~= nil then
-				table.insert(ignore, player.Character)
+		-- modele z innych tierów stoją na serwerze w tym samym miejscu, a gracz ich nie widzi
+		local others = {}
+		local prefix = ActivityService.ItemPrefix[kind]
+		if prefix ~= nil then
+			for _, d in ipairs(spot:GetDescendants()) do
+				local n = tonumber(string.match(d.Name, "^" .. prefix .. "(%d+)$"))
+				if n ~= nil and n ~= tier then
+					table.insert(others, d)
+				end
 			end
 		end
-		params.FilterDescendantsInstances = ignore
-		local hit = Workspace:Raycast(side + Vector3.new(0, 10, 0), Vector3.new(0, -60, 0), params)
-		if hit ~= nil then
-			ground = hit.Position
-		end
-		look = pivot.RightVector
+		return Stand.at(pose, character, others)
 	end
+	local pivot = pivotOf(spot)
+	local side = (pivot * CFrame.new(9, 0, 0)).Position
+	local ground = side
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	local ignore = { spot }
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.Character ~= nil then
+			table.insert(ignore, player.Character)
+		end
+	end
+	params.FilterDescendantsInstances = ignore
+	local hit = Workspace:Raycast(side + Vector3.new(0, 10, 0), Vector3.new(0, -60, 0), params)
+	if hit ~= nil then
+		ground = hit.Position
+	end
+	local look = pivot.RightVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	if flat.Magnitude < 0.1 then
 		flat = Vector3.new(0, 0, -1)
 	end
-	local position = ground + Vector3.new(0, 3, 0)
+	local position = ground + Vector3.new(0, Stand.height(character), 0)
 	return CFrame.lookAt(position, position + flat.Unit)
 end
 
@@ -626,7 +636,7 @@ local function pose(player, spot, kind)
 	if data ~= nil then
 		tier = Loop.activityTier(data, kind)
 	end
-	local target = poseCFrame(spot, kind, tier)
+	local target = poseCFrame(spot, kind, tier, character)
 	-- Najpierw zatrzymanie, potem przestawienie. Odwrotnie (jak było) gracz, który akurat skakał albo
 	-- spadał, zdążył się jeszcze u siebie podnieść, zanim doszło zatrzymanie, i wisiał w powietrzu
 	-- przez całą sesję (postacią steruje jego komputer).

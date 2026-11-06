@@ -117,28 +117,82 @@ local PURPLE = Color3.fromRGB(176, 70, 255)
 local GOLD = Color3.fromRGB(255, 200, 60)
 local DARK = Color3.fromRGB(44, 34, 66)
 
--- Portal Rebirth: okrągły cokół, pierścień ze złotych świecących klocków i fioletowa tafla.
+local PINK = Color3.fromRGB(215, 125, 255)
+local CORE = Color3.fromRGB(255, 232, 255)
+local STONE = Color3.fromRGB(70, 54, 108)
+local SPARKLES = "rbxasset://textures/particles/sparkles_main.dds" -- iskry wbudowane w Roblox
+
+-- Portal Rebirth: dwupoziomowy okrągły cokół ze złotą obwódką i świecącym kręgiem, po bokach filary
+-- ze złotymi kulami, złoty pierścień z fioletowym wnętrzem, tafla w trzech warstwach (głębia),
+-- iskry i fioletowe światło. Wszystko symetrycznie, więc środek modelu jest nad środkiem cokołu.
 -- frame = środek cokołu na ziemi, przodem (LookVector) do gracza.
 local function buildRebirthStand(frame)
 	local model = Instance.new("Model")
 	model.Name = "RebirthSpot"
-	local base = block(model, "Base", Vector3.new(1, 11, 11), frame * CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, math.rad(90)), DARK)
-	base.Shape = Enum.PartType.Cylinder
-	local center = frame * CFrame.new(0, 6.2, 0)
-	local radius = 4.6
-	local count = 20
-	for i = 1, count do
-		local angle = (i - 1) / count * math.pi * 2
-		local piece = center * CFrame.Angles(0, 0, angle) * CFrame.new(0, radius, 0)
-		block(model, "Ring", Vector3.new(1.55, 0.7, 0.9), piece, GOLD, Enum.Material.Neon)
+	-- płaski walec (oś walca w pionie)
+	local function disc(name, radius, height, y, color, material, transparency)
+		local part = block(model, name, Vector3.new(height, radius * 2, radius * 2), frame * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.rad(90)), color, material, transparency)
+		part.Shape = Enum.PartType.Cylinder
+		return part
 	end
-	local surface = block(model, "Portal", Vector3.new(0.3, 8.6, 8.6), center * CFrame.Angles(0, math.rad(90), 0), PURPLE, Enum.Material.Neon, 0.35)
-	surface.Shape = Enum.PartType.Cylinder
-	surface.CanCollide = false
+	disc("Base", 6.6, 0.6, 0.3, DARK)
+	disc("Rim", 5.6, 0.2, 0.7, GOLD, Enum.Material.Neon)
+	disc("Top", 5.3, 0.5, 1.05, STONE)
+	disc("Circle", 4.1, 0.06, 1.33, PURPLE, Enum.Material.Neon, 0.3).CanCollide = false
+
+	-- pierścień: złote klocki na zewnątrz, cieńsze fioletowe w środku, złota stopka pod spodem
+	local center = frame * CFrame.new(0, 6.6, 0)
+	local radius = 4.6
+	local function ring(name, count, r, size, color)
+		for i = 1, count do
+			local angle = (i - 1) / count * math.pi * 2
+			block(model, name, size, center * CFrame.Angles(0, 0, angle) * CFrame.new(0, r, 0), color, Enum.Material.Neon)
+		end
+	end
+	ring("Ring", 28, radius, Vector3.new(1.15, 0.8, 1), GOLD)
+	ring("InnerRing", 24, radius - 0.62, Vector3.new(1, 0.36, 0.6), PINK)
+	block(model, "Foot", Vector3.new(1.6, 0.7, 1.2), frame * CFrame.new(0, 1.6, 0), GOLD, Enum.Material.Neon)
+
+	-- tafla: trzy warstwy, coraz jaśniejsze do środka (przez portal da się przejść)
+	local function layer(name, r, thickness, color, transparency)
+		local part = block(model, name, Vector3.new(thickness, r * 2, r * 2), center * CFrame.Angles(0, math.rad(90), 0), color, Enum.Material.Neon, transparency)
+		part.Shape = Enum.PartType.Cylinder
+		part.CanCollide = false
+		return part
+	end
+	local surface = layer("Portal", radius - 0.8, 0.2, PURPLE, 0.25)
+	layer("PortalInner", 2.7, 0.26, PINK, 0.35)
+	layer("PortalCore", 1.3, 0.32, CORE, 0.45)
+
+	-- filary po bokach: ciemne, ze złotymi paskami i świecącą kulą na górze
+	for _, side in ipairs({ -1, 1 }) do
+		local x = side * 6
+		block(model, "Pillar", Vector3.new(1.2, 8.4, 1.2), frame * CFrame.new(x, 0.6 + 4.2, 0), DARK)
+		block(model, "PillarBand", Vector3.new(1.45, 0.35, 1.45), frame * CFrame.new(x, 1.3, 0), GOLD, Enum.Material.Neon)
+		block(model, "PillarBand", Vector3.new(1.45, 0.35, 1.45), frame * CFrame.new(x, 8.6, 0), GOLD, Enum.Material.Neon)
+		local orb = block(model, "PillarOrb", Vector3.new(1.4, 1.4, 1.4), frame * CFrame.new(x, 9.75, 0), GOLD, Enum.Material.Neon)
+		orb.Shape = Enum.PartType.Ball
+	end
+
+	-- iskry nad taflą i fioletowe światło
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Name = "Sparkles"
+	sparkles.Texture = SPARKLES
+	sparkles.Color = ColorSequence.new(GOLD, PINK)
+	sparkles.LightEmission = 1
+	sparkles.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(1, 0) })
+	sparkles.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+	sparkles.Lifetime = NumberRange.new(1.2, 2)
+	sparkles.Rate = 10
+	sparkles.Speed = NumberRange.new(1, 2.5)
+	sparkles.SpreadAngle = Vector2.new(45, 45)
+	sparkles.EmissionDirection = Enum.NormalId.Top
+	sparkles.Acceleration = Vector3.new(0, 0.8, 0)
+	sparkles.Parent = surface
 	local light = Instance.new("PointLight")
 	light.Color = PURPLE
-	light.Range = 18
-	light.Brightness = 2
+	light.Range = 20
+	light.Brightness = 2.2
 	light.Parent = surface
 	model.WorldPivot = frame
 	model.Parent = Workspace

@@ -761,7 +761,7 @@ function Wardrobe.start(hud)
 			local ribbon = Kit.new("Frame", {
 				Name = "Level",
 				Position = UDim2.fromOffset(3, 3),
-				Size = UDim2.fromOffset(62, 18),
+				Size = UDim2.fromOffset(54, 18), -- z „ON” po prawej (30 px) mieści się na karcie 96 px
 				BackgroundColor3 = Theme.White,
 				ZIndex = 6,
 				Parent = card,
@@ -811,7 +811,7 @@ function Wardrobe.start(hud)
 			local badge = Kit.new("Frame", {
 				AnchorPoint = Vector2.new(1, 0),
 				Position = UDim2.new(1, -3, 0, 3),
-				Size = UDim2.fromOffset(34, 20),
+				Size = UDim2.fromOffset(30, 20),
 				BackgroundColor3 = GREEN,
 				ZIndex = 6,
 				Parent = card,

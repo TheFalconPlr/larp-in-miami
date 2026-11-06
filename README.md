@@ -101,7 +101,7 @@ Koniec:      Stop  →  Ctrl+S  →  w oknie z Rojo Ctrl+C
 
 ## Etap 2: rdzeń pętli
 
-Co działa: klikanie (myszą albo krótkim dotknięciem ekranu), LP trafiają do Bag, pole Sell zamienia LP na L$, przycisk SELL przenosi na pole Sell, ulepszenia Click Multiplier i Bag (Kup 1 i Kup max), zapis postępu, leaderstats (L$ i Rebirthy), podpowiedzi dla nowego gracza i tryb testowy.
+Co działa: klikanie (myszą albo krótkim dotknięciem ekranu), LP trafiają do Bag, pole Sell zamienia LP na L$, przycisk SELL przenosi na pole Sell, ulepszenia Click Multiplier i Bag (Kup 1 i Kup max), zapis postępu, leaderstats (L$, Rebirthy i Aura w tabeli graczy pod Tab), podpowiedzi dla nowego gracza i tryb testowy.
 
 **Sprzedaż.** Przy każdej sprzedaży banknoty wyskakują z paska Bag i lecą łukiem do licznika L$ (przy Auto-Sell mniej banknotów).
 
@@ -139,7 +139,7 @@ Co działa: w Luxury Cars stoi auto do zdjęć. Gdy podejdziesz, otworzy się ok
 | Co | Nazwa | Uwagi |
 | --- | --- | --- |
 | Auta | `Car1` … `Car5` | Po jednym modelu na tier, wszystkie w tym samym miejscu. Gracz widzi tylko swoje. |
-| Miejsce gracza | `Pose` | Cienka, niewidoczna część na podłodze. Gracz stoi na niej przodem tam, gdzie patrzy przód części. |
+| Miejsce gracza | `Pose` | Niewidoczna część na podłodze. Gracz stoi na pierwszej widocznej powierzchni pod jej czubkiem (więc Pose może trochę wystawać nad podłogę albo pokład), przodem tam, gdzie patrzy przód części. Wysokość liczy się z awatara (R15 i R6, niski i wysoki), więc nikt nie wisi w powietrzu. |
 | Reszta | dowolne | np. platforma, światła, dekoracje |
 
 Kamera krąży wokół punktu obrotu (pivot) modelu `CarSpot`, więc ustaw go na środku auta. Dźwięki sesji są w `Settings.Sounds`: `Photo` (migawka przy fleszu) i `Reward` (oklaski na koniec).
@@ -172,7 +172,7 @@ Zwykłe jajko: Common 60%, Uncommon 28%, Rare 10%, Epic 2%. Złote: Uncommon 50%
 | Złote jajko | `EggB1` … `EggB5` | jak wyżej |
 | Model peta | folder `PetModels` w ReplicatedStorage, a w nim modele nazwane jak pety (np. `Pigeon`, `Alley Cat`) | Wielkość ok. 2–3 studs. Pet patrzy tam, gdzie przód punktu obrotu (pivot) modelu. Bez modelu pet jest kolorową kulką z oczami w kolorze rzadkości. Nazwy wszystkich petów są w `src/shared/Config/Pets.luau`. |
 
-Dźwięki są w `Settings.Sounds`: `Crack` (pojedyncze pęknięcie: gra 3 razy, coraz wyżej, a przy rozbiciu dwa razy naraz, nisko i wysoko), `Hatch` (nowy pet) i `Reward` (oklaski przy Legendary, Mythic i Secret).
+Dźwięki są w `Settings.Sounds`: `Crack` (pojedyncze pęknięcie: gra 3 razy, coraz wyżej), `Hatch` (nowy pet: gra, gdy skorupka pęka i widać peta; pęknięcia przy pokazanym pecie już nie ma) i `Reward` (oklaski przy Legendary, Mythic i Secret).
 
 ## Etap 6: aktywności w strefach 3–5
 
@@ -186,7 +186,7 @@ Co działa: w każdej kupionej strefie jest jedna aktywność. Działa jak zdję
 
 Wszystkie nagrody mnożą też bonusy LP (Rebirth, 2x LP), ale nie mnożnik strefy.
 
-- **Wywiad:** odliczanie „LIVE IN 3, 2, 1”, a potem prowadzący zadaje proste pytania o giełdę (np. „How many companies are in the S&P 500?”, „Who's your broker?”), jak w filmikach z „traderami” z Miami. Gracz ma 3 odpowiedzi do wyboru i wszystkie są głupie („5.”, „California”, „Gary from the gym”). Napisy pojawiają się litera po literze i zostają chwilę na ekranie, a odpowiedzi wyskakują dopiero, gdy pytanie jest napisane. Na wybór jest ok. 6–7 s (w ostatnich 3 s tyka zegar). Gracz wybiera kliknięciem albo klawiszem 1–3, a gdy czas minie, mówi „Uhh...” i losową odpowiedź. Studio reaguje na 4 sposoby: dramatyczne zbliżenie na prowadzącego z „vine boom”, śmiech publiczności (3 wersje), niezręczna cisza ze świerszczami albo „bruh”. Przez cały program gra muzyka talk show (przy reakcjach na chwilę ciszej). Po prawej leci czat z komentarzami, z rogu wylatują emoji, a licznik wyświetleń skacze po każdej odpowiedzi. Zwykle są 3 pytania, a przy szybkich odpowiedziach 4 i pożegnanie gracza („Not financial advice!” → „Clearly.”). Na koniec klip idzie do sieci („whoosh”), czat komentuje wynik i wyskakuje ocena, np. MEGA VIRAL! ×4 (przy FLOP smutna trąbka). Wywiad trwa 45 s (wcześniej 25 s, było za szybko), a nagroda wzrosła tak, że LP na minutę zostały takie same. Ocenę losuje serwer na starcie, więc odpowiedzi jej nie zmieniają: są dla zabawy (inaczej każdy klikałby „najlepszą” i zawsze miał Mega viral, a to rozwaliłoby ekonomię). Okno przy studiu pokazuje nagrodę od–do i szanse ocen.
+- **Wywiad:** odliczanie „LIVE IN 3, 2, 1”, a potem prowadzący zadaje proste pytania o giełdę (np. „How many companies are in the S&P 500?”, „Who's your broker?”), jak w filmikach z „traderami” z Miami. Gracz ma 3 odpowiedzi do wyboru i wszystkie są głupie („5.”, „California”, „Gary from the gym”). Napisy pojawiają się litera po literze i zostają chwilę na ekranie, a odpowiedzi wyskakują dopiero, gdy pytanie jest napisane. Na wybór jest ok. 6–7 s (w ostatnich 3 s tyka zegar). Gracz wybiera kliknięciem albo klawiszem 1–3, a gdy czas minie, mówi „Uhh...” i losową odpowiedź. Studio reaguje na 4 sposoby: dramatyczne zbliżenie na prowadzącego z „vine boom”, śmiech publiczności (3 wersje), niezręczna cisza ze świerszczami albo „bruh”. Przez cały program gra muzyka talk show (przy reakcjach na chwilę ciszej). Po prawej leci czat z komentarzami (zawsze nad przyciskami z odpowiedziami, także w małym oknie Studio; gdy miejsca jest mało, czat jest niższy), z rogu wylatują emoji, a licznik wyświetleń skacze po każdej odpowiedzi. Zwykle są 3 pytania, a przy szybkich odpowiedziach 4 i pożegnanie gracza („Not financial advice!” → „Clearly.”). Na koniec klip idzie do sieci („whoosh”), czat komentuje wynik i wyskakuje ocena, np. MEGA VIRAL! ×4 (przy FLOP smutna trąbka). Wywiad trwa 45 s (wcześniej 25 s, było za szybko), a nagroda wzrosła tak, że LP na minutę zostały takie same. Ocenę losuje serwer na starcie, więc odpowiedzi jej nie zmieniają: są dla zabawy (inaczej każdy klikałby „najlepszą” i zawsze miał Mega viral, a to rozwaliłoby ekonomię). Okno przy studiu pokazuje nagrodę od–do i szanse ocen.
 - **Jacht:** stoisz na pokładzie swojego jachtu i tańczysz, gra muzyka, jacht lekko się kołysze (Ty razem z nim), migają kolorowe światła, spada konfetti, a co kilka sekund ktoś robi zdjęcie (flesz z migawką). Kamera co ok. 4 s zmienia ujęcie jak w teledysku: plan ogólny, Ty z bliska, nisko od wody przy dziobie, zza pleców w stronę lądu, z drona i jazda wzdłuż burty. Kamera stoi zawsze po stronie lądu (tam, skąd przyszedłeś), więc nie wylatuje poza mapę. Na sam koniec trąbka i wybuch konfetti, a po zaciemnieniu oklaski.
 - **Odrzutowiec:** w kabinie „ding”, gra muzyka do lotu, silnik rozkręca się (od 30% do pełnej głośności), samolot rusza po pasie (seria zdjęć przy starcie), startuje i leci wśród chmur: pod spodem, po bokach i czasem na trasie, a wtedy ekran na chwilę bieleje jak w chmurze. W locie co kilka sekund jest zdjęcie. Leci lokalna kopia samolotu (tylko u Ciebie), bo przy StreamingEnabled Roblox usuwał prawdziwy, gdy odleciał daleko od postaci. Twoje pety lecą z Tobą (na pasie ich nie widać). Bez odrzutowca okno pokazuje BUY.
 
@@ -201,7 +201,7 @@ W czasie sesji tablice aktywności i pigułki z cenami jajek są schowane, żeby
 | Co | Nazwa | Uwagi |
 | --- | --- | --- |
 | Studio | model `InterviewSpot` w strefie 3 | W środku część `Pose` (tu stoi gość). Punkt obrotu (pivot) modelu na środku sceny, przodem do widowni: według niego ustawiają się kamery. |
-| Jachty | model `YachtSpot` w strefie 4, w nim `Yacht1` … `Yacht5` | Jachty w tym samym miejscu na wodzie; w każdym może być własna `Pose` na pokładzie. Bez niej gracz stoi na `Pose` miejsca (np. na pomoście). |
+| Jachty | model `YachtSpot` w strefie 4, w nim `Yacht1` … `Yacht5` | Jachty w tym samym miejscu na wodzie; w każdym może być własna `Pose` na pokładzie. Bez niej gracz stoi na `Pose` miejsca (np. na pomoście). Gracz staje na widocznym pokładzie pod `Pose` (jachty z innych tierów się nie liczą), a w czasie sesji nie skacze i nie „spada”, więc nie wisi nad pokładem, nawet gdy pokład nie ma kolizji. |
 | Odrzutowce | model `JetSpot` w strefie 5, w nim `Jet1` … `Jet3` i `Pose` | Punkt obrotu każdego odrzutowca przodem w stronę dziobu: w tę stronę samolot startuje, więc przed nim musi być pas. |
 | Tablica | część `SignAnchor` (niewidoczna) w dowolnym miejscu | Tablica z nazwą i nagrodą wisi nad nią. Bez niej wisi nad największą częścią miejsca. |
 
@@ -227,7 +227,7 @@ Jeszcze nie ma: tytułu „Secret Society” za komplet 5 sekretów i rankingu �
 
 Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania podbijają LP: za klik i w aktywnościach (pety podbijają L$).
 
-- **Mystery boxy w Mall.** Wszystkie trzy stoją w Mall, ale Designer da się kupić dopiero po odblokowaniu plaży, a Iced po odblokowaniu lotniska (wtedy pigułka pokazuje kłódkę i nazwę strefy). Działa jak przy jajkach: pigułka z ceną, panel z szansami nad boxem, duże E na boxie i okno kupna z Buy 1 i Buy 3. Buy 3 otwiera trzy boxy naraz z tym samym gamepassem Triple Open co przy jajkach (w teście `/pass TripleOpen`). Animacja: boxy drżą 3 razy, wieka odlatują, a ze środka wyskakują ubrania z promieniami w kolorze rzadkości i lecą do kafelka CLOTHES.
+- **Mystery boxy w Mall.** Wszystkie trzy stoją w Mall, ale Designer da się kupić dopiero po odblokowaniu plaży, a Iced po odblokowaniu lotniska (wtedy pigułka pokazuje kłódkę i nazwę strefy). Działa jak przy jajkach: pigułka z ceną, panel z szansami nad boxem, duże E na boxie i okno kupna z Buy 1 i Buy 3 (jak okno jajka, z napisem „1 random item from 7 categories”; bonusu do LP w oknie nie ma, gracz dowiaduje się go po otwarciu). Buy 3 otwiera trzy boxy naraz z tym samym gamepassem Triple Open co przy jajkach (w teście `/pass TripleOpen`). Animacja: boxy drżą 3 razy, wieka odlatują, a ze środka wyskakują ubrania z promieniami w kolorze rzadkości i lecą do kafelka CLOTHES.
 
 | Box | Cena | Kiedy | Szanse |
 | --- | --- | --- | --- |
@@ -240,7 +240,7 @@ Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania pod
 - **7 kategorii po 1 slocie:** Hair, Glasses, Chain, Watch, Shirt, Pants, Shoes. Kategoria wypada losowo (każda tak samo często). Gamepassy Double Chain i Double Wrist dają drugi łańcuch i drugi zegarek (w teście `/pass DoubleChain`, `/pass DoubleWrist`). Bonus do LP: Common +20%, Uncommon +40%, Rare +80%, Epic +160%, Legendary +320%, Mythic +640%, a Golden ×2 i Diamond ×4. Bonusy założonych ubrań się dodają, np. Rare łańcuch i Epic włosy dają ×3,4 LP. Nowe ubranie samo się zakłada, jeśli w jego kategorii jest wolne miejsce albo jest lepsze od tego, co masz na sobie. Szczęście (Luck z Aury) działa na boxy tak jak na jajka.
 - **Na awatarze:** ubrania widzą wszyscy gracze. Dopóki nie ma rzeczy z katalogu Roblox, są zbudowane z klocków: włosy, okulary, łańcuch na szyi, zegarek na lewym nadgarstku (drugi na prawym), koszula z rękawami, spodnie albo szorty i buty. Działa na R15 i R6. Włosy z gry chowają Twoje włosy. Przycisk AVATAR ON/OFF w oknie chowa ubrania z gry (bonus zostaje).
 - **Okno CLOTHES** (nowy kafelek po lewej): po lewej 7 kategorii z tym, co masz na sobie (kliknij kategorię, żeby zobaczyć tylko jej ubrania), po prawej wszystkie ubrania. Kliknij ubranie, żeby je założyć (zastępuje to z tej samej kategorii) albo zdjąć. WEAR BEST zakłada najlepsze. SELL i MERGE działają jak u petów: sprzedaż za 10% ceny boxa (Common–Epic liczą się od Street, Legendary od Designer, Mythic od Iced; Golden ×5, Diamond ×25), łączenie 1–5 identycznych ubrań po 20% szansy z tym samym oknem i animacją. Ubrania kupione za Robuxy (np. zegarek ze Starter Packa) łączą się tylko przy 100%.
-- **Menu po lewej:** kafelki są w siatce 2×2 jak w Pet Simulator 99 (SELL, UPGRADES, a pod nimi PETS, CLOTHES), a przełączniki Auto-Click i Auto-Sell obok siebie pod siatką. W jednej kolumnie CLOTHES wchodził na licznik L$. Szary przycisk „<” na prawo od siatki chowa całe menu za lewą krawędź ekranu (zostaje sam przycisk „>”, który je przywraca). Gra pamięta wybór w zapisie. Pety i ubrania z jajek, boxów i łączenia lecą wtedy do przycisku „>”.
+- **Menu po lewej:** kafelki są w siatce 2×2 jak w Pet Simulator 99 (SELL, UPGRADES, a pod nimi PETS, CLOTHES), a przełączniki AUTO CLICK i AUTO SELL obok siebie pod siatką. W jednej kolumnie CLOTHES wchodził na licznik L$. Przełączniki widać zawsze: bez gamepassa są szare z kłódką, a kliknięcie odmawia („Auto Click gamepass is coming soon!”); okno kupna gamepassa dojdzie w Etapie 10. Biały znak „<” (bez tła) na prawo od siatki chowa całe menu za lewą krawędź ekranu (zostaje sam „>”, który je przywraca). Gra pamięta wybór w zapisie. Pety i ubrania z jajek, boxów i łączenia lecą wtedy do „>”.
 
 **Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia 3 pudełka na podłodze Mall, po tej samej stronie ścieżki co jajka, dalej w głąb strefy.
 
@@ -259,12 +259,12 @@ Do testu: `/zone 5` (żeby kupić każdy box), `/cash 100B`, `/pass TripleOpen` 
 
 Zasady są z dokumentu projektu (etap „Rebirth i Aura”), a liczby z arkusza ekonomii (opłaty, mnożniki, tytuły, koszty w sklepie Aury).
 
-- **Rebirth** robi się przy portalu na lotnisku (strefa 5), gdy masz wszystkie strefy i L$ na opłatę: Rebirth 1 kosztuje 40T, Rebirth 10 kosztuje 750Qa. Duże E otwiera okno: tytuł teraz → po Rebirthie, co dostajesz (mnożnik LP, Aura, +5% szybkości, od R3 i R7 dodatkowy slot na peta), co się zeruje i co zostaje. Przycisk REBIRTH pyta jeszcze „Rebirth now?”.
+- **Rebirth** robi się przy portalu na lotnisku (strefa 5), gdy masz wszystkie strefy i L$ na opłatę: Rebirth 1 kosztuje 40T, Rebirth 10 kosztuje 750Qa. Duże E otwiera okno: tytuł teraz → po Rebirthie, co dostajesz (mnożnik LP, Aura, +5% szybkości, od R3 i R7 dodatkowy slot na peta), co się zeruje i co zostaje. Okno ma tyle wysokości, ile nagród (bez pustego miejsca), a napis nad portalem znika, gdy okno jest otwarte. Przycisk REBIRTH pyta jeszcze „Rebirth now?”.
 - **Co się zeruje:** L$, Bag, Click Multiplier i Bag, strefy oraz auta, jachty i odrzutowce. **Co zostaje:** pety, ubrania, indeks, Aura, sklep Aury i zakupy za Robuxy.
 - **Co dostajesz:** mnożnik LP ×2 po R1, ×3, ×4, ×5, ×7, ×10, ×13, ×16, ×20 i ×25 po R10, tytuł nad głową (Broke → Wannabe → Fake Rich → Influencer → Main Character → Self-Made → Trust Fund → Old Money → Yacht Club → Jet Set → Certified Larper) i +5% szybkości chodzenia za poziom.
 - **Animacja:** promienie, „REBIRTH!”, nowy tytuł, mnożnik LP i „+X AURA”. Potem ekran ciemnieje, gra przenosi Cię na spawn w Downtown i ekran jaśnieje.
 - **Po R10** licznik Rebirthów dalej rośnie (ranking), ale bez nowego mnożnika i tytułu. Każdy kolejny daje 1 000 Aury, a opłata rośnie o 25%.
-- **Aura** to druga waluta. Licznik (fioletowy, nad L$) pojawia się dopiero po Rebirth 1. Aurę dają Rebirthy (100 × nowy poziom: R1 = 100, R10 = 1 000) i pasek pod licznikiem: każde 10 minut aktywności (auto, wywiad, jacht, odrzutowiec) to +10 Aury, a wywiad napełnia go 2× szybciej. Klikanie się nie liczy, więc Auto-Click nie farmi Aury. Zadania dzienne dojdą w etapie z nagrodami.
+- **Aura** to druga waluta (ikona 🔥). Licznik (fioletowy, nad L$) pojawia się dopiero po Rebirth 1, a Aurę widać też w tabeli graczy (Tab). Aurę dają Rebirthy (100 × nowy poziom: R1 = 100, R10 = 1 000) i pasek pod licznikiem: każde 10 minut aktywności (auto, wywiad, jacht, odrzutowiec) to +10 Aury, a wywiad napełnia go 2× szybciej. Klikanie się nie liczy, więc Auto-Click nie farmi Aury. Niebieskie „i” za paskiem pokazuje to w dymku tuż nad nim (po najechaniu myszą; kliknięcie przypina dymek na kilka sekund). Zadania dzienne dojdą w etapie z nagrodami.
 - **Sklep Aury** to fioletowy kryształ przy spawnie, obok Sell. Działa od Rebirth 1, a wcześniej nad nim jest kłódka. Ma 4 ulepszenia, każde z BUY 1 i BUY MAX:
 
 | Ulepszenie | Efekt za poziom | Limit | Koszt 1. poziomu | Każdy kolejny |
@@ -274,17 +274,17 @@ Zasady są z dokumentu projektu (etap „Rebirth i Aura”), a liczby z arkusza 
 | Aura Gain | +5% Aury ze wszystkich źródeł | brak | 250 | +15% |
 | Merge Luck | +1 pkt proc. szansy na każdy pet albo ubranie przy łączeniu | 5 poziomów | 200, 400, 800, 1 500, 3 000 | — |
 
-- **Aura Level** to suma poziomów w sklepie. Widać go nad głową obok tytułu (fioletowa liczba). Od Aura Level 10 wokół awatara pojawia się poświata (iskry i światło): biała od 10, niebieska od 25, fioletowa od 50, złota od 75, czerwona od 100 i tęczowa od 150. Napisy nad głowami i poświatę widzą wszyscy gracze. W czasie aktywności napisy są schowane.
+- **Aura Level** to suma poziomów w sklepie. Widać go nad głową obok tytułu (fioletowa plakietka z ogniem). Tytuł ma gradient, cień i od R1 przesuwający się połysk. Napis wisi tuż nad głową, ma rozmiar jak rzecz w świecie (z daleka jest mały) i widać go z ok. 40 studs. Nad innymi graczami pod tytułem jest ich nick (zwykły napis Roblox z nickiem chowamy, żeby się nie nakładały). Od Aura Level 10 wokół awatara pojawia się poświata (iskry i światło): biała od 10, niebieska od 25, fioletowa od 50, złota od 75, czerwona od 100 i tęczowa od 150. Iskry idą razem z postacią, więc przy szybkim chodzeniu nie zostaje za nią smuga. Napisy nad głowami i poświatę widzą wszyscy gracze. W czasie aktywności napisy są schowane.
 
-**Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia portal Rebirth (złoty pierścień z fioletową taflą) w strefie 5, po tej samej stronie ścieżki co jajka, 30 studs w głąb strefy, oraz kryształ sklepu Aury 10 studs obok pola Sell.
+**Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia portal Rebirth w strefie 5, po tej samej stronie ścieżki co jajka, 30 studs w głąb strefy (dwupoziomowy cokół ze złotą obwódką, filary ze złotymi kulami, złoty pierścień z fioletowym wnętrzem, tafla w trzech warstwach, iskry i światło), oraz kryształ sklepu Aury 10 studs obok pola Sell.
 
 **Twoje stoiska.**
 
 | Co | Nazwa | Uwagi |
 | --- | --- | --- |
-| Portal Rebirth | `RebirthSpot` (model albo część) | W strefie 5. Napis „REBIRTH” z następnym tytułem wisi nad najwyższym punktem, E na środku. |
+| Portal Rebirth | `RebirthSpot` (model albo część) | W strefie 5. Napis „REBIRTH” z następnym tytułem wisi nad najwyższym punktem (widać go z ok. 45 studs i z daleka jest mały), E na środku. |
 | Sklep Aury | `AuraShop` (model albo część) | Przy spawnie, obok pola Sell. |
-| Ikony | `Settings.Ui.Icons`: `Aura`, `Rebirth`, `Luck`, `Merge`, `Speed` | Bez nich są emoji 🔮 🔄 🍀 🧬 👟. |
+| Ikony | `Settings.Ui.Icons`: `Aura`, `Rebirth`, `Luck`, `Merge`, `Speed` | `Rebirth` to już Twoja ikona 18367579979. Bez własnych są emoji 🔥 🍀 🧬 👟. |
 
 Do testu: `/zone 5` i `/cash 1Qi`, a potem REBIRTH przy portalu. Rebirth zeruje L$ i strefy, więc przed kolejnym znowu `/zone 5` i `/cash 1Qi` (albo `/rb`, czyli Rebirth od razu, bez opłaty i bez portalu, z animacją i teleportem). Dalej `/aurabar 10` (pełny pasek, +10 Aury), `/aura 50000` (dużo Aury na sklep), `/auraup clickboost 150` (od razu Aura Level 150 i tęczowa poświata) i `/rebirth 10` (od razu R10, bez resetu). Całą grę od zera do R10 i dalej przejdziesz tak w kilka minut.
 

@@ -8,6 +8,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
@@ -58,6 +59,15 @@ local TEXT = {
 	AuraPop = "+%s AURA", -- pasek Aury się napełnił
 	AutoClickOn = "AUTO CLICK",
 	AutoSellOn = "AUTO SELL",
+	AutoClickName = "Auto Click",
+	AutoSellName = "Auto Sell",
+	PassSoon = "%s gamepass is coming soon!", -- przełącznik bez gamepassa (kupno dojdzie później)
+	AuraInfoTitle = "AURA BAR",
+	AuraInfo1 = "Fills up while you do activities",
+	AuraInfo2 = "(cars, interviews, yachts, jets).",
+	AuraInfo3 = "Full bar:", -- potem „+10” i ikona Aury
+	AuraInfo4 = "Interviews fill it 2× faster.",
+	AuraInfo5 = "Clicking doesn't count.",
 }
 
 ----------------------------------------------------------------- Skala UI
@@ -369,14 +379,14 @@ function Hud.start()
 		textSize = 21,
 	})
 	local upgradesPulse = makePulser(Kit.new("UIScale", { Parent = upgradesTile.body }))
-	-- przełączniki gamepassów pod siatką, obok siebie (bez gamepassów cały rząd znika)
+	-- przełączniki gamepassów pod siatką, obok siebie. Widać je zawsze: bez gamepassa są szare
+	-- z kłódką i po kliknięciu odmawiają (kupno gamepassa dojdzie w etapie z Robuxami).
 	local autoFrame = Kit.new("Frame", {
 		Name = "AutoToggles",
 		LayoutOrder = 2,
 		Size = UDim2.fromOffset(MENU_WIDTH, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Visible = false,
 		Parent = left,
 	})
 	Kit.new("UIListLayout", {
@@ -385,46 +395,84 @@ function Hud.start()
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = autoFrame,
 	})
-	local autoClickButton = Kit.button(autoFrame, {
-		name = "AutoClick",
-		size = Vector2.new(MENU_TILE.X, 40),
-		text = TEXT.AutoClickOn,
-		colors = Theme.Gradients.Gray,
-		radius = 14,
-		edge = 4,
-		textSize = 16,
-		textStroke = 2.5,
-		order = 10,
-	})
-	autoClickButton.holder.Visible = false
-	local autoSellButton = Kit.button(autoFrame, {
-		name = "AutoSell",
-		size = Vector2.new(MENU_TILE.X, 40),
-		text = TEXT.AutoSellOn,
-		colors = Theme.Gradients.Gray,
-		radius = 14,
-		edge = 4,
-		textSize = 16,
-		textStroke = 2.5,
-		order = 11,
-	})
-	autoSellButton.holder.Visible = false
+	local function autoToggle(name, text, order)
+		local b = Kit.button(autoFrame, {
+			name = name,
+			size = Vector2.new(MENU_TILE.X, 40),
+			text = text,
+			colors = Theme.Gradients.Gray,
+			radius = 14,
+			edge = 4,
+			textSize = 16,
+			textStroke = 2.5,
+			order = order,
+			sound = false, -- dźwięk zależy od tego, czy gracz ma gamepass (klik albo odmowa)
+		})
+		-- kłódka w rogu, dopóki gracz nie ma gamepassa
+		b.lock = Icons.make("Lock", {
+			Name = "PassLock",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(1, -4, 0, 2),
+			Size = UDim2.fromOffset(24, 24),
+			Rotation = 10,
+			ZIndex = 8,
+			Parent = b.face,
+		})
+		return b
+	end
+	local autoClickButton = autoToggle("AutoClick", TEXT.AutoClickOn, 10)
+	local autoSellButton = autoToggle("AutoSell", TEXT.AutoSellOn, 11)
+	-- z gamepassem: niebieski = włączony, szary = wyłączony; bez gamepassa szary z kłódką
+	local function renderAuto(b, owned, on)
+		b.lock.Visible = not owned
+		if owned and on then
+			b.setColors(Theme.Gradients.Cyan)
+		else
+			b.setColors(Theme.Gradients.Gray)
+		end
+		b.label.TextTransparency = (owned and 0) or 0.2
+	end
 
 	-- Przycisk „<” na prawo od siatki chowa menu za lewą krawędź ekranu; zostaje sam przycisk „>”,
-	-- który je przywraca. Wybór zapisuje się w zapisie gracza (Settings.HideMenu).
+	-- który je przywraca. Wybór zapisuje się w zapisie gracza (Settings.HideMenu). Bez tła: sam
+	-- biały znak z obrysem.
 	local GRID_HEIGHT = 2 * MENU_TILE.Y + MENU_GAP.Y
-	local menuToggle = Kit.button(menuRoot, {
-		name = "MenuToggle",
-		size = TOGGLE_SIZE,
-		text = "<",
-		colors = Theme.Gradients.Gray,
-		radius = 14,
-		edge = 4,
-		textSize = 30,
-		textStroke = 3,
-		anchor = Vector2.new(0, 0.5),
-		position = UDim2.fromOffset(MENU_WIDTH + TOGGLE_GAP, GRID_HEIGHT / 2),
+	local menuToggle = {}
+	menuToggle.holder = Kit.new("Frame", {
+		Name = "MenuToggle",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(MENU_WIDTH + TOGGLE_GAP, GRID_HEIGHT / 2),
+		Size = UDim2.fromOffset(TOGGLE_SIZE.X, TOGGLE_SIZE.Y),
+		BackgroundTransparency = 1,
+		Parent = menuRoot,
 	})
+	menuToggle.body = Kit.new("TextButton", {
+		Name = "Body",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		AutoButtonColor = false,
+		Font = Theme.Font,
+		Text = "<",
+		TextSize = 48,
+		TextColor3 = Theme.White,
+		Parent = menuToggle.holder,
+	})
+	Kit.stroke(menuToggle.body, 4.5)
+	menuToggle.Activated = menuToggle.body.Activated
+	function menuToggle.setText(text)
+		menuToggle.body.Text = text
+	end
+	menuToggle.body.MouseEnter:Connect(function()
+		menuToggle.body.TextColor3 = Theme.GoldText
+	end)
+	menuToggle.body.MouseLeave:Connect(function()
+		menuToggle.body.TextColor3 = Theme.White
+	end)
+	menuToggle.Activated:Connect(function()
+		Sounds.play("Button")
+	end)
 	local toggleScale = Kit.new("UIScale", { Parent = menuToggle.body })
 	local menuHidden = false
 	local menuSettingLoaded = false
@@ -544,6 +592,119 @@ function Hud.start()
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, { maxSize = 18, stroke = 2.5, gradient = Theme.Gradients.Aura })
 	local auraShown = false
+
+	-- „i” za paskiem: dymek z opisem paska tuż nad „i” (po najechaniu myszą; kliknięcie go przypina,
+	-- na telefonie dotknięcie). Dymek jest w grupie Aury, więc stoi przy „i” i ma tę samą skalę.
+	auraGroup.ZIndex = 4 -- dymek nad menu po lewej
+	local INFO_SIZE = 22
+	local auraInfo = Kit.new("TextButton", {
+		Name = "AuraInfo",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(262, 47),
+		Size = UDim2.fromOffset(INFO_SIZE, INFO_SIZE),
+		BackgroundColor3 = Theme.White,
+		BorderSizePixel = 0,
+		AutoButtonColor = false,
+		Text = "",
+		ZIndex = 3,
+		Parent = auraInner,
+	})
+	Kit.corner(auraInfo, INFO_SIZE / 2)
+	Kit.gradient(auraInfo, Theme.Gradients.Cyan, 90)
+	Kit.stroke(auraInfo, 2.5, Enum.ApplyStrokeMode.Border)
+	local auraInfoLetter = Kit.new("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Font = Theme.Font,
+		Text = "i",
+		TextSize = 17,
+		TextColor3 = Theme.White,
+		ZIndex = 4,
+		Parent = auraInfo,
+	})
+	Kit.stroke(auraInfoLetter, 2)
+	local TIP_WIDTH = 320
+	local TIP_ROW = 22
+	local auraTip = Kit.new("Frame", {
+		Name = "AuraTip",
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.fromOffset(262 - 26, 47 - INFO_SIZE / 2 - 12),
+		Size = UDim2.fromOffset(TIP_WIDTH, 24 + 30 + 5 * TIP_ROW),
+		BackgroundColor3 = Theme.White,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 10,
+		Parent = auraInner,
+	})
+	Kit.corner(auraTip, 16)
+	Kit.stroke(auraTip, 3, Enum.ApplyStrokeMode.Border)
+	Kit.gradient(auraTip, Theme.Gradients.Panel, 90)
+	-- dzióbek w dół, nad „i”
+	Kit.new("Frame", {
+		Name = "Tip",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 26 + INFO_SIZE / 2, 1, 0),
+		Size = UDim2.fromOffset(16, 16),
+		Rotation = 45,
+		BackgroundColor3 = Theme.White,
+		BorderSizePixel = 0,
+		ZIndex = 9,
+		Parent = auraTip,
+	})
+	local function tipLine(y, height)
+		local l = Kit.line(auraTip, { anchor = Vector2.new(0, 0.5), position = UDim2.fromOffset(14, y), height = height })
+		l.holder.ZIndex = 11
+		return l
+	end
+	tipLine(12 + 15, 30).set({ { text = TEXT.AuraInfoTitle, size = 24, colors = Theme.Gradients.Aura } })
+	local dark = function(text)
+		return { text = text, size = 17, color = Theme.Dark, stroke = 0 }
+	end
+	tipLine(42 + TIP_ROW * 0.5 + 4, TIP_ROW).set({ dark(TEXT.AuraInfo1) })
+	tipLine(42 + TIP_ROW * 1.5 + 4, TIP_ROW).set({ { text = TEXT.AuraInfo2, size = 17, color = Theme.Muted, stroke = 0 } })
+	local tipReward = tipLine(42 + TIP_ROW * 2.5 + 4, TIP_ROW)
+	tipLine(42 + TIP_ROW * 3.5 + 4, TIP_ROW).set({ dark(TEXT.AuraInfo4) })
+	tipLine(42 + TIP_ROW * 4.5 + 4, TIP_ROW).set({ { text = TEXT.AuraInfo5, size = 17, color = Theme.Muted, stroke = 0 } })
+	local tipPinned = false
+	local tipToken = 0
+	local function showTip(on)
+		auraTip.Visible = on
+	end
+	auraInfo.MouseEnter:Connect(function()
+		showTip(true)
+	end)
+	auraInfo.MouseLeave:Connect(function()
+		if not tipPinned then
+			showTip(false)
+		end
+	end)
+	auraInfo.Activated:Connect(function()
+		Sounds.play("Button")
+		tipPinned = not tipPinned
+		showTip(tipPinned)
+		tipToken = tipToken + 1
+		local token = tipToken
+		if tipPinned then
+			-- przypięty dymek sam znika po chwili
+			task.delay(6, function()
+				if token == tipToken and tipPinned then
+					tipPinned = false
+					showTip(false)
+				end
+			end)
+		end
+	end)
+	local function setAuraReward(text)
+		auraBarLabel.Text = text
+		-- „i” zaraz za nagrodą za pasek
+		auraInfo.Position = UDim2.fromOffset(226 + math.ceil(Kit.measure(text, 18).X) + 8, 47)
+		auraTip.Position = UDim2.fromOffset(auraInfo.Position.X.Offset - 26, 47 - INFO_SIZE / 2 - 12)
+		tipReward.set({
+			dark(TEXT.AuraInfo3),
+			{ text = text, size = 19, colors = Theme.Gradients.Aura },
+			{ icon = "Aura", size = 20 },
+		})
+	end
 
 	----------------------------------------------------------------- Pasek Bag na dole pośrodku
 	-- W pasku: zapełnienie Bag na środku wolnego miejsca i „+X / click” przy prawym końcu.
@@ -1116,14 +1277,11 @@ function Hud.start()
 			upgradesTile.badge.set(nil)
 		end
 
-		-- Przełączniki gamepassów
+		-- Przełączniki gamepassów (zawsze widoczne; bez gamepassa szare z kłódką)
 		local passes = view.Passes or {}
 		local settings = view.Settings or {}
-		autoClickButton.holder.Visible = passes.AutoClick == true
-		autoClickButton.setColors(settings.AutoClick and Theme.Gradients.Cyan or Theme.Gradients.Gray)
-		autoSellButton.holder.Visible = passes.AutoSell == true
-		autoSellButton.setColors(settings.AutoSell and Theme.Gradients.Cyan or Theme.Gradients.Gray)
-		autoFrame.Visible = passes.AutoClick == true or passes.AutoSell == true
+		renderAuto(autoClickButton, passes.AutoClick == true, settings.AutoClick == true)
+		renderAuto(autoSellButton, passes.AutoSell == true, settings.AutoSell == true)
 		-- schowane menu z zapisu tylko przy wejściu; potem decyduje przycisk (bez czekania na serwer)
 		if not menuSettingLoaded then
 			menuSettingLoaded = true
@@ -1147,7 +1305,7 @@ function Hud.start()
 			local progress = math.clamp((view.AuraBar or 0) / Economy.Aura.BarSeconds, 0, 1)
 			auraFill.Size = UDim2.fromScale(progress, 1)
 			local gainLevel = (view.AuraUpgrades and view.AuraUpgrades.AuraGain) or 0
-			auraBarLabel.Text = "+" .. Format.number(math.floor(Economy.Aura.BarReward * Formulas.auraGain(gainLevel) + 1e-9))
+			setAuraReward("+" .. Format.number(math.floor(Economy.Aura.BarReward * Formulas.auraGain(gainLevel) + 1e-9)))
 		end
 
 		testHolder.Visible = view.IsAdmin == true
@@ -1215,17 +1373,41 @@ function Hud.start()
 		end)
 	end)
 
-	autoClickButton.Activated:Connect(function()
-		local settings = lastView and lastView.Settings
-		if settings ~= nil then
-			Net.event("SetSetting"):FireServer("AutoClick", not settings.AutoClick)
+	-- Bez gamepassa przycisk odmawia: dźwięk, potrząśnięcie i komunikat. Gdy gamepass będzie miał ID
+	-- (Economy.Robux.Gamepasses), zamiast tego otworzy się okno kupna.
+	local function needPass(button, key, name)
+		local pass = Economy.Robux.Gamepasses[key]
+		local id = pass and pass.Id
+		if type(id) == "number" and id > 0 then
+			Sounds.play("Button")
+			pcall(function()
+				MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, id)
+			end)
+			return
 		end
+		Sounds.play("NotEnough")
+		Kit.shake(button.body) -- holder ustawia lista (UIListLayout), więc potrząsamy środkiem przycisku
+		textToast(string.format(TEXT.PassSoon, name), Theme.Gradients.Gold, "AutoPass")
+	end
+	local function toggleAuto(button, key, name)
+		local view = lastView
+		if view == nil then
+			return
+		end
+		local passes = view.Passes or {}
+		if passes[key] ~= true then
+			needPass(button, key, name)
+			return
+		end
+		Sounds.play("Button")
+		local settings = view.Settings or {}
+		Net.event("SetSetting"):FireServer(key, not settings[key])
+	end
+	autoClickButton.Activated:Connect(function()
+		toggleAuto(autoClickButton, "AutoClick", TEXT.AutoClickName)
 	end)
 	autoSellButton.Activated:Connect(function()
-		local settings = lastView and lastView.Settings
-		if settings ~= nil then
-			Net.event("SetSetting"):FireServer("AutoSell", not settings.AutoSell)
-		end
+		toggleAuto(autoSellButton, "AutoSell", TEXT.AutoSellName)
 	end)
 
 	----------------------------------------------------------------- Zdarzenia

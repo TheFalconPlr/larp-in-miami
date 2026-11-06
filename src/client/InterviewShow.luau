@@ -382,16 +382,43 @@ function InterviewShow.create(hud, layer)
 	end
 
 	------------------------------------------------------------- Czat po prawej (jak na transmisji na żywo)
+	-- Dół czatu jest zawsze nad przyciskami z odpowiedziami (na niskim ekranie, np. w małym oknie
+	-- Studio, czat schodził na prawą odpowiedź). Góra nie wyżej niż FEED_TOP od góry ekranu; gdy
+	-- miejsca jest mało, czat jest niższy, a starsze komentarze chowają się za jego górną krawędzią.
+	local FEED_WIDTH, FEED_HEIGHT = 320, 270
+	local FEED_TOP = 96 -- piksele ekranu od góry (pod przyciskami w prawym górnym rogu)
+	local FEED_GAP = 12 -- odstęp czatu od przycisków (piksele bazowe)
+	local ANSWERS_TOP = 290 - 79 -- góra przycisków odpowiedzi w okienku (wysokość 74 + krawędź 5)
+	local holderHeight = holder.Size.Y.Offset
 	local feed = Kit.new("Frame", {
 		Name = "InterviewChat",
-		AnchorPoint = Vector2.new(1, 0),
-		Position = UDim2.new(1, -14, 0, 96),
-		Size = UDim2.fromOffset(320, 270),
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -14, 0, FEED_TOP + FEED_HEIGHT),
+		Size = UDim2.fromOffset(FEED_WIDTH, FEED_HEIGHT),
 		BackgroundTransparency = 1,
+		ClipsDescendants = true,
 		Visible = false,
 		Parent = hud.gui,
 	})
 	local feedScale = hud.registerScale(feed)
+	local holderScale = holder:FindFirstChildOfClass("UIScale")
+	local function placeFeed()
+		local s = feedScale.Scale
+		local screenHeight = hud.gui.AbsoluteSize.Y
+		if s <= 0 or screenHeight <= 0 then
+			return
+		end
+		-- holder stoi 30 px nad dołem ekranu i rośnie w górę od dołu (AnchorPoint 0.5, 1)
+		local hs = (holderScale and holderScale.Scale) or s
+		local answersTop = screenHeight - 30 - (holderHeight - ANSWERS_TOP) * hs
+		local bottom = answersTop - FEED_GAP * s
+		local height = math.clamp((bottom - FEED_TOP) / s, 0, FEED_HEIGHT)
+		feed.Size = UDim2.fromOffset(FEED_WIDTH, height)
+		feed.Position = UDim2.new(1, -14, 0, bottom)
+	end
+	hud.gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeFeed)
+	feedScale:GetPropertyChangedSignal("Scale"):Connect(placeFeed)
+	placeFeed()
 	Kit.new("UIListLayout", {
 		Padding = UDim.new(0, 4),
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
@@ -600,6 +627,7 @@ function InterviewShow.create(hud, layer)
 		typing = nil
 		box.Visible = false
 		holder.Visible = true
+		placeFeed()
 		feed.Visible = true
 
 		local nextHeart = 0.8

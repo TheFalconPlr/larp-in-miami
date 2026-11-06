@@ -930,11 +930,8 @@ function Eggs.start(hud)
 		end
 		flash.BackgroundTransparency = 0
 		TweenService:Create(flash, TweenInfo.new(0.45, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
-		-- rozbicie: dwa pęknięcia naraz (niskie i wysokie) i dźwięk nowego peta
-		Sounds.play("Crack", { pitch = 0.82, volume = 1.3 })
-		task.delay(0.05, function()
-			Sounds.play("Crack", { pitch = 1.3, volume = 0.8 })
-		end)
+		-- rozbicie: tylko dźwięk nowego peta. Pękanie słychać przy trzech pęknięciach wcześniej; dźwięk
+		-- pęknięcia tutaj grał już przy widocznym pecie, jakby jajko pękało drugi raz.
 		Sounds.play("Hatch")
 		if secret then
 			Sounds.play("SecretReveal")

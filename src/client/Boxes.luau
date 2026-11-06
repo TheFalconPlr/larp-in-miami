@@ -79,8 +79,7 @@ local ULTRA_HOLD = 2.2
 local TEXT = {
 	Question = "Would you like to buy a\n%s?",
 	Buy = "Buy %d",
-	Random = "1 random item from 7 categories",
-	To = "to",
+	Random = "1 random item from %d categories",
 	Locked = "Unlock %s first",
 	Gamepass = "Gamepass",
 	NoPass = "Buy 3 needs the Triple Open gamepass",
@@ -494,9 +493,11 @@ function Boxes.start(hud)
 	end
 
 	------------------------------------------------------------- Okno kupna
+	-- Jak okno jajka: pytanie, box, pod nim „1 random item from 7 categories”, ceny i przyciski.
+	-- Bonusu do LP tu nie ma: gracz dowiaduje się, ile dostał, dopiero po otwarciu.
 	local dialog = Kit.panel(hud.gui, {
 		name = "BoxBuy",
-		size = Vector2.new(620, 500),
+		size = Vector2.new(620, 450),
 		title = "",
 		padding = 30,
 		top = 28,
@@ -508,7 +509,7 @@ function Boxes.start(hud)
 		Name = "Question",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, 0),
-		Size = UDim2.new(1, 0, 0, 104),
+		Size = UDim2.new(1, 0, 0, 100),
 		Text = "",
 		TextColor3 = Theme.Dark,
 		TextWrapped = true,
@@ -517,8 +518,8 @@ function Boxes.start(hud)
 	local boxView = Kit.new("ViewportFrame", {
 		Name = "Box",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 104),
-		Size = UDim2.fromOffset(200, 128),
+		Position = UDim2.new(0.5, 0, 0, 100),
+		Size = UDim2.fromOffset(200, 132),
 		BackgroundTransparency = 1,
 		Ambient = Color3.fromRGB(205, 205, 215),
 		LightColor = Color3.new(1, 1, 1),
@@ -526,17 +527,12 @@ function Boxes.start(hud)
 		Parent = dialog.content,
 	})
 	local infoLine = Kit.line(dialog.content, {
+		name = "Info",
 		anchor = Vector2.new(0.5, 0.5),
 		position = UDim2.new(0.5, 0, 0, 250),
 		height = 30,
 	})
 	infoLine.holder.ZIndex = 4
-	local rangeLine = Kit.line(dialog.content, {
-		anchor = Vector2.new(0.5, 0.5),
-		position = UDim2.new(0.5, 0, 0, 284),
-		height = 32,
-	})
-	rangeLine.holder.ZIndex = 4
 	local columns = {}
 	for i, count in ipairs({ 1, TRIPLE }) do
 		local x = 0.26
@@ -570,13 +566,7 @@ function Boxes.start(hud)
 			return
 		end
 		question.Text = string.format(TEXT.Question, boxName(current.box))
-		infoLine.set({ { text = TEXT.Random, size = 22, color = Theme.Dark, stroke = 0 } })
-		local list = raritiesOf(info)
-		rangeLine.set({
-			{ text = percentText(Formulas.clothBonus(list[1], 0)), size = 24, colors = Theme.Gradients.Gold },
-			{ text = TEXT.To, size = 22 },
-			{ text = percentText(Formulas.clothBonus(list[#list], 0)) .. " LP", size = 24, colors = Theme.Gradients.Gold },
-		})
+		infoLine.set({ { text = string.format(TEXT.Random, #Economy.Clothes.Categories), size = 24, color = Theme.Muted, stroke = 0 } })
 		local passes = view.Passes or {}
 		local open = unlocked(current.box)
 		for _, column in ipairs(columns) do

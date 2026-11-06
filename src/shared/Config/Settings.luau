@@ -44,6 +44,7 @@ local Settings = {
 			Sell = 131296908597094, -- raczej tymczasowa
 			Pets = 16697439145,
 			Clothes = 14002284211, -- kafelek i okno CLOTHES
+			Rebirth = 18367579979, -- okno Rebirth i napis nad portalem
 			SellCash = 120428722694490, -- banknoty lecące z paska Bag do licznika L$ przy sprzedaży
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.

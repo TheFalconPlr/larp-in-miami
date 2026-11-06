@@ -20,6 +20,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
 local Format = require(Shared.Format)
 local Net = require(Shared.Net)
+local Stand = require(Shared.Stand)
 local State = require(script.Parent.State)
 local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
@@ -808,6 +809,15 @@ function Activities.start(hud)
 	-- program wywiadu: okienko z pytaniami, odpowiedzi, czat i emoji (InterviewShow)
 	local interviewShow = InterviewShow.create(hud, reactionLayer)
 
+	-- Na czas sesji bez skoku i bez spadania: zakotwiczony gracz nad pokładem bez kolizji (np. jacht
+	-- z siatki bez CanCollide) wpadał w stan Freefall i miał animację spadania, jakby wisiał w powietrzu.
+	local function setSessionStates(humanoid, enabled)
+		pcall(function()
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, enabled)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, enabled)
+		end)
+	end
+
 	local function playEmote(name)
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
@@ -962,18 +972,12 @@ function Activities.start(hud)
 		end
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		-- gracz stoi na Pose jachtu dokładnie tak jak na serwerze (Pose + 3 studs) i kołysze się z jachtem
+		-- gracz stoi na pokładzie pod Pose jachtu dokładnie tak jak na serwerze (Shared/Stand: widoczna
+		-- podłoga pod znacznikiem i wysokość według awatara) i kołysze się z jachtem
 		local poseFrame = nil
 		local posePart = model and model:FindFirstChild("Pose", true)
 		if posePart ~= nil and posePart:IsA("BasePart") then
-			local ground = posePart.Position + Vector3.new(0, posePart.Size.Y / 2, 0)
-			local look = posePart.CFrame.LookVector
-			local flat = Vector3.new(look.X, 0, look.Z)
-			if flat.Magnitude < 0.1 then
-				flat = Vector3.new(0, 0, -1)
-			end
-			local position = ground + Vector3.new(0, 3, 0)
-			poseFrame = CFrame.lookAt(position, position + flat.Unit)
+			poseFrame = Stand.at(posePart, character)
 		end
 		local ride = nil
 		if poseFrame ~= nil and root ~= nil and model ~= nil then
@@ -1009,7 +1013,7 @@ function Activities.start(hud)
 				side = -side
 			end
 		end
-		local deckY = guest.Y - 3
+		local deckY = guest.Y - Stand.height(character)
 		local topY = mid.Y + size.Y / 2
 		local half = width / 2
 		local guestAlong = (guest - base):Dot(bow)
@@ -1501,7 +1505,7 @@ function Activities.start(hud)
 		-- bez skakania w czasie sesji (skok w chwili, gdy serwer stawia gracza, zostawiał go w powietrzu)
 		local sessionHumanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 		if sessionHumanoid ~= nil then
-			sessionHumanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+			setSessionStates(sessionHumanoid, false)
 		end
 		fadeTo(0, 0.3)
 		showCaption(kind, half)
@@ -1566,7 +1570,7 @@ function Activities.start(hud)
 		State.hidePets = false
 		setSignsHidden(false)
 		if sessionHumanoid ~= nil and sessionHumanoid.Parent ~= nil then
-			sessionHumanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+			setSessionStates(sessionHumanoid, true)
 		end
 		timerHolder.Visible = false
 		fadeTo(1, 0.35)
@@ -1602,7 +1606,7 @@ function Activities.start(hud)
 			end
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 			if humanoid ~= nil then
-				humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+				setSessionStates(humanoid, true)
 			end
 			State.hidePets = false
 			setSignsHidden(false)

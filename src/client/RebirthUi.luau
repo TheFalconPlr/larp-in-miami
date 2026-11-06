@@ -31,7 +31,13 @@ local RebirthUi = {}
 local STAND_TAG = "LarpRebirth" -- jak RebirthService.RebirthTag na serwerze
 local SHOW_DISTANCE = 10
 local HIDE_DISTANCE = 14
-local LABEL_HEIGHT = 1.4 -- napis nad portalem (studs nad jego czubkiem)
+-- Napis nad portalem: rozmiar w studs (Kit.worldFrame), więc z daleka jest mały, i widać go tylko
+-- z bliska (wcześniej miał stały rozmiar w pikselach i był widoczny ze 140 studs, przez co wyglądał
+-- na wielki).
+local LABEL_HEIGHT = 1.3 -- środek napisu nad czubkiem portalu (studs)
+local LABEL_DESIGN = Vector2.new(460, 60) -- piksele bazowe…
+local LABEL_PIXELS_PER_STUD = 56 -- …i tyle na stud: napis ma ok. 8 × 1 studs
+local LABEL_DISTANCE = 45 -- widać go z tylu studs od kamery
 local RAYS = 12
 
 local TEXT = {
@@ -101,6 +107,7 @@ function RebirthUi.start(hud)
 	local stands = {}
 	local current = nil -- najbliższy portal
 	local playing = false
+	local window = nil -- okno Rebirth (niżej); przy otwartym oknie napis nad portalem jest schowany
 
 	------------------------------------------------------------- Napis nad każdym portalem
 	local labels = {} -- [stoisko] = { gui, line }
@@ -122,21 +129,22 @@ function RebirthUi.start(hud)
 			{ text = TEXT.Label, size = 34, colors = Theme.Gradients.Gold },
 			{ text = Rebirth.title(nextLevel), size = 30, colors = titleColors(nextLevel) },
 		})
-		entry.gui.Enabled = part ~= nil and not playing and not State.busy
+		local windowOpen = window ~= nil and window.isOpen()
+		entry.gui.Enabled = part ~= nil and not playing and not State.busy and not windowOpen
 	end
 
 	local function makeLabel(stand)
 		local gui = Kit.new("BillboardGui", {
 			Name = "RebirthLabel",
-			Size = UDim2.fromOffset(460, 60),
 			LightInfluence = 0,
 			AlwaysOnTop = true,
-			MaxDistance = 140,
+			MaxDistance = LABEL_DISTANCE,
 			ResetOnSpawn = false,
 			Enabled = false,
 			Parent = playerGui,
 		})
-		local line = Kit.line(gui, { anchor = Vector2.new(0.5, 0.5), position = UDim2.fromScale(0.5, 0.5), height = 52 })
+		local frame = Kit.worldFrame(gui, LABEL_DESIGN, LABEL_PIXELS_PER_STUD)
+		local line = Kit.line(frame, { anchor = Vector2.new(0.5, 0.5), position = UDim2.fromScale(0.5, 0.5), height = 52 })
 		labels[stand] = { gui = gui, line = line }
 		updateLabel(stand)
 	end
@@ -214,14 +222,24 @@ function RebirthUi.start(hud)
 	end
 
 	------------------------------------------------------------- Okno Rebirth
-	local window = Kit.panel(hud.gui, {
+	-- Wysokość okna zależy od liczby nagród (2–4 rzędy), więc nie ma pustego miejsca na dole.
+	local WINDOW_WIDTH = 700
+	local WINDOW_TOP, WINDOW_BOTTOM = 44, 26
+	local REWARDS_TOP = 94 -- ramka z nagrodami (piksele od góry treści)
+	local REWARD_FIRST, REWARD_STEP, REWARD_ROWS = 31, 46, 4
+	local BELOW_REWARDS = 162 -- „Resets”, „Keeps”, opłata i przycisk pod ramką z nagrodami
+	local function windowHeight(rows)
+		local box = 2 * REWARD_FIRST + (rows - 1) * REWARD_STEP
+		return WINDOW_TOP + REWARDS_TOP + box + BELOW_REWARDS + WINDOW_BOTTOM
+	end
+	window = Kit.panel(hud.gui, {
 		name = "RebirthWindow",
-		size = Vector2.new(700, 560),
+		size = Vector2.new(WINDOW_WIDTH, windowHeight(REWARD_ROWS)),
 		title = TEXT.Title,
 		icon = "Rebirth",
 		padding = 30,
-		top = 44,
-		bottom = 26,
+		top = WINDOW_TOP,
+		bottom = WINDOW_BOTTOM,
 	})
 	hud.registerScale(window.holder)
 	hud.addPopup(window)
@@ -236,11 +254,11 @@ function RebirthUi.start(hud)
 		return l
 	end
 	local titleLine = line(28, 56)
-	local stepLine = line(74, 30)
+	local stepLine = line(72, 30)
 	local rewardsBox = Kit.new("Frame", {
 		Name = "Rewards",
-		Position = UDim2.fromOffset(0, 100),
-		Size = UDim2.new(1, 0, 0, 190),
+		Position = UDim2.fromOffset(0, REWARDS_TOP),
+		Size = UDim2.new(1, 0, 0, 2 * REWARD_FIRST + (REWARD_ROWS - 1) * REWARD_STEP),
 		BackgroundColor3 = Color3.fromRGB(243, 238, 255),
 		BorderSizePixel = 0,
 		ZIndex = 3,
@@ -249,17 +267,26 @@ function RebirthUi.start(hud)
 	Kit.corner(rewardsBox, 18)
 	Kit.stroke(rewardsBox, 2.5, Enum.ApplyStrokeMode.Border, Color3.fromRGB(205, 190, 240))
 	local rewardLines = {}
-	for i = 1, 4 do
+	for i = 1, REWARD_ROWS do
 		local l = Kit.line(rewardsBox, {
 			anchor = Vector2.new(0, 0.5),
-			position = UDim2.new(0, 24, 0, 26 + (i - 1) * 46),
+			position = UDim2.new(0, 24, 0, REWARD_FIRST + (i - 1) * REWARD_STEP),
 			height = 42,
 		})
 		l.holder.ZIndex = 4
 		rewardLines[i] = l
 	end
-	local resetsLine = line(318, 30, 0, 0)
-	local keepsLine = line(352, 30, 0, 0)
+	local resetsLine = line(0, 30, 0, 0)
+	local keepsLine = line(0, 30, 0, 0)
+	-- ramka z nagrodami, „Resets”, „Keeps” i wysokość okna według liczby nagród
+	local function fitRows(rows)
+		rows = math.clamp(rows, 1, REWARD_ROWS)
+		local box = 2 * REWARD_FIRST + (rows - 1) * REWARD_STEP
+		rewardsBox.Size = UDim2.new(1, 0, 0, box)
+		resetsLine.holder.Position = UDim2.new(0, 0, 0, REWARDS_TOP + box + 26)
+		keepsLine.holder.Position = UDim2.new(0, 0, 0, REWARDS_TOP + box + 58)
+		window.holder.Size = UDim2.fromOffset(WINDOW_WIDTH, windowHeight(rows))
+	end
 	local priceLine = Kit.line(content, {
 		anchor = Vector2.new(0, 1),
 		position = UDim2.new(0, 0, 1, -12),
@@ -333,6 +360,7 @@ function RebirthUi.start(hud)
 		for i, l in ipairs(rewardLines) do
 			l.set(items[i] or {})
 		end
+		fitRows(#items)
 		resetsLine.set({
 			{ text = TEXT.Resets, size = 22, colors = Theme.Gradients.Red },
 			{ text = TEXT.ResetsList, size = 20, color = Theme.Dark, stroke = 0 },
@@ -365,7 +393,7 @@ function RebirthUi.start(hud)
 	------------------------------------------------------------- Potwierdzenie
 	local confirm = Kit.panel(hud.gui, {
 		name = "RebirthConfirm",
-		size = Vector2.new(640, 290),
+		size = Vector2.new(640, 258),
 		title = TEXT.ConfirmTitle,
 		padding = 30,
 		top = 44,
@@ -373,8 +401,8 @@ function RebirthUi.start(hud)
 	})
 	confirm.holder.ZIndex = 5
 	hud.registerScale(confirm.holder)
-	local confirmLine = Kit.line(confirm.content, { anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 36), height = 36 })
-	local confirmLine2 = Kit.line(confirm.content, { anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 76), height = 36 })
+	local confirmLine = Kit.line(confirm.content, { anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 28), height = 36 })
+	local confirmLine2 = Kit.line(confirm.content, { anchor = Vector2.new(0.5, 0.5), position = UDim2.new(0.5, 0, 0, 66), height = 36 })
 	confirmLine.set({ { text = TEXT.ConfirmText, size = 24 } })
 	confirmLine2.set({ { text = TEXT.ConfirmText2, size = 24, colors = Theme.Gradients.Red } })
 	local noButton = Kit.button(confirm.content, {
@@ -398,6 +426,10 @@ function RebirthUi.start(hud)
 	window.holder:GetPropertyChangedSignal("Visible"):Connect(function()
 		if not window.holder.Visible then
 			confirm.hide()
+		end
+		-- napis nad portalem wchodził na tytuł okna, więc przy otwartym oknie go nie ma
+		for stand in pairs(labels) do
+			updateLabel(stand)
 		end
 	end)
 

@@ -43,6 +43,16 @@ function Format.number(n)
 		tier = tier + 1
 		rounded = math.floor(n / 10 ^ (tier * 3) * 100 + 0.5) / 100
 	end
+	if rounded >= 1000 then
+		-- więcej, niż mieści ostatni sufiks: zapis naukowy (1.5e70), a nie długi ciąg cyfr
+		local exponent = math.floor(math.log10(n) + 1e-12)
+		local mantissa = math.floor(n / 10 ^ exponent * 100 + 0.5) / 100
+		if mantissa >= 10 then
+			mantissa = mantissa / 10
+			exponent = exponent + 1
+		end
+		return trimZeros(string.format("%.2f", mantissa)) .. "e" .. tostring(exponent)
+	end
 	return trimZeros(string.format("%.2f", rounded)) .. SUFFIXES[tier]
 end
 
