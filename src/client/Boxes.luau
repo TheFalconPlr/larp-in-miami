@@ -14,7 +14,6 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
-local MarketplaceService = game:GetService("MarketplaceService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -1273,11 +1272,8 @@ function Boxes.start(hud)
 		local view = State.view
 		local passes = (view and view.Passes) or {}
 		if column.count > 1 and not passes.TripleOpen then
-			local id = Economy.Robux.Gamepasses.TripleOpen.Id
-			if type(id) == "number" and id > 0 then
-				pcall(function()
-					MarketplaceService:PromptGamePassPurchase(player, id)
-				end)
+			if hud.passPrompt ~= nil then
+				hud.passPrompt("TripleOpen", column.button)
 			else
 				Sounds.play("NotEnough")
 				hud.toast({ { text = TEXT.PassSoon, size = 26, colors = Theme.Gradients.Gold } }, "TripleOpen")

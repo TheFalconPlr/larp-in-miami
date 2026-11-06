@@ -187,32 +187,53 @@ def build():
                  {'Level': 75, 'Color': 'Gold'}, {'Level': 100, 'Color': 'Red'}, {'Level': 150, 'Color': 'Rainbow'}],
     }
 
+    # Robux (Etap 10). ID gamepassów i produktów są w src/shared/Config/RobuxIds.luau (ręczny plik),
+    # bo ten plik jest generowany. Ceny tutaj to tylko zapas: UI bierze ceny z GetProductInfoAsync
+    # (ceny regionalne). Nic za Robuxy nie daje L$, Aury ani niczego losowego poza premium jajkami.
+    prem = rar_odds(c['PREM_ODDS'])
+    rm = pets['RarityMultiplier']
+    ev = sum(p * rm[r] for r, p in prem.items())  # średnia moc premium jajka (w mocach Epic = 8)
+    # Gracze z ograniczeniem płatnych losowań (PolicyService) kupują konkretnego peta zamiast jajka.
+    # Cena według wartości oczekiwanej: jajko 99 R$ = średnia moc, więc pet kosztuje 99 × moc / średnia
+    # (75,6 / 151,1 / 302,3 R$), zaokrąglone w dół do zwykłych cen Roblox.
+    direct = {}
+    for rarity, nice in (('Epic', 75), ('Legendary', 149), ('Mythic', 299)):
+        exact = 99 * rm[rarity] / ev
+        assert nice <= exact and nice >= exact * 0.95, (rarity, exact)
+        direct['DirectPet' + rarity] = {'Price': nice, 'Rarity': rarity}
     robux = {
         'Gamepasses': {
-            'AutoSell': {'Price': 599, 'Id': 0},
-            'TwoXLP': {'Price': 399, 'Id': 0, 'LPBonus': 1.0},
-            'AutoClick': {'Price': 299, 'Id': 0, 'ClicksPerSecond': c['AUTO_K']},
-            'Verified': {'Price': 299, 'Id': 0, 'LPBonus': 0.10, 'DailyBoostMinutes': 15},
-            'PetSlots': {'Price': 299, 'Id': 0, 'ExtraSlots': 2},
-            'DoubleChain': {'Price': 199, 'Id': 0},
-            'DoubleWrist': {'Price': 199, 'Id': 0},
-            'TripleOpen': {'Price': 199, 'Id': 0, 'OpenCount': 3},
-            'Teleport': {'Price': 149, 'Id': 0},
-            'TwoXBag': {'Price': 99, 'Id': 0, 'CapacityX': 2},
-            'FastOpen': {'Price': 79, 'Id': 0, 'OpenTimeX': round(1 / 3, 6)},
+            'AutoSell': {'Price': 599},
+            'TwoXLP': {'Price': 399, 'LPBonus': 1.0},
+            'AutoClick': {'Price': 299, 'ClicksPerSecond': c['AUTO_K']},
+            'Verified': {'Price': 299, 'LPBonus': 0.10, 'DailyBoostMinutes': 15},
+            'PetSlots': {'Price': 299, 'ExtraSlots': 2},
+            'DoubleChain': {'Price': 199},
+            'DoubleWrist': {'Price': 199},
+            'TripleOpen': {'Price': 199, 'OpenCount': 3},
+            'Teleport': {'Price': 149},
+            'TwoXBag': {'Price': 99, 'CapacityX': 2},
+            'FastOpen': {'Price': 79, 'OpenTimeX': round(1 / 3, 6)},
         },
-        'Products': {
-            'PremiumEgg1': {'Price': 99, 'Id': 0, 'Count': 1},
-            'PremiumEgg3': {'Price': 269, 'Id': 0, 'Count': 3},
-            'PremiumEgg10': {'Price': 799, 'Id': 0, 'Count': 10},
-            'StarterPack': {'Price': 79, 'Id': 0, 'HoursAvailable': 72},
-            'Boost2xLP15': {'Price': 49, 'Id': 0, 'Minutes': 15},
-            'Boost2xLP60': {'Price': 149, 'Id': 0, 'Minutes': 60},
-            'BoostAutoSell15': {'Price': 49, 'Id': 0, 'Minutes': 15},
-            'BoostAutoSell60': {'Price': 149, 'Id': 0, 'Minutes': 60},
-            'SellNow': {'Price': 9, 'Id': 0},
-        },
-        'Note': 'Ceny w UI zawsze z MarketplaceService:GetProductInfo. Id uzupełniamy po utworzeniu produktów w Creator Hub.',
+        'Products': dict({
+            'PremiumEgg1': {'Price': 99, 'Count': 1},
+            'PremiumEgg3': {'Price': 269, 'Count': 3},
+            'PremiumEgg10': {'Price': 799, 'Count': 10},
+            # Starter Pack: przez 72 h od pierwszego wejścia, raz na konto. Same pewne rzeczy:
+            # zegarek Rare (kupiony za Robuxy, więc łączy się tylko przy 100%), pet Epic z najwyższej
+            # odblokowanej strefy i boosty 2x LP oraz Auto-Sell po 30 minut.
+            'StarterPack': {'Price': 79, 'HoursAvailable': 72, 'Watch': 'Rare', 'PetRarity': 'Epic',
+                            'BoostMinutes': 30, 'AutoSellMinutes': 30},
+            # 2x LP na 5 minut: też nagroda za reklamę (rewarded video, najwyżej 5 dziennie)
+            'Boost2xLP5': {'Price': 19, 'Minutes': 5},
+            'Boost2xLP15': {'Price': 49, 'Minutes': 15},
+            'Boost2xLP60': {'Price': 149, 'Minutes': 60},
+            'BoostAutoSell15': {'Price': 49, 'Minutes': 15},
+            'BoostAutoSell60': {'Price': 149, 'Minutes': 60},
+            'SellNow': {'Price': 9},
+        }, **direct),
+        'AdReward': 'Boost2xLP5',
+        'Note': 'Ceny w UI zawsze z MarketplaceService:GetProductInfoAsync. ID są w Config/RobuxIds.',
     }
 
     rewards = {

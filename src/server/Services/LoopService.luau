@@ -15,6 +15,7 @@ local Settings = require(Shared.Config.Settings)
 local Format = require(Shared.Format)
 local Loop = require(Shared.Logic.Loop)
 local Clothes = require(Shared.Logic.Clothes)
+local Shop = require(Shared.Logic.Shop)
 local RateLimiter = require(Shared.Logic.RateLimiter)
 local Net = require(Shared.Net)
 
@@ -43,13 +44,16 @@ local function contextFor(player)
 	local ctx = {
 		zone = zone,
 		passes = GamepassService.passes(player),
-		inGroup = false, -- Etap 10: bonus za grupę
-		friends = 0, -- Etap 10: bonus za znajomych
-		boost = false, -- Etap 9: boost 2x LP
+		inGroup = false, -- Etap 11: bonus za grupę
+		friends = 0, -- Etap 11: bonus za znajomych
+		boost = false, -- boost 2x LP (produkt, Starter Pack, reklama, Verified)
+		autoSellBoost = false, -- boost Auto-Sell (produkt, Starter Pack)
 		petLayer = 1,
 		clothLayer = 1,
 	}
 	if data ~= nil then
+		ctx.boost = Shop.boostLeft(data, "LP") > 0
+		ctx.autoSellBoost = Shop.boostLeft(data, "AutoSell") > 0
 		ctx.petLayer = Loop.petLayer(data, ctx) -- wyposażone pety mnożą L$ przy Sell
 		ctx.clothLayer = Clothes.layer(data, ctx) -- założone ubrania mnożą LP (klik i aktywności)
 	end
@@ -88,6 +92,7 @@ local function isBusy(player)
 	end
 	return false
 end
+LoopService.isBusy = isBusy
 
 local function notify(player, payload)
 	Net.event("Notify"):FireClient(player, payload)

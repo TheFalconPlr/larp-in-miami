@@ -11,7 +11,7 @@ local Net = {}
 local EVENTS = { "Click", "TeleportToSell", "SetSetting", "Admin", "Sync", "Notify" }
 -- klient → serwer z odpowiedzią: BuyUpgrade, BuyZone, StartActivity, BuyActivityTier, BuyEgg,
 -- EquipPet, EquipBest, SellPets, MergePets, BuyBox, WearCloth, WearBest, SellClothes, MergeClothes,
--- Rebirth, BuyAuraUpgrade
+-- Rebirth, BuyAuraUpgrade, Buy (Robux: okno zakupu), WatchAd (reklama za nagrodę), TeleportToZone
 local FUNCTIONS = {
 	"BuyUpgrade",
 	"BuyZone",
@@ -29,6 +29,9 @@ local FUNCTIONS = {
 	"MergeClothes",
 	"Rebirth",
 	"BuyAuraUpgrade",
+	"Buy",
+	"WatchAd",
+	"TeleportToZone",
 }
 
 local FOLDER_NAME = "Remotes"

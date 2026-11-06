@@ -1,20 +1,24 @@
--- Gamepassy: kto co ma. Gamepassy i produkty za Robux tworzymy w Etapie 9. Do tego czasu (Id = 0 w Economy) działają
--- tylko testowe przełączniki z trybu testowego (/pass), ważne do końca sesji.
+-- Gamepassy: kto co ma. ID są w Config/RobuxIds (0 = gamepassa jeszcze nie ma). Własność sprawdza
+-- UserOwnsGamePassAsync po wejściu, po zakupie w grze i co kilka minut (gamepass kupiony w sklepie
+-- Roblox albo na stronie gry). Tryb testowy (/pass) nadpisuje to tylko u adminów.
 
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Economy = require(ReplicatedStorage:WaitForChild("Shared").Config.Economy)
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Robux = require(Shared.Robux)
 
 local GamepassService = {}
+
+local REFRESH_SECONDS = 120 -- co tyle sprawdzamy gamepassy, których gracz nie ma
 
 local owned = {} -- [player] = { [klucz] = true }
 local overrides = {} -- [player] = { [klucz] = true/false } (tryb testowy)
 local changedCallbacks = {}
 
 local KEYS = {}
-for key in pairs(Economy.Robux.Gamepasses) do
+for key in pairs(Robux.Gamepasses) do
 	table.insert(KEYS, key)
 end
 table.sort(KEYS)
@@ -64,18 +68,37 @@ function GamepassService.clearOverrides(player)
 	fireChanged(player)
 end
 
+-- Sprawdza gamepassy z ID (bez tych, które gracz już ma: tych nikt nie traci).
 local function refresh(player)
-	local own = {}
-	for key, info in pairs(Economy.Robux.Gamepasses) do
-		if info.Id ~= 0 then
-			local ok, has = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, info.Id)
+	local own = owned[player] or {}
+	local changed = owned[player] == nil
+	for _, key in ipairs(KEYS) do
+		local id = Robux.passId(key)
+		if id ~= nil and own[key] ~= true then
+			local ok, has = pcall(MarketplaceService.UserOwnsGamePassAsync, MarketplaceService, player.UserId, id)
 			if ok and has then
 				own[key] = true
+				changed = true
 			end
 		end
 	end
+	if player.Parent ~= Players then
+		return
+	end
 	owned[player] = own
-	fireChanged(player)
+	if changed then
+		fireChanged(player)
+	end
+end
+
+local function markOwned(player, key)
+	if owned[player] == nil then
+		owned[player] = {}
+	end
+	if owned[player][key] ~= true then
+		owned[player][key] = true
+		fireChanged(player)
+	end
 end
 
 function GamepassService.start()
@@ -91,13 +114,17 @@ function GamepassService.start()
 		if not purchased then
 			return
 		end
-		for key, info in pairs(Economy.Robux.Gamepasses) do
-			if info.Id == passId then
-				if owned[player] == nil then
-					owned[player] = {}
-				end
-				owned[player][key] = true
-				fireChanged(player)
+		local key = Robux.passKey(passId)
+		if key ~= nil then
+			markOwned(player, key)
+		end
+	end)
+	-- gamepass kupiony poza oknem z gry (sklep Roblox, strona gry): sprawdzamy co jakiś czas
+	task.spawn(function()
+		while true do
+			task.wait(REFRESH_SECONDS)
+			for _, player in ipairs(Players:GetPlayers()) do
+				task.spawn(refresh, player)
 			end
 		end
 	end)

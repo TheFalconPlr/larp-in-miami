@@ -14,9 +14,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Nametags` (tytuł i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Config/RobuxIds` (ID gamepassów i produktów z Creator Hub, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Shop` (zakupy za Robuxy: premium jajka, boosty, Starter Pack, reklamy, numery zakupów), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Robux` (ID i ceny gamepassów i produktów), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), ShopService (zakupy za Robuxy, reklamy, teleport), AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Shop` (sklep za Robuxy, Starter Pack, boosty, teleport), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -160,7 +160,7 @@ Założone pety latają za graczem (widzą je wszyscy) i zwiększają L$ przy Se
 | Miami Beach | 60M L$ | 400M L$ | +75% → +1200% L$ |
 | Private Airport | 30B L$ | 200B L$ | +200% → +3200% L$ |
 
-Zwykłe jajko: Common 60%, Uncommon 28%, Rare 10%, Epic 2%. Złote: Uncommon 50%, Rare 35%, Epic 13%, Legendary 2% i Secret 0,004% (×64). Ulepszenie Luck za Aurę (w późniejszym etapie) zwiększy szanse na rzadsze pety.
+Zwykłe jajko: Common 60%, Uncommon 28%, Rare 10%, Epic 2%. Złote: Uncommon 50%, Rare 35%, Epic 13%, Legendary 2% i Secret 0,004% (×64). Ulepszenie Luck za Aurę (Etap 9) zwiększa szanse na rzadsze pety. Premium jajko za Robuxy (Etap 10): Epic 75%, Legendary 22%, Mythic 3%, a na nie Luck nie działa.
 
 **Tymczasowe stoiska.** Dopóki na mapie nie ma żadnego stoiska, serwer stawia je sam: w Downtown Miami z boku drogi od spawnu do bramki, a w strefach 2–5 na podłodze strefy.
 
@@ -212,8 +212,8 @@ Nazwy modeli w grze (auta, jachty, odrzutowce) są robocze, zmienisz je w `src/c
 Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Okno PETS ma teraz na dole trzy przyciski: INDEX, MERGE i SELL. DELETE zniknął, bo sprzedaż robi to samo i jeszcze daje L$.
 
 - **SELL:** klikasz pety do sprzedaży (dostają czerwony X). Na kartach widać cenę, a na dole sumę. DUPES zaznacza duplikaty (z każdego rodzaju zostaje jeden: założony albo najstarszy; sekretów nie rusza), ALL zaznacza wszystkie niezałożone, SELL (N) sprzedaje, a CANCEL wraca. Pet daje 10% ceny jajka, z którego wypadł; Golden ×5, a Diamond ×25 (czyli tyle, ile pety, które na niego poszły). Założonych petów nie da się sprzedać, a sprzedaż sekreta trzeba potwierdzić w okienku.
-- **MERGE:** wybierasz od 1 do 5 identycznych petów (ta sama strefa, rzadkość i poziom). Wybrane mają fioletowe numery, a pety, których nie da się dołożyć, są przygaszone. Każdy pet to 20% szansy (Merge Luck z Aury dodaje 1 pkt proc. na peta), więc 5 petów to 100%. AUTO dobiera identyczne pety do 5, a bez wyboru bierze rodzaj, którego masz najwięcej. Na dole widać szansę i opłatę. MERGE otwiera okno z petami, które możesz stracić, wynikiem, szansą, opłatą i ostrzeżeniem. Sukces daje wersję Golden (×2 mocy), a z Golden wersję Diamond (×4). Porażka zabiera wszystkie wrzucone pety. Opłata przepada zawsze: za każdego peta 1/5 ceny jajka przy Golden albo cała cena jajka przy Diamond, więc średnio Golden kosztuje zawsze 5 petów i cenę jajka. Animacja: pety krążą i zlatują się do środka, błysk, a potem nowy pet z promieniami i oklaskami (leci do PETS) albo szare odłamki i smutna trąbka. Pety z jajek premium (będą w etapie z Robuxami) łączą się tylko przy 100%.
-- **INDEX:** 30 petów (5 stref × 6 rzadkości). Są w nim tylko pety, które da się wylosować z jajek za L$, więc bez Mythic: ten wypadnie dopiero z jajek premium i wtedy wróci do indeksu. Odkryte widać normalnie, a nieodkryte jako czarną sylwetkę z „???”. Na dole jest licznik sekretów (np. 1/5). Pet, którego jeszcze nie miałeś, ma w animacji jajka napis NEW!. Stare zapisy dostają w indeksie pety, które już mają.
+- **MERGE:** wybierasz od 1 do 5 identycznych petów (ta sama strefa, rzadkość i poziom). Wybrane mają fioletowe numery, a pety, których nie da się dołożyć, są przygaszone. Każdy pet to 20% szansy (Merge Luck z Aury dodaje 1 pkt proc. na peta), więc 5 petów to 100%. AUTO dobiera identyczne pety do 5, a bez wyboru bierze rodzaj, którego masz najwięcej. Na dole widać szansę i opłatę. MERGE otwiera okno z petami, które możesz stracić, wynikiem, szansą, opłatą i ostrzeżeniem. Sukces daje wersję Golden (×2 mocy), a z Golden wersję Diamond (×4). Porażka zabiera wszystkie wrzucone pety. Opłata przepada zawsze: za każdego peta 1/5 ceny jajka przy Golden albo cała cena jajka przy Diamond, więc średnio Golden kosztuje zawsze 5 petów i cenę jajka. Animacja: pety krążą i zlatują się do środka, błysk, a potem nowy pet z promieniami i oklaskami (leci do PETS) albo szare odłamki i smutna trąbka. Pety z premium jajek (za Robuxy, Etap 10) łączą się tylko przy 100%.
+- **INDEX:** 35 petów (5 stref × 7 rzadkości): wszystko z jajek za L$ i Mythic z premium jajek (Etap 10). Odkryte widać normalnie, a nieodkryte jako czarną sylwetkę z „???”. Na dole jest licznik sekretów (np. 1/5). Pet, którego jeszcze nie miałeś, ma w animacji jajka napis NEW!. Stare zapisy dostają w indeksie pety, które już mają.
 - **Sekrety:** wypadają tylko ze złotego jajka (1 na 25 000). Mają specjalną animację: fioletowo-złote promienie, fioletowy błysk, „vine boom”, mocniejsze drżenie, napis SECRET PET! z „1 in 25,000” i dłuższy pokaz. Chwilę później u wszystkich graczy na wszystkich serwerach wjeżdża u góry pasek z głową awatara, np. „Nasdaq hatched a SECRET Iced Flamingo, 1 in 25,000” (u Ciebie „You hatched…”). Działa przez MessagingService. W Studio bez dostępu do API komunikat widać tylko na tym serwerze, a w Output jest wtedy ostrzeżenie.
 - **Golden i Diamond** mają złoty i diamentowy kolor (kulka albo Twój model), na karcie wstążkę GOLDEN albo DIAMOND, a w nazwie słowo z przodu, np. „Golden Pigeon”. Pety za graczem też są złote i diamentowe. Żeby nie było „Golden Golden Doge”, zmieniłem 4 robocze nazwy: Golden Doge → Crypto Doge, Diamond Flamingo → Iced Flamingo, Golden Whale → Mega Whale, Diamond Griffin → Jetset Griffin. Jeśli masz już modele petów pod starymi nazwami, zmień im nazwy. We własnym modelu części, które mają zostać w swoim kolorze (np. oczy), oznacz atrybutem `KeepColor` (true).
 
@@ -297,9 +297,60 @@ Zasady są z dokumentu projektu (etap „Rebirth i Aura”), a liczby z arkusza 
 
 Do testu: `/zone 5` i `/cash 1Qi`, a potem REBIRTH przy portalu. Rebirth zeruje L$ i strefy, więc przed kolejnym znowu `/zone 5` i `/cash 1Qi` (albo `/rb`, czyli Rebirth od razu, bez opłaty i bez portalu, z animacją i teleportem). Dalej `/aurabar 10` (pełny pasek, +10 Aury), `/aura 50000` (dużo Aury na sklep), `/auraup clickboost 150` (od razu Aura Level 150 i tęczowa poświata) i `/rebirth 10` (od razu R10, bez resetu). Całą grę od zera do R10 i dalej przejdziesz tak w kilka minut.
 
+## Etap 10: Robux (gamepassy, produkty, premium jajka)
+
+Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad Roblox o płatnych losowaniach (ogłoszenie z 26 maja 2026). Za Robuxy nigdy nie ma stref, aut, jachtów, odrzutowców, Rebirthów, L$ ani Aury.
+
+- **Po prawej stronie ekranu** są kafelki SHOP i TELEPORT, pod nimi przycisk Starter Pack z zegarem (tylko przez 72 h od pierwszego wejścia) i pigułki aktywnych boostów z pozostałym czasem. Boosty lecą tylko wtedy, gdy grasz.
+- **Okno SHOP:** na górze Starter Pack (79 R$: zegarek Rare, pet Epic z najwyższej odblokowanej strefy, 30 min 2x LP i 30 min Auto Sell; raz na konto), potem 11 gamepassów (kupione mają OWNED), boosty (2x LP na 5, 15 i 60 min, Auto Sell na 15 i 60 min), Sell Now (sprzedaje Bag, gdziekolwiek jesteś) i darmowy boost za reklamę.
+- **Ceny** w całym UI przychodzą z `GetProductInfoAsync`, więc gracz widzi swoją cenę regionalną. Dopóki gamepass albo produkt nie ma ID, widać cenę z ekonomii.
+- **Gamepassy:**
+  - 2x LP (+100% LP).
+  - Auto Sell.
+  - Auto Click (3 kliknięcia na sekundę).
+  - Verified: +10% LP, niebieski znaczek przed tytułem nad głową i co dzień 15 min 2x LP.
+  - +2 Pet Slots.
+  - Triple Open (Buy 3 przy jajkach i boxach).
+  - Fast Open (3× szybciej).
+  - 2x Bag.
+  - Teleport: okno TELEPORT przenosi do każdej odblokowanej strefy.
+  - Double Chain i Double Wrist.
+
+  Przełączniki Auto Click i Auto Sell, Buy 3 przy jajkach i boxach oraz TELEPORT bez gamepassa otwierają okno zakupu. Boost Auto Sell odblokowuje przełącznik Auto Sell, dopóki trwa.
+- **Premium jajka:** trzecie stoisko w każdej strefie (`EggP1`…`EggP5`). Ma fioletową pigułkę PREMIUM, a panel nad nim pokazuje szanse 75% Epic, 22% Legendary i 3% Mythic. Okno kupna pokazuje szanse jeszcze raz (przed zakupem) oraz Buy 1 / Buy 3 / Buy 10 (99 / 269 / 799 R$). Po zakupie gra ta sama animacja co przy zwykłych jajkach, a 10 jajek pęka w dwóch rzędach po 5. Szanse są stałe: szczęście z Aury na nie nie działa. Pety z premium jajek łączą się tylko przy 100%.
+- **Gracz z ograniczeniem płatnych losowań** (mówi o tym `PolicyService` osobno dla każdego gracza; Roblox nie podaje listy krajów) nie widzi szans ani Buy 1/3/10. Zamiast tego kupuje konkretnego peta ze strefy stoiska: Epic za 75 R$, Legendary za 149 R$ albo Mythic za 299 R$ (cena według wartości oczekiwanej jajka), bez pękającego jajka. Gdy `PolicyService` nie odpowie, gra traktuje gracza jak z ograniczeniem.
+- **Zakupy:** wszystko przyznaje serwer w `ProcessReceipt`. Numer zakupu trafia do zapisu gracza, a Roblox dostaje „przyznane” dopiero po zapisaniu go w DataStore, więc zakup nigdy nie przyzna się dwa razy ani nie przepadnie. Działa też dla zakupów poza grą (sklep na stronie gry): przyznają się po wejściu do gry. Gdy paragon premium jajka przyjdzie dopiero po ponownym wejściu (np. gracz wyszedł w trakcie zakupu), jajko otwiera się w najwyższej odblokowanej strefie, a u gracza z ograniczeniem daje pety Epic bez losowania.
+- **Reklama za nagrodę:** karta „FREE 2x LP” w sklepie (2x LP na 5 min, najwyżej 5 razy dziennie). Nagroda jest opisana na karcie, zanim gracz kliknie WATCH (tak każą zasady Roblox). Kartę widać tylko wtedy, gdy Roblox ma reklamę dla gracza.
+
+**Twoja część w Creator Hub** (Monetization):
+
+1. **Passes:** utwórz 11 gamepassów (nazwy i ceny jak w sklepie) i wklej ich ID do `src/shared/Config/RobuxIds.luau`.
+2. **Developer Products:** utwórz 13 produktów: `PremiumEgg1`, `PremiumEgg3`, `PremiumEgg10`, `StarterPack`, `Boost2xLP5`, `Boost2xLP15`, `Boost2xLP60`, `BoostAutoSell15`, `BoostAutoSell60`, `SellNow`, `DirectPetEpic`, `DirectPetLegendary` i `DirectPetMythic`. Ceny są w komentarzach w tym samym pliku, a ID wklejasz tam też.
+3. **Zakupy poza grą (sklep na stronie gry):** produkt trafia tam tylko wtedy, gdy włączysz External Purchases (Developer Products → ⋮ → External Purchase Settings) i przy produkcie zaznaczysz „Allow external purchases”. Premium jajek nie wolno tam wystawiać (płatne losowania), a `DirectPet…` i `StarterPack` zostaw tylko w grze, bo potrzebują okna w grze (strefa stoiska, `PolicyService`, 72 h). Boosty i Sell Now możesz tam wystawić, jeśli chcesz: gra przyzna je po wejściu.
+4. **Ceny regionalne:** dla gamepassów są włączone domyślnie. Dla produktów włącz Managed Pricing (Monetization → Managed Pricing). UI bierze ceny z `GetProductInfoAsync`, więc gracz widzi tę samą cenę co w oknie zakupu. `GetUsersPriceLevelsAsync` chroni wymiany i prezenty, a takich w grze nie ma.
+5. **Reklamy** (Monetization → Ads → Settings): w Rewarded Video → Serving włącz „Serving enabled”, a jako nagrodę wybierz produkt `Boost2xLP5`. Warto też włączyć „Exclude your most likely purchasers from Rewarded Video Ads”, bo ten sam boost jest w sklepie za 19 R$. Roblox puszcza reklamy dopiero przy średnio 2 000 graczy miesięcznie i z zatwierdzonym kwestionariuszem. Konto twórcy musi mieć 13+ lat, 2FA i zweryfikowany dowód. Stan sprawdzisz w Monetization → Ads → Eligibility. Wcześniej karty z reklamą po prostu nie widać.
+6. **Kwestionariusz Maturity & Compliance:** zaznacz płatne losowania (premium jajka).
+
+**Test bez ID:** w trybie testowym każdy przycisk kupna działa „na niby” (bez Robuxów, z napisem TEST PURCHASE), tak samo karta reklamy (2 s udawanej reklamy). Zwykły gracz zobaczy „Coming soon!”. Z prawdziwymi ID Studio i tak nie pobiera Robuxów (okna zakupu są testowe). Gracza z ograniczeniem udajesz komendą `/policy on` albo emulatorem gracza w Studio (Test → Player Emulator, opcja `ArePaidRandomItemsRestricted`).
+
+**Twoje stoiska.**
+
+| Co | Nazwa | Uwagi |
+| --- | --- | --- |
+| Premium jajko | `EggP1` … `EggP5` (model albo część) | Jak `EggA1`/`EggB1`, cyfra to strefa. Dopóki go nie ma, serwer stawia tymczasowe fioletowe jajko ze złotym pierścieniem w tym samym rzędzie, za jajkiem B. |
+| Ikona Robux | `Settings.Ui.Icons.Robux` | Bez własnej ikony gra używa znaku Robux z czcionki Roblox (tak samo znaczek Verified). |
+
+Do testu:
+- `/buy PremiumEgg10 3`: 10 premium jajek ze strefy 3.
+- `/buy StarterPack`.
+- `/boost lp 15`.
+- `/policy on`: premium jajka zamieniają się w konkretne pety z cenami.
+- `/starter`: Starter Pack znów w sklepie.
+- `/ads`: znów 5 reklam na dziś.
+
 ## Co dalej (plan etapów)
 
-Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, a teraz monetyzacja.
+Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, monetyzacja, a teraz nagrody i rankingi.
 
 | Etap | Co |
 | --- | --- |
@@ -307,7 +358,7 @@ Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, a te
 | 7 | ✓ Gotowe: sprzedaż i łączenie petów, indeks i sekrety. |
 | 8 | ✓ Gotowe: ubrania (opis wyżej). Etap „Pety, ubrania, sekrety” z dokumentu jest kompletny. |
 | 9 | ✓ Gotowe: Rebirth i Aura (opis wyżej). |
-| 10 | Robux: gamepassy, produkty, boosty, jajka premium i starter pack (ID tworzysz w Creator Hub). |
+| 10 | ✓ Gotowe: Robux (opis wyżej). ID tworzysz w Creator Hub i wklejasz do `Config/RobuxIds`. |
 | 11 | Nagrody dzienne i zadania (z Aurą), kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuł „Secret Society”, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
 
 Kolejność może się zmienić, jeśli coś będzie pilniejsze.
@@ -350,6 +401,11 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/aurabar 10` | dolicza minuty do paska Aury (10 minut = +10 Aury, działa od Rebirth 1) |
 | `/auraup luck 20` | ustawia poziom ulepszenia Aury: `clickboost`, `luck`, `auragain`, `mergeluck` (do 5); np. `/auraup clickboost 150` daje tęczową poświatę |
 | `/pass AutoSell` | włącza albo wyłącza gamepass (`all`, `none`), np. `/pass TripleOpen` dla Buy 3. Zostaje na kolejne testy, a `/reset` go czyści |
+| `/buy PremiumEgg3 2` | zakup testowy produktu za Robuxy bez płacenia (ta sama droga co prawdziwy zakup), np. `/buy StarterPack`, `/buy Boost2xLP60`, `/buy DirectPetMythic 5` |
+| `/boost lp 15` | dodaje minuty boosta (`lp`, `autosell`; `0` kasuje) |
+| `/policy on` | udaje gracza z ograniczeniem płatnych losowań (`off` = bez, `auto` = jak mówi `PolicyService`) |
+| `/ads` | znów 5 reklam za nagrodę na dziś |
+| `/starter` | Starter Pack znów do kupienia (72 h od teraz) |
 | `/stats` | pokazuje zapis |
 | `/reset` | czyści zapis, jak u nowego gracza |
 

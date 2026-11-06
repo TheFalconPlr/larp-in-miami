@@ -87,6 +87,7 @@ Pets.LevelColors = {
 Pets.EggNames = {
 	A = "%s Egg",
 	B = "%s Golden Egg",
+	P = "%s Premium Egg", -- za Robuxy (stoisko EggPN)
 }
 
 -- Najwięcej petów w ekwipunku (żeby zapis gracza nie rósł bez końca)

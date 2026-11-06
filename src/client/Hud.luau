@@ -8,7 +8,6 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
@@ -1281,7 +1280,9 @@ function Hud.start()
 		local passes = view.Passes or {}
 		local settings = view.Settings or {}
 		renderAuto(autoClickButton, passes.AutoClick == true, settings.AutoClick == true)
-		renderAuto(autoSellButton, passes.AutoSell == true, settings.AutoSell == true)
+		-- boost Auto-Sell (produkt, Starter Pack) działa jak gamepass, dopóki trwa
+		local sellBoost = (view.Boosts or {}).AutoSell or 0
+		renderAuto(autoSellButton, passes.AutoSell == true or sellBoost > 0, settings.AutoSell == true)
 		-- schowane menu z zapisu tylko przy wejściu; potem decyduje przycisk (bez czekania na serwer)
 		if not menuSettingLoaded then
 			menuSettingLoaded = true
@@ -1373,16 +1374,11 @@ function Hud.start()
 		end)
 	end)
 
-	-- Bez gamepassa przycisk odmawia: dźwięk, potrząśnięcie i komunikat. Gdy gamepass będzie miał ID
-	-- (Economy.Robux.Gamepasses), zamiast tego otworzy się okno kupna.
+	-- Bez gamepassa przycisk prosi sklep (Shop.luau, api.passPrompt) o okno zakupu gamepassa. Zanim
+	-- sklep wystartuje: dźwięk, potrząśnięcie i komunikat.
 	local function needPass(button, key, name)
-		local pass = Economy.Robux.Gamepasses[key]
-		local id = pass and pass.Id
-		if type(id) == "number" and id > 0 then
-			Sounds.play("Button")
-			pcall(function()
-				MarketplaceService:PromptGamePassPurchase(Players.LocalPlayer, id)
-			end)
+		if api.passPrompt ~= nil then
+			api.passPrompt(key, button)
 			return
 		end
 		Sounds.play("NotEnough")
@@ -1395,7 +1391,8 @@ function Hud.start()
 			return
 		end
 		local passes = view.Passes or {}
-		if passes[key] ~= true then
+		local boosted = key == "AutoSell" and ((view.Boosts or {}).AutoSell or 0) > 0
+		if passes[key] ~= true and not boosted then
 			needPass(button, key, name)
 			return
 		end
@@ -1456,6 +1453,8 @@ function Hud.start()
 	api.gui = gui
 	api.registerScale = registerScale
 	api.toast = toast
+	api.fadeFlash = fadeFlash -- krótkie ściemnienie ekranu (teleport)
+	api.passPrompt = nil -- function(klucz, przycisk): okno zakupu gamepassa (ustawia Shop.luau)
 	-- Chowa cały HUD (np. na czas otwierania jajka, jak w Pet Simulator 99).
 	function api.setVisible(visible)
 		gui.Enabled = visible

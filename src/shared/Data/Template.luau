@@ -38,6 +38,19 @@ return {
 		HideMenu = false, -- menu po lewej schowane przyciskiem „<” (więcej widać ekranu)
 	},
 	TestPasses = {}, -- tryb testowy: gamepassy z /pass ([klucz] = true/false); działają tylko u adminów
+	Robux = { -- zakupy za Robuxy (Etap 10)
+		Receipts = {}, -- ostatnie PurchaseId (najwyżej 100): ten sam zakup nie przyzna się dwa razy
+		Spent = 0, -- wydane Robuxy (z paragonów)
+		Bought = {}, -- [klucz produktu] = ile razy kupiony
+		StarterPack = false, -- Starter Pack kupiony (raz na konto)
+		VerifiedDay = 0, -- dzień (UTC, os.time() // 86400), w którym Verified dał już dzienny boost
+		AdDay = 0, -- dzień (UTC) i liczba reklam obejrzanych za nagrodę (najwyżej 5 dziennie)
+		AdCount = 0,
+	},
+	Boosts = { -- sekundy boostów; lecą tylko wtedy, gdy gracz jest w grze
+		LP = 0, -- 2x LP
+		AutoSell = 0, -- Auto-Sell bez gamepassa
+	},
 	Stats = {
 		LifetimeLP = 0,
 		LifetimeCash = 0,
@@ -59,6 +72,7 @@ return {
 		ClothMerges = 0, -- próby łączenia ubrań
 		ClothMergesFailed = 0, -- nieudane łączenia ubrań
 		AuraEarned = 0, -- cała zdobyta Aura (Rebirthy, pasek, później zadania)
+		PremiumEggs = 0, -- otwarte premium jajka (za Robuxy)
 	},
 	FirstJoin = 0,
 	LastJoin = 0,

@@ -26,6 +26,9 @@ local PetService = require(script.Parent.PetService)
 local ClothesService = require(script.Parent.ClothesService)
 local RebirthService = require(script.Parent.RebirthService)
 local ZoneService = require(script.Parent.ZoneService)
+local ShopService = require(script.Parent.ShopService)
+local Robux = require(Shared.Robux)
+local Shop = require(Shared.Logic.Shop)
 
 local AdminService = {}
 
@@ -618,6 +621,75 @@ command("pass", "/pass [nazwa|all|none]", "włącz albo wyłącz gamepass (zosta
 	error("nazwy: " .. table.concat(GamepassService.Keys, ", "), 0)
 end)
 
+----------------------------------------------------------------- Robux (Etap 10)
+local function needProduct(arg)
+	local wanted = string.lower(arg or "")
+	local keys = {}
+	for key in pairs(Robux.Products) do
+		table.insert(keys, key)
+		if string.lower(key) == wanted then
+			return key
+		end
+	end
+	table.sort(keys)
+	error("produkty: " .. table.concat(keys, ", "), 0)
+end
+
+command("buy", "/buy [produkt] [strefa]", "zakup testowy produktu za Robuxy, bez płacenia (np. /buy PremiumEgg3 2, /buy StarterPack)", function(player, data, args)
+	local key = needProduct(args[1])
+	local zone = nil
+	if args[2] ~= nil then
+		zone = needZone(args[2])
+	end
+	ShopService.grantFor(player, data, key, { zone = zone, random01 = math.random, now = os.time(), test = true })
+	return "Kupione na niby: " .. key
+end)
+
+command("boost", "/boost [lp|autosell] [minuty]", "dodaj minuty boosta (0 kasuje)", function(_, data, args)
+	local kind = string.lower(args[1] or "")
+	if kind == "lp" or kind == "2x" then
+		kind = "LP"
+	elseif kind == "autosell" or kind == "sell" then
+		kind = "AutoSell"
+	else
+		error("boosty: lp, autosell", 0)
+	end
+	local minutes = needNumber(args[2] or "15")
+	if minutes <= 0 then
+		data.Boosts[kind] = 0
+	else
+		Shop.addBoost(data, kind, minutes)
+	end
+	return string.format("Boost %s: %s", kind, Format.duration(Shop.boostLeft(data, kind)))
+end)
+
+command("policy", "/policy [on|off|auto]", "udawaj gracza z ograniczeniem płatnych losowań (on) albo bez (off); auto = jak mówi PolicyService", function(player, _, args)
+	local mode = string.lower(args[1] or "")
+	if mode == "on" then
+		ShopService.setPolicyOverride(player, true)
+		return "Ograniczenie płatnych losowań: WŁĄCZONE (premium jajka zamienią się w zakup konkretnego peta)"
+	elseif mode == "off" then
+		ShopService.setPolicyOverride(player, false)
+		return "Ograniczenie płatnych losowań: wyłączone (widzisz premium jajka)"
+	elseif mode == "auto" then
+		ShopService.setPolicyOverride(player, nil)
+		return "Ograniczenie płatnych losowań: jak mówi PolicyService (" .. tostring(ShopService.isRestricted(player)) .. ")"
+	end
+	error("on, off albo auto", 0)
+end)
+
+command("ads", "/ads", "wyzeruj dzisiejsze reklamy za nagrodę (znowu 5)", function(_, data)
+	data.Robux.AdDay = 0
+	data.Robux.AdCount = 0
+	return "Reklamy na dziś: " .. Shop.adsLeft(data, os.time())
+end)
+
+command("starter", "/starter", "Starter Pack znowu do kupienia (72 h od teraz)", function(_, data)
+	data.Robux.StarterPack = false
+	data.FirstJoin = os.time()
+	return "Starter Pack: znowu w sklepie na 72 h"
+end)
+
 command("stats", "/stats", "pokaż swój zapis", function(player, data)
 	return string.format(
 		"L$ %s · Bag %s LP · Click Lv %d · Bag Lv %d · strefy 1–%d · auto %d, jacht %d, odrzutowiec %d (zdjęcia %d, wywiady %d, imprezy %d, loty %d) · pety %d (wyposażone %d, jajka: %d, indeks %d/%d, sprzedane %d, łączenia %d, nieudane %d, sekrety %d) · ubrania %d (założone %d, boxy %d, Ultra Secret %d, warstwa ×%s) · Rebirth %d (Lv %d) · Aura %s · kliknięcia %d · sprzedaże %d · czas gry %s",
@@ -726,6 +798,14 @@ function AdminService.start()
 	LoopService.addViewHook(function(player, view)
 		view.IsAdmin = adminCache[player] == true
 	end)
+	-- zakupy „na niby” w sklepie (produkty i gamepassy bez ID) tylko dla testera
+	ShopService.isTester = AdminService.isAdmin
+	ShopService.setTestPass = function(player, key, on)
+		local data = DataService.get(player)
+		if data ~= nil then
+			setTestPass(player, data, key, on)
+		end
+	end
 	Net.event("Admin").OnServerEvent:Connect(onAdminMessage)
 end
 

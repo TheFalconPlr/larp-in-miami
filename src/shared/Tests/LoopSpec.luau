@@ -321,17 +321,19 @@ return function()
 	local _, p2, new2 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
 	local _, _, new3 = Loop.openEgg(d, {}, 1, "A", always(0), 250)
 	check(p1.Egg == "A" and p1.Rarity == "Rare" and p2.Rarity == "Common" and new1 and new2 and not new3, "indeks: pierwszy Rare i Common są nowe, drugi Common już nie")
-	check(Loop.indexCount(d) == 2 and Loop.indexTotal() == 30 and Loop.view(d, {}).IndexCount == 2, "indeks: 2 z 30 (5 stref × 6 rzadkości)")
+	check(Loop.indexCount(d) == 2 and Loop.indexTotal() == 35 and Loop.view(d, {}).IndexCount == 2, "indeks: 2 z 35 (5 stref × 7 rzadkości)")
 	local mythicOk = true
 	for zone in ipairs(Economy.Pets.Eggs) do
 		local list = Loop.indexRarities(zone)
-		if #list ~= 6 or list[6] ~= "Secret" or table.concat(list, ","):find("Mythic", 1, true) then
+		if #list ~= 7 or list[6] ~= "Mythic" or list[7] ~= "Secret" then
 			mythicOk = false
 		end
 	end
-	check(mythicOk, "indeks bez Mythic (jest tylko w jajkach premium), z sekretem na końcu")
+	check(mythicOk, "indeks z Mythic (premium jajka), z sekretem na końcu")
 	Loop.addToIndex(d, 2, "Mythic")
-	check(Loop.indexCount(d) == 2, "Mythic z komendy /pet nie liczy się do indeksu")
+	check(Loop.indexCount(d) == 3, "Mythic (premium) liczy się do indeksu")
+	Loop.addToIndex(d, 9, "Mythic")
+	check(Loop.indexCount(d) == 3, "pet spoza indeksu (strefa 9) się nie liczy")
 	d.Index = {}
 	Loop.backfillIndex(d)
 	check(Loop.indexCount(d) == 2, "indeks uzupełnia się z petów, które już są")

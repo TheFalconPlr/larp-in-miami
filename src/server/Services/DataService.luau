@@ -56,7 +56,14 @@ function DataService.get(player)
 	return nil
 end
 
--- Zapis jak u nowego gracza (komenda /reset w trybie testowym).
+-- Profil ProfileStore gracza (ShopService czeka na zapis paragonu: LastSavedData, Save, OnAfterSave)
+-- albo nil, gdy jeszcze się wczytuje.
+function DataService.profile(player)
+	return profiles[player]
+end
+
+-- Zapis jak u nowego gracza (komenda /reset w trybie testowym). Paragony zostają, żeby zakup, który
+-- akurat się przetwarza, nie przyznał się drugi raz.
 function DataService.reset(player)
 	local profile = profiles[player]
 	if profile == nil then
@@ -65,6 +72,10 @@ function DataService.reset(player)
 	local fresh = deepCopy(Template)
 	fresh.FirstJoin = os.time()
 	fresh.LastJoin = os.time()
+	local old = profile.Data
+	if type(old) == "table" and type(old.Robux) == "table" and type(old.Robux.Receipts) == "table" then
+		fresh.Robux.Receipts = old.Robux.Receipts
+	end
 	profile.Data = fresh
 	return true
 end

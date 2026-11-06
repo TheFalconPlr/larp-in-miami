@@ -25,6 +25,8 @@ local Nametags = {}
 
 local LEVEL_ATTRIBUTE = "LarpRebirth" -- jak RebirthService.LevelAttribute
 local AURA_ATTRIBUTE = "LarpAuraLevel" -- jak RebirthService.AuraLevelAttribute
+local VERIFIED_ATTRIBUTE = "LarpVerified" -- jak ShopService.VerifiedAttribute (gamepass Verified)
+local VERIFIED_SIZE = 36 -- niebieski znaczek przed tytułem
 local SPARKLES = "rbxasset://textures/particles/sparkles_main.dds" -- iskry wbudowane w Roblox
 
 -- Wygląd napisu (piksele bazowe w ramce Kit.worldFrame)
@@ -106,7 +108,7 @@ function Nametags.start(hud)
 	end
 
 	-- Treść napisu: tytuł (cień, gradient, połysk), plakietka Aura Level i nick (nad innymi graczami).
-	local function build(entry, player, level, auraLevel)
+	local function build(entry, player, level, auraLevel, verified)
 		for _, child in ipairs(entry.frame:GetChildren()) do
 			if child:GetAttribute("TagItem") then
 				child:Destroy()
@@ -134,8 +136,22 @@ function Nametags.start(hud)
 		if badgeWidth > 0 then
 			total = total + GAP + badgeWidth
 		end
+		if verified then
+			total = total + VERIFIED_SIZE + 6
+		end
 		local x = math.floor((WIDTH - total) / 2)
 		local y = TITLE_ROW / 2
+		if verified then
+			-- gamepass Verified: niebieski znaczek (znak Roblox U+E000) przed tytułem
+			Icons.make("Verified", {
+				AnchorPoint = Vector2.new(0, 0.5),
+				Position = UDim2.fromOffset(x, y),
+				Size = UDim2.fromOffset(VERIFIED_SIZE, VERIFIED_SIZE),
+				ZIndex = 4,
+				Parent = row,
+			})
+			x = x + VERIFIED_SIZE + 6
+		end
 
 		-- tytuł: ciemny cień pod spodem, na nim napis z gradientem i grubym obrysem
 		local shadow = textLabel(row, title, TITLE_SIZE, x, y + 4, 2)
@@ -214,6 +230,7 @@ function Nametags.start(hud)
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		local level = player:GetAttribute(LEVEL_ATTRIBUTE)
 		local auraLevel = player:GetAttribute(AURA_ATTRIBUTE) or 0
+		local verified = player:GetAttribute(VERIFIED_ATTRIBUTE) == true
 		local busy = State.busy
 		local mine = player == localPlayer
 		local ready = head ~= nil and type(level) == "number"
@@ -224,10 +241,10 @@ function Nametags.start(hud)
 			entry.gui.StudsOffset = Vector3.new(0, head.Size.Y / 2 + HEAD_GAP + entry.height / PIXELS_PER_STUD / 2, 0)
 		end
 		if ready then
-			local key = tostring(level) .. ":" .. tostring(auraLevel) .. ":" .. player.DisplayName
+			local key = tostring(level) .. ":" .. tostring(auraLevel) .. ":" .. tostring(verified) .. ":" .. player.DisplayName
 			if entry.key ~= key then
 				entry.key = key
-				build(entry, player, level, auraLevel)
+				build(entry, player, level, auraLevel, verified)
 			end
 			if not mine and humanoid ~= nil then
 				humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
@@ -298,6 +315,9 @@ function Nametags.start(hud)
 			refresh(player)
 		end)
 		player:GetAttributeChangedSignal(AURA_ATTRIBUTE):Connect(function()
+			refresh(player)
+		end)
+		player:GetAttributeChangedSignal(VERIFIED_ATTRIBUTE):Connect(function()
 			refresh(player)
 		end)
 		player.CharacterAdded:Connect(function(character)

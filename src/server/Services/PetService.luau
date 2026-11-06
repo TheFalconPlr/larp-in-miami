@@ -66,12 +66,20 @@ local function addStand(inst, zone, egg)
 	table.insert(stands, inst)
 end
 
+-- Czy na stoisku o tej nazwie jest jajko: A i B za L$, P = premium (za Robuxy).
+local function validEgg(zone, egg)
+	if egg == "P" then
+		return Loop.premiumInfo(zone) ~= nil
+	end
+	return Loop.eggInfo(zone, egg) ~= nil
+end
+
 local function scan()
 	for _, inst in ipairs(Workspace:GetDescendants()) do
 		if inst:IsA("Model") or inst:IsA("BasePart") then
-			local egg, digits = string.match(inst.Name, "^Egg([AB])(%d+)$")
+			local egg, digits = string.match(inst.Name, "^Egg([ABP])(%d+)$")
 			local zone = tonumber(digits)
-			if egg ~= nil and zone ~= nil and Loop.eggInfo(zone, egg) ~= nil then
+			if egg ~= nil and zone ~= nil and validEgg(zone, egg) then
 				addStand(inst, zone, egg)
 			end
 		end
@@ -104,6 +112,7 @@ end
 local EGG_COLORS = {
 	A = Color3.fromRGB(245, 247, 250),
 	B = Color3.fromRGB(255, 196, 60),
+	P = Color3.fromRGB(164, 92, 255), -- premium: fioletowe, ze złotym pierścieniem
 }
 
 -- Stoisko: niski cokół i duże jajko. frame = środek cokołu na ziemi.
@@ -130,6 +139,19 @@ local function buildStand(zone, egg, frame)
 	mesh.MeshType = Enum.MeshType.Sphere
 	mesh.Parent = shell
 	shell.Parent = model
+	if egg == "P" then
+		-- złoty pierścień wokół cokołu i neonowa obwódka: premium jajko widać z daleka
+		local ring = Instance.new("Part")
+		ring.Name = "Ring"
+		ring.Shape = Enum.PartType.Cylinder
+		ring.Anchored = true
+		ring.Size = Vector3.new(0.5, 7.6, 7.6)
+		ring.CFrame = frame * CFrame.new(0, 1.05, 0) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Color = Color3.fromRGB(255, 196, 60)
+		ring.Material = Enum.Material.Neon
+		ring.Parent = model
+		base.Color = Color3.fromRGB(46, 30, 86)
+	end
 	model.WorldPivot = frame
 	model.Parent = Workspace
 	return model
@@ -153,7 +175,7 @@ local function buildPlaceholders()
 					flat = Vector3.new(0, 0, -1)
 				end
 				local frame = CFrame.lookAt(ground, ground + flat.Unit)
-				frames = { A = frame * CFrame.new(-26, 0, -58), B = frame * CFrame.new(-26, 0, -74) }
+				frames = { A = frame * CFrame.new(-26, 0, -58), B = frame * CFrame.new(-26, 0, -74), P = frame * CFrame.new(-26, 0, -90) }
 			end
 		else
 			-- strefy 2–5: po drugiej stronie ścieżki niż auto do zdjęć
@@ -161,12 +183,12 @@ local function buildPlaceholders()
 			if floor ~= nil then
 				local top = floor.CFrame * CFrame.new(0, floor.Size.Y / 2, 0)
 				local side = math.min(28, math.max(0, floor.Size.X / 2 - 8))
-				frames = { A = top * CFrame.new(side, 0, -9), B = top * CFrame.new(side, 0, 9) }
+				frames = { A = top * CFrame.new(side, 0, -9), B = top * CFrame.new(side, 0, 9), P = top * CFrame.new(side, 0, 27) }
 			end
 		end
 		if frames ~= nil then
-			for _, egg in ipairs({ "A", "B" }) do
-				if Loop.eggInfo(zone, egg) ~= nil then
+			for _, egg in ipairs({ "A", "B", "P" }) do
+				if validEgg(zone, egg) then
 					buildStand(zone, egg, frames[egg]).Parent = folder
 					built = built + 1
 				end
@@ -174,7 +196,52 @@ local function buildPlaceholders()
 		end
 	end
 	if built > 0 then
-		print("[Pety] Na mapie nie ma stoisk z jajkami, więc stoją tymczasowe (EggA1, EggB1 obok spawnu i w strefach 2–5).")
+		print("[Pety] Na mapie nie ma stoisk z jajkami, więc stoją tymczasowe (EggA1, EggB1, EggP1 obok spawnu i w strefach 2–5).")
+	end
+end
+
+-- Spód i środek stoiska (Model albo część): ziemia pod nim i jego obrót.
+local function standFrame(stand)
+	local cf, size
+	if stand:IsA("Model") then
+		cf, size = stand:GetBoundingBox()
+	else
+		cf, size = stand.CFrame, stand.Size
+	end
+	return cf * CFrame.new(0, -size.Y / 2, 0)
+end
+
+-- Premium jajko (EggPN) w strefach, które mają już jajka A i B, ale nie mają premium: stawiamy je
+-- w tym samym rzędzie, za jajkiem B (B + odstęp A→B), albo 14 studs obok B.
+local function buildPremiumPlaceholders()
+	local byZone = {}
+	for _, stand in ipairs(stands) do
+		local zone = stand:GetAttribute("Zone")
+		byZone[zone] = byZone[zone] or {}
+		byZone[zone][stand:GetAttribute("Egg")] = stand
+	end
+	local folder = nil
+	for zone in ipairs(Economy.Zones) do
+		local list = byZone[zone]
+		if list ~= nil and list.P == nil and list.B ~= nil and validEgg(zone, "P") then
+			local b = standFrame(list.B)
+			local step = b.RightVector * 14
+			if list.A ~= nil then
+				local a = standFrame(list.A)
+				local d = b.Position - a.Position
+				step = Vector3.new(d.X, 0, d.Z)
+			end
+			if folder == nil then
+				folder = Instance.new("Folder")
+				folder.Name = "PlaceholderPremiumEggs"
+				folder.Parent = Workspace
+			end
+			local frame = b.Rotation + (b.Position + step)
+			buildStand(zone, "P", frame).Parent = folder
+		end
+	end
+	if folder ~= nil then
+		print("[Pety] Brakowało premium jajek (EggP1…EggP5), więc stoją tymczasowe za jajkami B.")
 	end
 end
 
@@ -327,6 +394,7 @@ local function openTime(player)
 	end
 	return seconds
 end
+PetService.openTime = openTime
 
 -- Następne jajko można otworzyć dopiero pod koniec animacji poprzedniego.
 local function openCooldown(player)
@@ -516,6 +584,8 @@ function PetService.start()
 		buildPlaceholders()
 		scan()
 	end
+	buildPremiumPlaceholders()
+	scan()
 
 	-- indeks: stare zapisy dostają pety, które gracz już ma
 	DataService.onLoaded(function(_, data)

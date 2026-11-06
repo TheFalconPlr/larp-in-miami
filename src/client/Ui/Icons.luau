@@ -38,6 +38,21 @@ local EMOJI = {
 	Luck = "🍀", -- sklep Aury: Luck
 	Merge = "🧬", -- sklep Aury: Merge Luck
 	Speed = "👟", -- Rebirth: szybsze chodzenie
+	Teleport = "🌀", -- gamepass Teleport i okno teleportu
+	Chain = "⛓️", -- gamepass Double Chain
+	Watch = "⌚", -- gamepass Double Wrist, zegarek ze Starter Packa
+	Boost = "⚡", -- boosty 2x LP
+	Ad = "📺", -- reklama za nagrodę
+	Premium = "💎", -- premium jajka
+	-- Znaki Roblox (prywatne kody Unicode): ikona Robux (U+E002) i znaczek Verified (U+E000).
+	-- Zapisane bajtami UTF-8, bo tak rozumie je też Lua 5.1 w testach.
+	Robux = "\238\128\130",
+	Verified = "\238\128\128",
+}
+
+-- Kolor znaków Roblox (ikona Robux jest jednokolorowa; Verified ma własny niebieski).
+local GLYPH_COLORS = {
+	Robux = Color3.fromRGB(255, 255, 255),
 }
 
 local CELL = 256
@@ -92,6 +107,14 @@ function Icons.make(name, props)
 		icon.Text = EMOJI[name] or "?"
 		icon.TextScaled = true
 		icon.Font = Enum.Font.FredokaOne
+		local glyph = GLYPH_COLORS[name]
+		if glyph ~= nil then
+			icon.TextColor3 = glyph
+			local stroke = Instance.new("UIStroke")
+			stroke.Thickness = 2
+			stroke.Color = Color3.fromRGB(31, 21, 48)
+			stroke.Parent = icon
+		end
 	end
 	icon.Name = name .. "Icon"
 	icon.BackgroundTransparency = 1

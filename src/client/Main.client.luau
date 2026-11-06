@@ -1,5 +1,6 @@
 -- Larp in Miami — start klienta (gracza): HUD, klikanie, strefy, aktywności, pety, jajka, ubrania
--- i mystery boxy, komunikaty o sekretach, Rebirth, sklep Aury, tytuły nad głową i tryb testowy.
+-- i mystery boxy, sklep za Robuxy, komunikaty o sekretach, Rebirth, sklep Aury, tytuły nad głową
+-- i tryb testowy.
 -- Najpierw moduły rejestrują, czego słuchają, a na końcu State podłącza zdarzenia z serwera.
 
 local Players = game:GetService("Players")
@@ -18,6 +19,7 @@ local Pets = require(script.Parent.Pets)
 local Eggs = require(script.Parent.Eggs)
 local Wardrobe = require(script.Parent.Wardrobe)
 local Boxes = require(script.Parent.Boxes)
+local Shop = require(script.Parent.Shop)
 local SecretBanner = require(script.Parent.SecretBanner)
 local RebirthUi = require(script.Parent.RebirthUi)
 local AuraShop = require(script.Parent.AuraShop)
@@ -33,6 +35,7 @@ Pets.start(hud)
 Wardrobe.start(hud)
 Eggs.start(hud)
 Boxes.start(hud)
+Shop.start(hud)
 SecretBanner.start(hud)
 RebirthUi.start(hud)
 AuraShop.start(hud)

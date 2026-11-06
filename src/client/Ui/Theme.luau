@@ -35,6 +35,9 @@ Theme.Gradients = {
 	CardBlue = { hex("#55CBFF"), hex("#1E88E3") },
 	BagFull = { hex("#E8243A"), hex("#A8102A") },
 	Money = { hex("#7BF26A"), hex("#14A84A") }, -- zielony jak banknoty (kwoty w komunikatach)
+	Premium = { hex("#C98BFF"), hex("#7A2CF0") }, -- premium jajka i sklep za Robuxy (fiolet)
+	Starter = { hex("#FF8AD0"), hex("#FF5B3A") }, -- Starter Pack (róż w pomarańcz)
+	Owned = { hex("#B8F5A8"), hex("#58C24A") }, -- kupione (jaśniejsza zieleń)
 }
 
 -- Tytuły Rebirth (nad głową i w oknie Rebirth): gradient z góry na dół dla każdego poziomu.

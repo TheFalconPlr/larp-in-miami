@@ -124,10 +124,12 @@ local EGG_SIZE = Vector3.new(4.4, 5.6, 4.4)
 local EGG_COLORS = {
 	A = Color3.fromRGB(245, 247, 250),
 	B = Color3.fromRGB(255, 196, 60),
+	P = Color3.fromRGB(164, 92, 255), -- premium (za Robuxy)
 }
 local CRACK_COLORS = {
 	A = Color3.fromRGB(70, 72, 92),
 	B = Color3.fromRGB(110, 62, 18),
+	P = Color3.fromRGB(58, 18, 110),
 }
 -- Rysa na przodzie jajka: zygzak w poprzek (x, y w studs od środka). Pojawia się w 3 etapach,
 -- po 2 odcinki na każde pęknięcie.
@@ -153,7 +155,7 @@ local function surfacePoint(x, y)
 	return Vector3.new(x, y, z) * 1.03
 end
 
--- Jajko do animacji otwierania (A białe, B złote) z ukrytymi rysami (PetModels.crack).
+-- Jajko do animacji otwierania (A białe, B złote, P fioletowe) z ukrytymi rysami (PetModels.crack).
 function PetModels.egg(egg)
 	local model = Instance.new("Model")
 	local shell = Instance.new("Part")
@@ -208,19 +210,30 @@ local COINS = {
 	{ -2.9, 1.0, 2 },
 }
 
+-- Premium jajko stoi na diamentach (obrócone kostki), a nie na monetach.
 function PetModels.eggWithCoins(egg)
 	local model = PetModels.egg(egg)
 	local bottom = -EGG_SIZE.Y / 2
 	for _, stack in ipairs(COINS) do
 		for n = 1, stack[3] do
 			local coin = Instance.new("Part")
-			coin.Name = "Coin"
-			coin.Shape = Enum.PartType.Cylinder
-			coin.Size = Vector3.new(0.32, 1.7, 1.7)
-			coin.CFrame = CFrame.new(stack[1], bottom + 0.16 + (n - 1) * 0.33, stack[2])
-				* CFrame.Angles(0, math.rad(n * 17), math.rad(90))
-			coin.Color = Color3.fromRGB(255, 200, 50)
-			coin.Material = Enum.Material.SmoothPlastic
+			if egg == "P" then
+				coin.Name = "Gem"
+				coin.Size = Vector3.new(0.9, 0.9, 0.9)
+				coin.CFrame = CFrame.new(stack[1], bottom + 0.5 + (n - 1) * 0.75, stack[2])
+					* CFrame.Angles(math.rad(45), math.rad(n * 30), math.rad(35))
+				coin.Color = Color3.fromRGB(120, 220, 255)
+				coin.Material = Enum.Material.Glass
+				coin.Transparency = 0.15
+			else
+				coin.Name = "Coin"
+				coin.Shape = Enum.PartType.Cylinder
+				coin.Size = Vector3.new(0.32, 1.7, 1.7)
+				coin.CFrame = CFrame.new(stack[1], bottom + 0.16 + (n - 1) * 0.33, stack[2])
+					* CFrame.Angles(0, math.rad(n * 17), math.rad(90))
+				coin.Color = Color3.fromRGB(255, 200, 50)
+				coin.Material = Enum.Material.SmoothPlastic
+			end
 			coin.Parent = model
 		end
 	end

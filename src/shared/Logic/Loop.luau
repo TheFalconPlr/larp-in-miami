@@ -596,6 +596,16 @@ function Loop.eggInfo(zone, egg)
 	return info
 end
 
+-- Premium jajko strefy (za Robuxy, stałe szanse bez szczęścia) albo nil. Na mapie to stoisko EggPN.
+function Loop.premiumInfo(zone)
+	local eggs = Economy.Pets.Eggs[zone]
+	local info = eggs and eggs.Premium
+	if info == nil or info.Odds == nil then
+		return nil
+	end
+	return info
+end
+
 -- Czy można kupić count jajek naraz (1 albo 3 z Triple Open). Zwraca true albo false i powód:
 -- BadRequest, Zone, Inventory (nie zmieszczą się wszystkie), NotEnough (nie stać na wszystkie).
 function Loop.canBuyEggs(data, zone, egg, count, maxPets)
@@ -644,27 +654,31 @@ function Loop.backfillIndex(data)
 	end
 end
 
--- Rzadkości w indeksie strefy: tylko te, które da się dziś wylosować z jajek za L$ (A i B), więc bez
--- Mythic. Mythic jest tylko w jajkach premium (Robux): gdy będzie je można kupić, dopisz je tutaj.
+-- Rzadkości w indeksie strefy: wszystko, co wypada z jajek A i B (za L$) i z premium jajka (Robux,
+-- stąd Mythic), w kolejności rzadkości.
 function Loop.indexRarities(zone)
 	local list = {}
 	local eggs = Economy.Pets.Eggs[zone]
 	if eggs == nil then
 		return list
 	end
+	local premium = Loop.premiumInfo(zone)
 	for _, rarity in ipairs(Economy.Pets.RarityOrder) do
+		local found = premium ~= nil and premium.Odds[rarity] ~= nil
 		for egg in pairs(eggs) do
 			local info = Loop.eggInfo(zone, egg)
 			if info ~= nil and info.Odds[rarity] ~= nil then
-				table.insert(list, rarity)
-				break
+				found = true
 			end
+		end
+		if found then
+			table.insert(list, rarity)
 		end
 	end
 	return list
 end
 
--- Wszystkie pety w indeksie: suma po strefach (dziś 5 stref × 6 rzadkości).
+-- Wszystkie pety w indeksie: suma po strefach (dziś 5 stref × 7 rzadkości).
 function Loop.indexTotal()
 	local n = 0
 	for zone in ipairs(Economy.Pets.Eggs) do
@@ -673,7 +687,7 @@ function Loop.indexTotal()
 	return n
 end
 
--- Ile petów z indeksu gracz już miał (pety spoza indeksu, np. Mythic z komendy /pet, się nie liczą).
+-- Ile petów z indeksu gracz już miał (pety spoza indeksu się nie liczą).
 function Loop.indexCount(data)
 	local n = 0
 	if type(data.Index) ~= "table" then
@@ -741,6 +755,21 @@ function Loop.openEggs(data, ctx, zone, egg, count, random01, maxPets)
 		table.insert(list, { id = id, pet = pet, new = isNew })
 	end
 	return list
+end
+
+-- Dodaje peta bez losowania i bez płacenia L$ (zakup za Robuxy, Starter Pack): zakłada go, gdy jest
+-- wolny slot, i zapisuje w indeksie. Limitu ekwipunku nie sprawdza, bo zapłaconego peta trzeba dać
+-- zawsze. Zwraca id, peta i czy jest nowy w indeksie.
+function Loop.addPet(data, ctx, zone, rarity, egg, level)
+	local id = tostring(data.NextPetId)
+	data.NextPetId = data.NextPetId + 1
+	local pet = { Zone = zone, Rarity = rarity, Level = level or 0, Egg = egg or "P" }
+	data.Pets[id] = pet
+	if #Loop.activePets(data, ctx) < Loop.petSlots(data, ctx) then
+		table.insert(data.Equipped, id)
+	end
+	local isNew = Loop.addToIndex(data, zone, rarity)
+	return id, pet, isNew
 end
 
 -- Czy pet jest na liście wyposażonych.

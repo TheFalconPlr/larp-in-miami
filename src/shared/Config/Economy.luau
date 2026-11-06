@@ -614,104 +614,105 @@ local Economy = {
 		Gamepasses = {
 			AutoSell = {
 				Price = 599,
-				Id = 0,
 			},
 			TwoXLP = {
 				Price = 399,
-				Id = 0,
 				LPBonus = 1,
 			},
 			AutoClick = {
 				Price = 299,
-				Id = 0,
 				ClicksPerSecond = 3,
 			},
 			Verified = {
 				Price = 299,
-				Id = 0,
 				LPBonus = 0.1,
 				DailyBoostMinutes = 15,
 			},
 			PetSlots = {
 				Price = 299,
-				Id = 0,
 				ExtraSlots = 2,
 			},
 			DoubleChain = {
 				Price = 199,
-				Id = 0,
 			},
 			DoubleWrist = {
 				Price = 199,
-				Id = 0,
 			},
 			TripleOpen = {
 				Price = 199,
-				Id = 0,
 				OpenCount = 3,
 			},
 			Teleport = {
 				Price = 149,
-				Id = 0,
 			},
 			TwoXBag = {
 				Price = 99,
-				Id = 0,
 				CapacityX = 2,
 			},
 			FastOpen = {
 				Price = 79,
-				Id = 0,
 				OpenTimeX = 0.333333,
 			},
 		},
 		Products = {
 			PremiumEgg1 = {
 				Price = 99,
-				Id = 0,
 				Count = 1,
 			},
 			PremiumEgg3 = {
 				Price = 269,
-				Id = 0,
 				Count = 3,
 			},
 			PremiumEgg10 = {
 				Price = 799,
-				Id = 0,
 				Count = 10,
 			},
 			StarterPack = {
 				Price = 79,
-				Id = 0,
 				HoursAvailable = 72,
+				Watch = "Rare",
+				PetRarity = "Epic",
+				BoostMinutes = 30,
+				AutoSellMinutes = 30,
+			},
+			Boost2xLP5 = {
+				Price = 19,
+				Minutes = 5,
 			},
 			Boost2xLP15 = {
 				Price = 49,
-				Id = 0,
 				Minutes = 15,
 			},
 			Boost2xLP60 = {
 				Price = 149,
-				Id = 0,
 				Minutes = 60,
 			},
 			BoostAutoSell15 = {
 				Price = 49,
-				Id = 0,
 				Minutes = 15,
 			},
 			BoostAutoSell60 = {
 				Price = 149,
-				Id = 0,
 				Minutes = 60,
 			},
 			SellNow = {
 				Price = 9,
-				Id = 0,
+			},
+			DirectPetEpic = {
+				Price = 75,
+				Rarity = "Epic",
+			},
+			DirectPetLegendary = {
+				Price = 149,
+				Rarity = "Legendary",
+			},
+			DirectPetMythic = {
+				Price = 299,
+				Rarity = "Mythic",
 			},
 		},
-		Note = "Ceny w UI zawsze z MarketplaceService:GetProductInfo. Id uzupełniamy po utworzeniu produktów w Creator Hub.",
+		AdReward = "Boost2xLP5",
+		Note = "Ceny w UI zawsze z MarketplaceService:GetProductInfoAsync. ID są w Config/RobuxIds.",
 	},
 	Rewards = {
 		DailyStreak = { "Boost 2x LP 10 min", "3x jajko A", "2x najlepszy box", "Boost 2x LP 30 min", "3x jajko B", "2x najlepszy box + Auto-Sell 15 min", "1x premium jajko + boost 2x LP 30 min" },

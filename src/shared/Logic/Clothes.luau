@@ -280,6 +280,22 @@ function Clothes.openBox(data, ctx, box, random01, maxItems, forced)
 	return id, item, worn
 end
 
+-- Dodaje ubranie bez losowania i bez płacenia L$ (Starter Pack za Robuxy). Box = "P" (kupione
+-- za Robuxy: łączy się tylko przy 100%). Zakłada je jak nowe ubranie z boxa. Limitu nie sprawdza,
+-- bo zapłaconą rzecz trzeba dać zawsze. Zwraca id, ubranie i czy zostało założone.
+function Clothes.addItem(data, ctx, category, rarity, level, box)
+	local item = { Category = category, Rarity = rarity, Level = level or 0, Box = box or "P" }
+	local id = tostring(data.NextClothId)
+	data.NextClothId = data.NextClothId + 1
+	data.Clothes[id] = item
+	local worn = false
+	if Clothes.betterThanWorn(data, ctx, item) then
+		Clothes.wear(data, ctx, id)
+		worn = true
+	end
+	return id, item, worn
+end
+
 -- Otwiera count boxów naraz (Triple Open, ten sam gamepass co przy jajkach). Najpierw sprawdza,
 -- czy stać na wszystkie i czy wszystkie się zmieszczą. Zwraca listę { id, item, worn } albo nil
 -- i powód (jak canBuy).

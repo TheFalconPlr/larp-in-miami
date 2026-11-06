@@ -7,13 +7,16 @@
 --     promienie i poświata w kolorze rzadkości (przy rzadkich iskry, drżenie i oklaski), napisy
 --     wskakują po kolei, a na koniec pet leci do kafelka PETS. W tym czasie HUD jest schowany.
 -- Kupno i losowanie robi serwer (PetService); tu jest tylko wygląd.
+-- Premium jajka (stoiska EggPN, Etap 10): fioletowa pigułka PREMIUM, w oknie szanse i Buy 1 / 3 / 10
+-- za Robuxy (Shop.buy). Pety przychodzą po zakupie (Notify „Purchase”) i wtedy gra ta sama animacja
+-- (10 jajek w dwóch rzędach). Gracz z ograniczeniem płatnych losowań widzi zamiast tego konkretne pety
+-- z cenami (bez szans i bez pękającego jajka).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local CollectionService = game:GetService("CollectionService")
-local MarketplaceService = game:GetService("MarketplaceService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -30,6 +33,7 @@ local Sounds = require(script.Parent.Ui.Sounds)
 local PetModels = require(script.Parent.PetModels)
 local Pets = require(script.Parent.Pets)
 local StandAnchor = require(script.Parent.StandAnchor)
+local Shop = require(script.Parent.Shop)
 
 local Eggs = {}
 
@@ -91,6 +95,24 @@ local SECRET_COLORS = { Color3.fromRGB(255, 255, 255), Color3.fromRGB(200, 170, 
 local SECRET_FLASH = Color3.fromRGB(200, 140, 255)
 local SECRET_HOLD = 2.2 -- tyle sekund dłużej widać sekreta
 
+-- Premium jajka (jedna tabela, bo funkcja start jest blisko limitu 60 upvalues Lua 5.1 w teście).
+local PREMIUM = {
+	Counts = { 1, 3, 10 }, -- Buy 1 / 3 / 10 (produkty PremiumEgg1, PremiumEgg3, PremiumEgg10)
+	Direct = { "Epic", "Legendary", "Mythic" }, -- pety bez losowania (DirectPet…)
+	Pill = Color3.fromRGB(150, 70, 255),
+	GridSlot = 176, -- więcej niż 3 jajka: dwa rzędy mniejszych
+	GridX = 222,
+	GridY = 262,
+	GridColumns = 5,
+	Text = {
+		Pill = "PREMIUM",
+		Question = "Would you like to buy a\n%s?",
+		Direct = "Pick a pet from the\n%s",
+		Odds = "Odds:",
+		Region = "Premium Eggs aren't available in your region, but you can buy these pets directly!",
+	},
+}
+
 local RANK = {}
 for i, rarity in ipairs(Economy.Pets.RarityOrder) do
 	RANK[rarity] = i
@@ -100,9 +122,20 @@ local function eggName(zone, egg)
 	return string.format(PetsConfig.EggNames[egg] or "%s Egg", Economy.Zones[zone].Name)
 end
 
+-- Jajko stoiska: A i B za L$ (Price), P = premium za Robuxy (bez Price, ma Robux i Odds).
 local function eggInfo(zone, egg)
 	local list = Economy.Pets.Eggs[zone]
-	local info = list and list[egg]
+	if list == nil then
+		return nil
+	end
+	if egg == "P" then
+		local premium = list.Premium
+		if premium == nil or premium.Odds == nil then
+			return nil
+		end
+		return premium
+	end
+	local info = list[egg]
 	if info == nil or info.Price == nil then
 		return nil
 	end
@@ -207,9 +240,15 @@ function Eggs.start(hud)
 			Parent = gui,
 		})
 		Kit.new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = face })
-		Kit.gradient(face, Theme.Gradients.Yellow, 90)
+		-- premium jajko: fioletowa pigułka z diamentem i napisem PREMIUM (cena w oknie kupna)
+		local premium = info.Price == nil
+		if premium then
+			Kit.gradient(face, Theme.Gradients.Premium, 90)
+		else
+			Kit.gradient(face, Theme.Gradients.Yellow, 90)
+		end
 		Kit.stroke(face, 3, Enum.ApplyStrokeMode.Border)
-		local coin = Icons.make("Cash", {
+		local coin = Icons.make((premium and "Premium") or "Cash", {
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.fromScale(0.05, 0.5),
 			Size = UDim2.fromScale(0.26, 0.9),
@@ -221,7 +260,7 @@ function Eggs.start(hud)
 			AnchorPoint = Vector2.new(0, 0.5),
 			Position = UDim2.fromScale(0.34, 0.5),
 			Size = UDim2.fromScale(0.6, 0.74),
-			Text = Format.number(info.Price),
+			Text = (premium and PREMIUM.Text.Pill) or Format.number(info.Price),
 			ZIndex = 2,
 		}, { maxSize = 60, stroke = 3 })
 		pills[stand] = gui
@@ -314,10 +353,16 @@ function Eggs.start(hud)
 				viewport.ImageTransparency = 0.1
 			end
 			local item = Pets.rarityItem(rarity, 20)
+			local topText = Format.percent(info.Odds[rarity])
+			local view = State.view
+			if egg == "P" and view ~= nil and view.PaidRandomBlocked then
+				-- gracz z ograniczeniem płatnych losowań: konkretny pet za cenę zamiast szansy
+				topText = Shop.priceText("Product", "DirectPet" .. rarity)
+			end
 			Kit.text(card, {
 				Position = UDim2.fromScale(0, 0.03),
 				Size = UDim2.fromScale(1, 0.27),
-				Text = Format.percent(info.Odds[rarity]),
+				Text = topText,
 				TextColor3 = item.color or Theme.White,
 				ZIndex = 6,
 			}, { maxSize = 60, stroke = 2.5, gradient = item.colors })
@@ -472,31 +517,91 @@ function Eggs.start(hud)
 		ZIndex = 4,
 		Parent = dialog.content,
 	})
+	-- 3 kolumny: jajka A i B używają dwóch (Buy 1 i Buy 3), premium trzech (Buy 1 / 3 / 10 albo
+	-- 3 pety bez losowania dla gracza z ograniczeniem płatnych losowań)
 	local columns = {}
-	for i, count in ipairs({ 1, TRIPLE }) do
-		local x = 0.26
-		if i == 2 then
-			x = 0.74
-		end
+	for i, count in ipairs({ 1, TRIPLE, 10 }) do
 		local priceLine = Kit.line(dialog.content, {
 			anchor = Vector2.new(0.5, 1),
-			position = UDim2.new(x, 0, 1, -78),
+			position = UDim2.new(0.5, 0, 1, -78),
 			height = 44,
 		})
 		priceLine.holder.ZIndex = 4
 		local button = Kit.button(dialog.content, {
-			name = "Buy" .. count,
+			name = "Buy" .. i,
 			size = Vector2.new(230, 68),
 			text = string.format(TEXT.Buy, count),
 			colors = Theme.Gradients.Green,
 			anchor = Vector2.new(0.5, 1),
-			position = UDim2.new(x, 0, 1, 0),
+			position = UDim2.new(0.5, 0, 1, 0),
 			textSize = 36,
 		})
 		columns[i] = { count = count, price = priceLine, button = button }
 	end
+	-- szanse premium jajka w oknie kupna (płatne losowanie: szanse przed zakupem)
+	local oddsLine = Kit.line(dialog.content, {
+		anchor = Vector2.new(0.5, 0),
+		position = UDim2.new(0.5, 0, 0, 100),
+		height = 32,
+	})
+	oddsLine.holder.ZIndex = 4
+	local function placeColumns(n)
+		local xs = { 0.26, 0.74 }
+		local width = 230
+		if n == 3 then
+			xs = { 0.18, 0.5, 0.82 }
+			width = 172
+		end
+		for i, column in ipairs(columns) do
+			local visible = i <= n
+			column.price.holder.Visible = visible
+			column.button.holder.Visible = visible
+			if visible then
+				column.price.holder.Position = UDim2.new(xs[i], 0, 1, -78)
+				column.button.holder.Position = UDim2.new(xs[i], 0, 1, 0)
+				column.button.holder.Size = UDim2.fromOffset(width, 73)
+			end
+		end
+	end
 	local dialogEgg = nil
 	local dialogEggKind = nil
+
+	local function renderPremium(info, view, name)
+		placeColumns(3)
+		eggView.Position = UDim2.new(0.5, 0, 0, 136)
+		eggView.Size = UDim2.fromOffset(190, 124)
+		oddsLine.holder.Visible = true
+		if view.PaidRandomBlocked then
+			question.Text = string.format(PREMIUM.Text.Direct, name)
+			oddsLine.set({})
+			oddsLine.holder.Visible = false
+			for i, column in ipairs(columns) do
+				local rarity = PREMIUM.Direct[i]
+				column.direct = rarity
+				column.price.set({ Pets.rarityItem(rarity, 28) })
+				column.button.setText(Shop.priceText("Product", "DirectPet" .. rarity))
+				column.button.setColors(Theme.Gradients.Green)
+			end
+			return
+		end
+		question.Text = string.format(PREMIUM.Text.Question, name)
+		local items = { { text = PREMIUM.Text.Odds, size = 22, color = Theme.Dark, stroke = 0 } }
+		for _, rarity in ipairs(raritiesOf(info)) do
+			table.insert(items, Pets.rarityItem(rarity, 22))
+			table.insert(items, { text = Format.percent(info.Odds[rarity]), size = 22 })
+		end
+		oddsLine.set(items)
+		for i, column in ipairs(columns) do
+			column.direct = nil
+			column.count = PREMIUM.Counts[i]
+			column.button.setText(string.format(TEXT.Buy, column.count))
+			column.button.setColors(Theme.Gradients.Green)
+			column.price.set({
+				{ icon = "Robux", size = 34 },
+				{ text = Format.number(Shop.price("Product", "PremiumEgg" .. column.count)), size = 30, colors = Theme.Gradients.Gold },
+			})
+		end
+	end
 
 	local function renderDialog()
 		local info = current and eggInfo(current.zone, current.egg)
@@ -504,9 +609,21 @@ function Eggs.start(hud)
 		if info == nil or view == nil then
 			return
 		end
-		question.Text = string.format(TEXT.Question, eggName(current.zone, current.egg))
+		local name = eggName(current.zone, current.egg)
+		if current.egg == "P" then
+			renderPremium(info, view, name)
+			return
+		end
+		placeColumns(2)
+		eggView.Position = UDim2.new(0.5, 0, 0, 108)
+		eggView.Size = UDim2.fromOffset(210, 150)
+		oddsLine.holder.Visible = false
+		question.Text = string.format(TEXT.Question, name)
 		local passes = view.Passes or {}
-		for _, column in ipairs(columns) do
+		for i, column in ipairs(columns) do
+			column.direct = nil
+			column.count = ({ 1, TRIPLE })[i] or 1
+			column.button.setText(string.format(TEXT.Buy, column.count))
 			local total = info.Price * column.count
 			if column.count > 1 and not passes.TripleOpen then
 				column.price.set({ { icon = "Lock", size = 36 }, { text = TEXT.Gamepass, size = 28 } })
@@ -688,11 +805,24 @@ function Eggs.start(hud)
 	-- Miejsce na jedno jajko i peta (1 na środku albo 3 obok siebie). Wszystko skaluje się od środka.
 	local function makeSlot(index, count, pet)
 		local big = count == 1
+		local tiny = count > 3
 		local size, spacing = SLOT_SMALL, SLOT_SPACING
 		if big then
 			size, spacing = SLOT_BIG, 0
 		end
 		local x = (index - (count + 1) / 2) * spacing
+		local y = 0
+		if tiny then
+			-- więcej niż 3 (10 premium jajek): rzędy po 5 mniejszych jajek
+			size = PREMIUM.GridSlot
+			local cols = PREMIUM.GridColumns
+			local rows = math.ceil(count / cols)
+			local row = math.floor((index - 1) / cols) + 1
+			local col = (index - 1) % cols + 1
+			local inRow = math.min(cols, count - (row - 1) * cols)
+			x = (col - (inRow + 1) / 2) * PREMIUM.GridX
+			y = (row - (rows + 1) / 2) * PREMIUM.GridY - 40
+		end
 		local secret = pet.Rarity == "Secret"
 		local color = PetsConfig.RarityColors[pet.Rarity] or Theme.White
 		if secret then
@@ -701,7 +831,7 @@ function Eggs.start(hud)
 		local holder = Kit.new("Frame", {
 			Name = "Slot" .. index,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0.5, x, 0.5, 0),
+			Position = UDim2.new(0.5, x, 0.5, y),
 			Size = UDim2.fromOffset(size, size),
 			BackgroundTransparency = 1,
 			ZIndex = 2,
@@ -793,6 +923,8 @@ function Eggs.start(hud)
 		local nameH, infoH, equippedH = 38, 32, 28
 		if big then
 			nameH, infoH, equippedH = 52, 40, 34
+		elseif tiny then
+			nameH, infoH, equippedH = 28, 24, 22
 		end
 		-- „NEW!” w rogu: pet, którego gracz jeszcze nie miał (indeks)
 		local newLabel = Kit.text(holder, {
@@ -811,13 +943,14 @@ function Eggs.start(hud)
 		end
 		return {
 			big = big,
+			tiny = tiny,
 			size = size,
 			pet = pet,
 			color = color,
 			secret = secret,
 			newScale = newScale,
 			sparkColor = sparkColor,
-			center = Vector2.new(STAGE_SIZE.X / 2 + x, STAGE_SIZE.Y / 2),
+			center = Vector2.new(STAGE_SIZE.X / 2 + x, STAGE_SIZE.Y / 2 + y),
 			holder = holder,
 			holderScale = holderScale,
 			rays = rays,
@@ -978,6 +1111,8 @@ function Eggs.start(hud)
 			local nameSize, infoSize, powerSize, equippedSize = 30, 22, 21, 19
 			if slot.big then
 				nameSize, infoSize, powerSize, equippedSize = 44, 30, 28, 24
+			elseif slot.tiny then
+				nameSize, infoSize, powerSize, equippedSize = 21, 17, 16, 15
 			end
 			slot.nameLine.set({ { text = PetsConfig.fullName(pet.Zone, pet.Rarity, pet.Level), size = nameSize } })
 			popIn(slot.nameLine.scale, delay)
@@ -1076,26 +1211,27 @@ function Eggs.start(hud)
 		end
 	end
 
-	local function runHatch(egg, pets, total)
+	-- direct = pet kupiony bez losowania (gracz z ograniczeniem): bez jajka i pęknięć, od razu pet.
+	local function runHatch(egg, pets, total, direct)
 		clearHatch()
+		local top = STAGE_SIZE.Y
 		for i, pet in ipairs(pets) do
 			local slot = makeSlot(i, #pets, pet)
-			slot.eggModel = PetModels.egg(egg)
-			PetModels.show(slot.viewport, slot.eggModel, 1.3)
-			slot.pop.Scale = 0.35
-			TweenService:Create(slot.pop, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			if not direct then
+				slot.eggModel = PetModels.egg(egg)
+				PetModels.show(slot.viewport, slot.eggModel, 1.3)
+				slot.pop.Scale = 0.35
+				TweenService:Create(slot.pop, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			end
 			slots[i] = slot
+			top = math.min(top, slot.center.Y - slot.size / 2)
 		end
 		banner.set({})
 		bannerScale.Scale = 0
 		subBanner.set({})
 		subBannerScale.Scale = 0
-		local slotSize = SLOT_SMALL
-		if #pets == 1 then
-			slotSize = SLOT_BIG
-		end
-		banner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 - 44)
-		subBanner.holder.Position = UDim2.new(0.5, 0, 0, STAGE_SIZE.Y / 2 - slotSize / 2 + 4)
+		banner.holder.Position = UDim2.new(0.5, 0, 0, top - 44)
+		subBanner.holder.Position = UDim2.new(0.5, 0, 0, top + 4)
 		stage.Position = UDim2.fromScale(0.5, STAGE_Y)
 		dim.BackgroundTransparency = 1
 		hatchGui.Enabled = true
@@ -1106,11 +1242,15 @@ function Eggs.start(hud)
 		shakeLength = total * BURST_AT
 		kickTime = -math.huge
 		animConnection = RunService.RenderStepped:Connect(animate)
-		for k, at in ipairs(BEATS) do
-			waitUntil(start + at * total)
-			crackBeat(k, egg)
+		if direct then
+			task.wait(0.25)
+		else
+			for k, at in ipairs(BEATS) do
+				waitUntil(start + at * total)
+				crackBeat(k, egg)
+			end
+			waitUntil(start + BURST_AT * total)
 		end
-		waitUntil(start + BURST_AT * total)
 		local hold = math.max(0.9, total * 0.5)
 		if burst(egg) then
 			hold = hold + SECRET_HOLD
@@ -1121,13 +1261,13 @@ function Eggs.start(hud)
 	end
 
 	-- Cała animacja; State.busy blokuje w tym czasie klikanie i okna. Po błędzie stan i tak wraca.
-	local function hatch(egg, pets, total)
+	local function hatch(egg, pets, total, direct)
 		hatching = true
 		State.busy = true
 		panelGui.Enabled = false
 		promptGui.Enabled = false
 		hud.setVisible(false)
-		local ok, err = pcall(runHatch, egg, pets, total)
+		local ok, err = pcall(runHatch, egg, pets, total, direct)
 		if not ok then
 			warn("[Jajka] animacja otwierania: " .. tostring(err))
 		end
@@ -1151,13 +1291,24 @@ function Eggs.start(hud)
 			return
 		end
 		local view = State.view
+		if current.egg == "P" then
+			-- premium: okno zakupu Robux (pety przyjdą po zakupie w Notify „Purchase”)
+			local key = "PremiumEgg" .. column.count
+			if column.direct ~= nil then
+				key = "DirectPet" .. column.direct
+			end
+			requesting = true
+			local result = Shop.buy("Product", key, { Zone = current.zone }, column.button)
+			requesting = false
+			if result ~= nil and result.Ok then
+				dialog.hide()
+			end
+			return
+		end
 		local passes = (view and view.Passes) or {}
 		if column.count > 1 and not passes.TripleOpen then
-			local id = Economy.Robux.Gamepasses.TripleOpen.Id
-			if type(id) == "number" and id > 0 then
-				pcall(function()
-					MarketplaceService:PromptGamePassPurchase(player, id)
-				end)
+			if hud.passPrompt ~= nil then
+				hud.passPrompt("TripleOpen", column.button)
 			else
 				Sounds.play("NotEnough")
 				hud.toast({ { text = TEXT.PassSoon, size = 26, colors = Theme.Gradients.Gold } }, "TripleOpen")
@@ -1220,7 +1371,11 @@ function Eggs.start(hud)
 			return
 		end
 		local zone, egg = stand:GetAttribute("Zone"), stand:GetAttribute("Egg")
-		current = { stand = stand, zone = zone, egg = egg, key = tostring(zone) .. tostring(egg) }
+		local key = tostring(zone) .. tostring(egg)
+		if egg == "P" and State.view ~= nil and State.view.PaidRandomBlocked then
+			key = key .. "direct" -- gracz z ograniczeniem: panel z cenami zamiast szans
+		end
+		current = { stand = stand, zone = zone, egg = egg, key = key }
 		placePrompt(stand)
 		if panelKey ~= current.key then
 			panelKey = current.key
@@ -1296,6 +1451,22 @@ function Eggs.start(hud)
 		if dialog.isOpen() then
 			renderDialog()
 		end
+	end)
+
+	-- pety z premium jajek (i bez losowania) przychodzą po zakupie Robux: animacja, gdy nic innego
+	-- akurat nie trwa
+	State.onNotify(function(payload)
+		if payload.Kind ~= "Purchase" or payload.Result ~= "Pets" or type(payload.Pets) ~= "table" or #payload.Pets == 0 then
+			return
+		end
+		local direct = string.sub(tostring(payload.Key), 1, 9) == "DirectPet"
+		task.spawn(function()
+			while hatching or State.busy do
+				task.wait(0.2)
+			end
+			dialog.hide()
+			hatch("P", payload.Pets, payload.OpenTime or Economy.OpenTimeSeconds, direct)
+		end)
 	end)
 
 	for _, stand in ipairs(CollectionService:GetTagged(EGG_TAG)) do
