@@ -52,6 +52,16 @@ local PANEL_BODY = 2.7
 local PANEL_TIP = 0.45
 local PANEL_LIFT = 0.6
 local PANEL_EDGE = Color3.fromRGB(205, 210, 222)
+-- Ultra Secret na panelu: bez bonusu, tylko czarna sylwetka na szarym kafelku (jak nieodkryte w INDEX),
+-- która co Cycle sekund zmienia się w inne ubranie „chrome”. Sylwetki od przodu i tylko te, które da się
+-- poznać po obrysie (koszula i spodnie to same prostokąty). Bare: bez głowy albo nadgarstka manekina.
+-- (Jedna tabela, bo funkcja start ma już prawie 60 upvalues, a to limit Lua 5.1 w teście.)
+local SECRET_TILE = {
+	Color = Color3.fromRGB(214, 216, 226),
+	Preview = { "Chain", "Glasses", "Hair", "Watch", "Shoes" },
+	Bare = { Glasses = true, Watch = true },
+	Cycle = 1.6,
+}
 
 -- Animacja (piksele bazowe 1280×720)
 local STAGE_SIZE = Vector2.new(1200, 700)
@@ -296,8 +306,41 @@ function Boxes.start(hud)
 		Parent = playerGui,
 	})
 	local panelKey = nil
+	local secretView = nil -- sylwetka Ultra Secret na panelu (ViewportFrame) i która kategoria
+	local secretIndex = 1
+
+	local function showSecret()
+		if secretView == nil then
+			return
+		end
+		local category = SECRET_TILE.Preview[secretIndex]
+		local model = ClothModels.display(category, "UltraSecret", 0)
+		if SECRET_TILE.Bare[category] then
+			for _, part in ipairs(model:GetChildren()) do
+				if part.Name == "Mannequin" then
+					part:Destroy()
+				end
+			end
+			local box = model:GetBoundingBox()
+			model.WorldPivot = CFrame.new(box.Position)
+		end
+		for _, child in ipairs(secretView:GetChildren()) do
+			if child:IsA("Model") or child:IsA("Camera") then
+				child:Destroy()
+			end
+		end
+		model:PivotTo(CFrame.new())
+		model.Parent = secretView
+		local camera = Instance.new("Camera")
+		local size = model:GetExtentsSize().Magnitude
+		camera.FieldOfView = 40
+		camera.CFrame = CFrame.lookAt(Vector3.new(0, size * 0.08, -size * 1.3), Vector3.new(0, 0, 0))
+		camera.Parent = secretView
+		secretView.CurrentCamera = camera
+	end
 
 	local function renderPanel(box)
+		secretView = nil
 		for _, child in ipairs(panelGui:GetChildren()) do
 			child:Destroy()
 		end
@@ -353,25 +396,39 @@ function Boxes.start(hud)
 				Parent = card,
 			})
 			Kit.new("UICorner", { CornerRadius = UDim.new(0.22, 0), Parent = tileFrame })
-			if rarity == "UltraSecret" then
-				-- chrom: srebrny kafelek, jak w oknie CLOTHES
-				tileFrame.BackgroundColor3 = Theme.White
-				Kit.gradient(tileFrame, Pets.ChromeColors, 90)
-			end
 			Kit.text(tileFrame, {
 				AnchorPoint = Vector2.new(0.5, 0),
 				Position = UDim2.fromScale(0.5, 0.08),
 				Size = UDim2.fromScale(0.9, 0.42),
 				Text = PetsConfig.rarityName(rarity),
-				ZIndex = 5,
+				ZIndex = 6,
 			}, { maxSize = 40, stroke = 2.5 })
-			Kit.text(tileFrame, {
-				AnchorPoint = Vector2.new(0.5, 0),
-				Position = UDim2.fromScale(0.5, 0.52),
-				Size = UDim2.fromScale(0.9, 0.4),
-				Text = percentText(Formulas.clothBonus(rarity, 0)) .. " LP",
-				ZIndex = 5,
-			}, { maxSize = 40, stroke = 2.5, gradient = Theme.Gradients.Gold })
+			if rarity == "UltraSecret" then
+				-- tajemnica: szary kafelek i czarna sylwetka zamiast bonusu
+				tileFrame.BackgroundColor3 = SECRET_TILE.Color
+				secretView = Kit.new("ViewportFrame", {
+					Name = "Secret",
+					AnchorPoint = Vector2.new(0.5, 1),
+					Position = UDim2.fromScale(0.5, 0.98),
+					Size = UDim2.fromScale(0.96, 0.62),
+					BackgroundTransparency = 1,
+					Ambient = Color3.fromRGB(200, 200, 210),
+					LightColor = Color3.new(1, 1, 1),
+					ImageColor3 = Color3.new(0, 0, 0),
+					ImageTransparency = 0.1,
+					ZIndex = 5,
+					Parent = tileFrame,
+				})
+				showSecret()
+			else
+				Kit.text(tileFrame, {
+					AnchorPoint = Vector2.new(0.5, 0),
+					Position = UDim2.fromScale(0.5, 0.52),
+					Size = UDim2.fromScale(0.9, 0.4),
+					Text = percentText(Formulas.clothBonus(rarity, 0)) .. " LP",
+					ZIndex = 5,
+				}, { maxSize = 40, stroke = 2.5, gradient = Theme.Gradients.Gold })
+			end
 			local item = Pets.rarityItem(rarity, 20)
 			Kit.text(card, {
 				Position = UDim2.fromScale(0, 0.03),
@@ -382,6 +439,17 @@ function Boxes.start(hud)
 			}, { maxSize = 60, stroke = 2.5, gradient = item.colors })
 		end
 	end
+
+	-- sylwetka Ultra Secret zmienia się w kolejne ubranie, gdy panel jest widoczny
+	task.spawn(function()
+		while true do
+			task.wait(SECRET_TILE.Cycle)
+			if secretView ~= nil and secretView.Parent ~= nil and panelGui.Enabled then
+				secretIndex = secretIndex % #SECRET_TILE.Preview + 1
+				showSecret()
+			end
+		end
+	end)
 
 	------------------------------------------------------------- Duże E na boxie
 	local promptGui = Kit.new("BillboardGui", {

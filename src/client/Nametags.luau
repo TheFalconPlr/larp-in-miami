@@ -285,7 +285,7 @@ function Nametags.start(hud)
 		local gui = Kit.new("BillboardGui", {
 			Name = "Nametag_" .. tostring(player.UserId),
 			LightInfluence = 0,
-			AlwaysOnTop = false,
+			AlwaysOnTop = true, -- inaczej za półprzezroczystym neonem (portal Rebirth) napis blednie
 			MaxDistance = MAX_DISTANCE,
 			ResetOnSpawn = false,
 			Enabled = false,

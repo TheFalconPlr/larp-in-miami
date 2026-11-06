@@ -30,11 +30,11 @@ local AuraShop = {}
 local STAND_TAG = "LarpAuraShop" -- jak RebirthService.ShopTag na serwerze
 local SHOW_DISTANCE = 8
 local HIDE_DISTANCE = 12
--- Napis nad stoiskiem jak nad portalem Rebirth: rozmiar w studs (Kit.worldFrame) i widoczny z bliska.
-local LABEL_HEIGHT = 1.2
+-- Napis nad stoiskiem jak nad portalem Rebirth: rozmiar w studs (Kit.worldFrame), ok. 14 × 1,9 studs.
+local LABEL_HEIGHT = 1.8
 local LABEL_DESIGN = Vector2.new(420, 56)
-local LABEL_PIXELS_PER_STUD = 56
-local LABEL_DISTANCE = 45
+local LABEL_PIXELS_PER_STUD = 30
+local LABEL_DISTANCE = 70
 
 -- Okno: karty 2×2, pod nimi od razu Aura Level i poświata (bez pustego paska na dole).
 local CARD = Vector2.new(372, 206)

@@ -48,6 +48,7 @@ local PANEL_BODY = 2.7
 local PANEL_TIP = 0.45 -- dzióbek pod panelem
 local PANEL_LIFT = 0.6 -- odstęp panelu od czubka jajka
 local PANEL_EDGE = Color3.fromRGB(205, 210, 222)
+local LOCKED_TILE = Color3.fromRGB(214, 216, 226) -- kafelek sekretu na panelu (jak nieodkryty w INDEX)
 -- Połysk panelu (ukośne paski na jasnoniebieskim tle) rysuje Kit.shine, tak samo jak przy boxach.
 
 -- Animacja (piksele bazowe 1280×720). Jajka i pety stoją na środku ekranu, napisy pod nimi.
@@ -306,6 +307,12 @@ function Eggs.start(hud)
 				Parent = tile,
 			})
 			PetModels.show(viewport, PetModels.pet(zone, rarity), 1.3)
+			if rarity == "Secret" then
+				-- tajemnica: czarna sylwetka na szarym kafelku, jak nieodkryty pet w INDEX
+				tile.BackgroundColor3 = LOCKED_TILE
+				viewport.ImageColor3 = Color3.new(0, 0, 0)
+				viewport.ImageTransparency = 0.1
+			end
 			local item = Pets.rarityItem(rarity, 20)
 			Kit.text(card, {
 				Position = UDim2.fromScale(0, 0.03),

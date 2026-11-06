@@ -31,13 +31,12 @@ local RebirthUi = {}
 local STAND_TAG = "LarpRebirth" -- jak RebirthService.RebirthTag na serwerze
 local SHOW_DISTANCE = 10
 local HIDE_DISTANCE = 14
--- Napis nad portalem: rozmiar w studs (Kit.worldFrame), więc z daleka jest mały, i widać go tylko
--- z bliska (wcześniej miał stały rozmiar w pikselach i był widoczny ze 140 studs, przez co wyglądał
--- na wielki).
-local LABEL_HEIGHT = 1.3 -- środek napisu nad czubkiem portalu (studs)
+-- Napis nad portalem: rozmiar w studs (Kit.worldFrame), więc z daleka maleje jak portal (wcześniej miał
+-- stały rozmiar w pikselach i z daleka wyglądał na wielki).
+local LABEL_HEIGHT = 2.1 -- środek napisu nad czubkiem portalu (studs)
 local LABEL_DESIGN = Vector2.new(460, 60) -- piksele bazowe…
-local LABEL_PIXELS_PER_STUD = 56 -- …i tyle na stud: napis ma ok. 8 × 1 studs
-local LABEL_DISTANCE = 45 -- widać go z tylu studs od kamery
+local LABEL_PIXELS_PER_STUD = 26 -- …i tyle na stud: napis ma ok. 18 × 2,3 studs
+local LABEL_DISTANCE = 75 -- widać go z tylu studs od kamery
 local RAYS = 12
 
 local TEXT = {
