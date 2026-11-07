@@ -512,6 +512,38 @@ function ShopArt.mini(kind)
 	return obj
 end
 
+-- Złoty Robux (Settings.Ui.ShopArt.Robux) do wybuchu z przycisku z ceną: kwadratowa ramka, a w niej
+-- obrazek zwężony do RobuxAspect (obrazek jest rozciągnięty w poziomie). Bez ID znak Robux z czcionki.
+local ROBUX_GLYPH = "\238\128\130" -- U+E002
+function ShopArt.robux()
+	local holder = new("Frame", { Name = "Robux", BackgroundTransparency = 1 })
+	local image = Fx.image(ART.Robux)
+	if image ~= nil then
+		new("ImageLabel", {
+			Name = "Image",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(ART.RobuxAspect or 1, 1),
+			Image = image,
+			ScaleType = Enum.ScaleType.Stretch,
+			BackgroundTransparency = 1,
+			Parent = holder,
+		})
+	else
+		new("TextLabel", {
+			Name = "Glyph",
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Font = Theme.Font,
+			Text = ROBUX_GLYPH,
+			TextScaled = true,
+			TextColor3 = Theme.GoldText,
+			Parent = holder,
+		})
+	end
+	return holder
+end
+
 -- Przezroczystość małej ikony (obrazek albo emoji).
 function ShopArt.setFade(obj, transparency)
 	if obj:IsA("ImageLabel") then

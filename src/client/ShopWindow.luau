@@ -58,6 +58,15 @@ local L = {
 	CardRadius = 24,
 }
 
+-- Kliknięcie w cenę: złote Robuxy wylatują z przycisku dookoła (jak koszyki z kafelka SHOP).
+local BUY_BURST = {
+	Count = 14,
+	Size = 46,
+	Distance = 190,
+	Time = 0.8,
+	Gap = 0.2, -- najczęściej co tyle sekund (szybkie klikanie nie sypie setkami Robuxów)
+}
+
 -- Ile naraz i jak często: małe ikony spadające w tle kart i połysk na kartach.
 local AMBIENT = {
 	Tick = 0.25,
@@ -280,6 +289,14 @@ local function sectionHeader(win, parent, key, text, icon, order)
 	return holder
 end
 
+-- Kliknięcie w cenę (zanim wyskoczy okno zakupu): „ka-ching” i Robuxy wylatujące z przycisku.
+local function buyFeedback(win, button)
+	Sounds.play("ShopBuy")
+	if win.robuxBurst ~= nil then
+		win.robuxBurst(button)
+	end
+end
+
 ----------------------------------------------------------------- Karty gamepassów
 local function passPrice(win, card, key)
 	win.shop.onPrice("Pass", key, function()
@@ -294,7 +311,7 @@ local function passPrice(win, card, key)
 			Kit.shake(card.button.body)
 			return
 		end
-		Sounds.play("ShopBuy")
+		buyFeedback(win, card.button)
 		win.shop.buy("Pass", key, nil, card.button)
 	end)
 end
@@ -446,7 +463,7 @@ local function starterHero(win, parent, order)
 		card.button.setText(win.shop.priceText("Product", "StarterPack"))
 	end)
 	card.button.Activated:Connect(function()
-		Sounds.play("ShopBuy")
+		buyFeedback(win, card.button)
 		win.shop.buy("Product", "StarterPack", nil, card.button)
 	end)
 	win.starter = card
@@ -527,7 +544,7 @@ local function boostOption(win, card, option, x, width)
 		end
 	end)
 	button.Activated:Connect(function()
-		Sounds.play("ShopBuy")
+		buyFeedback(win, button)
 		win.shop.buy("Product", option.key, nil, button)
 	end)
 	return entry
@@ -623,7 +640,7 @@ local function sellNowCard(win, parent, width, order)
 		-- pusty Bag: bez „ka-ching” (serwer odmówi, a Shop.buy da dźwięk błędu i komunikat)
 		local view = State.view
 		if view == nil or (view.Bag or 0) > 0 then
-			Sounds.play("ShopBuy")
+			buyFeedback(win, card.button)
 		end
 		win.shop.buy("Product", info.key, nil, card.button)
 	end)
@@ -1130,6 +1147,30 @@ function ShopWindow.create(hud, shop)
 	if blur == nil then
 		blur = new("BlurEffect", { Name = "ShopBlur", Size = 0, Parent = Lighting })
 	end
+	-- Robuxy z klikniętego przycisku z ceną: fala i wybuch dookoła w warstwie HUD (nad oknem), w skali okna
+	local lastBurst = -1
+	function win.robuxBurst(button)
+		local now = os.clock()
+		if now - lastBurst < BUY_BURST.Gap then
+			return
+		end
+		lastBurst = now
+		local face = button.face
+		local center = face.AbsolutePosition + face.AbsoluteSize / 2
+		local k = fit.Scale * pop.Scale
+		Fx.ring(hud.gui, UDim2.fromOffset(center.X, center.Y), 30 * k, 190 * k, Theme.GoldText, 58, 0.45)
+		Fx.burst(hud.gui, center, ShopArt.robux, {
+			count = BUY_BURST.Count,
+			size = BUY_BURST.Size,
+			distance = BUY_BURST.Distance,
+			angle = math.random(0, 359),
+			spread = 360,
+			scale = k,
+			time = BUY_BURST.Time,
+			zIndex = 60,
+		})
+	end
+
 	-- muzyka sklepu (gra, dopóki okno jest otwarte; muzyka gry w tym czasie cichnie)
 	local music = Sounds.track("ShopMusic")
 	task.delay(8, music.preload)

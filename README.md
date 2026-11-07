@@ -310,7 +310,7 @@ Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad 
 - **Wygląd i animacje sklepu** (jak w Pet Simulator 99, ale po swojemu): każdy gamepass ma własną grafikę z animacją, np. trzy kołyszące się jajka (Triple Open), jajko z błyskawicą i smugami pędu (Fast Open), portal z krążącymi kropkami (Teleport), dwa łańcuchy kołyszące się na zawiasach (Double Chain), dwa zegarki z chodzącymi wskazówkami (Double Wrist). Za grafikami są promienie, w tle kart powoli spadają małe ikony gamepassa, a po kartach i przyciskach z ceną co chwilę przechodzi połysk (obrazek „Shine”).
   - **Otwarcie:** z kafelka SHOP dookoła wylatują małe koszyki i rozchodzi się fala. Świat ciemnieje i się rozmywa, okno wyskakuje na środek ekranu, a karty wjeżdżają po kolei. Gra dźwięk otwarcia z „whoosh”.
   - **Muzyka:** dopóki sklep jest otwarty, gra w pętli jego muzyka, a muzyka gry płynnie cichnie. Po zamknięciu muzyka sklepu cichnie, a muzyka gry wraca. Gdy wrócisz do sklepu szybko, muzyka gra dalej, a po dłuższej przerwie od początku.
-  - **Kliknięcie w cenę:** „ka-ching”, zanim wyskoczy okno zakupu. Kupiony gamepass (OWNED) odpowiada dźwiękiem błędu i potrząśnięciem.
+  - **Kliknięcie w cenę:** „ka-ching” i złote Robuxy wylatujące z przycisku dookoła (jak koszyki z kafelka SHOP), zanim wyskoczy okno zakupu. Kupiony gamepass (OWNED) odpowiada dźwiękiem błędu i potrząśnięciem.
   - **Mysz:** karta lekko rośnie po najechaniu, a przyciski rosną, wciskają się i sprężynują.
   - Animacje tła działają tylko przy otwartym oknie i tylko dla widocznych kart. Na czas otwartego sklepu znikają efekty HUD (napisy „+LP”, banknoty po sprzedaży), żeby nie latały po kartach.
 - **Podziękowanie po zakupie** pokazuje się tylko po potwierdzeniu zakupu przez serwer, więc anulowany albo nieudany zakup nic nie pokazuje.
@@ -356,7 +356,8 @@ Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad 
   - portal,
   - łańcuch,
   - zegarek („Battleship Diepio”),
-  - połysk „Window Shine 2” (ukośne smugi światła przesuwane po kartach i przyciskach; `ShineWidth` = szerokość obrazka względem wysokości).
+  - połysk „Window Shine 2” (ukośne smugi światła przesuwane po kartach i przyciskach; `ShineWidth` = szerokość obrazka względem wysokości),
+  - złoty Robux „Icone Robux” (wylatuje z przycisku z ceną). Obrazek jest rozciągnięty w poziomie, więc gra rysuje go węższym: `RobuxAspect` = szerokość / wysokość (1 = jak w obrazku, teraz 0,885).
 - **Zegarek:** gdyby stał krzywo, popraw `WatchRotation` (obrót obrazka). Gdyby złota obręcz nie pasowała do niebieskiej tarczy, popraw `WatchFace`.
 - **Dźwięki:** `ShopOpen` („whoosh”), `ShopOpenSfx` (otwarcie sklepu), `ShopBuy` („ka-ching” przy kliknięciu ceny), `ShopTab`, `Purchase` i `PurchaseSmall`.
 - **Muzyka sklepu:** `ShopMusic` (głośność, `FadeIn`, `FadeOut` i `Restart`: po tylu sekundach przerwy gra od początku).

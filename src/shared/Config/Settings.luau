@@ -68,6 +68,10 @@ local Settings = {
 			-- i przyciskach. ShineWidth = szerokość obrazka względem wysokości ramki (1 = kwadrat).
 			Shine = 159602435,
 			ShineWidth = 1,
+			-- „Icone Robux”: złote Robuxy wylatujące z przycisku z ceną. Obrazek jest rozciągnięty
+			-- w poziomie, więc rysujemy go węższym: RobuxAspect = szerokość / wysokość (1 = jak w obrazku).
+			Robux = 15568894149,
+			RobuxAspect = 0.885,
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",
