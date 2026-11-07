@@ -169,6 +169,8 @@ local function grantFor(player, data, key, opts)
 		if (result.LP or 0) > 0 then
 			notify(player, { Kind = "Sold", LP = result.LP, Cash = result.Cash })
 		end
+		-- podziękowanie za zakup (pokazuje klient, ShopThanks)
+		notify(player, { Kind = "Purchase", Result = "Sell", Key = key, LP = result.LP or 0, Cash = result.Cash or 0, Test = test })
 	end
 	return result
 end

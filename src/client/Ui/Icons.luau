@@ -44,6 +44,10 @@ local EMOJI = {
 	Boost = "⚡", -- boosty 2x LP
 	Ad = "📺", -- reklama za nagrodę
 	Premium = "💎", -- premium jajka
+	Crown = "👑", -- zakładka i nagłówek gamepassów w sklepie
+	Egg = "🥚", -- grafiki Triple Open i Fast Open, gdy brak obrazka jajka
+	Check = "✅", -- kupiony gamepass (OWNED)
+	Sparkles = "✨",
 	-- Znaki Roblox (prywatne kody Unicode): ikona Robux (U+E002) i znaczek Verified (U+E000).
 	-- Zapisane bajtami UTF-8, bo tak rozumie je też Lua 5.1 w testach.
 	Robux = "\238\128\130",

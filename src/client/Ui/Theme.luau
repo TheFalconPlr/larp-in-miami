@@ -38,6 +38,9 @@ Theme.Gradients = {
 	Premium = { hex("#C98BFF"), hex("#7A2CF0") }, -- premium jajka i sklep za Robuxy (fiolet)
 	Starter = { hex("#FF8AD0"), hex("#FF5B3A") }, -- Starter Pack (róż w pomarańcz)
 	Owned = { hex("#B8F5A8"), hex("#58C24A") }, -- kupione (jaśniejsza zieleń)
+	Portal = { hex("#B98CFF"), hex("#3D5CFF") }, -- teleport (fiolet w błękit)
+	Tab = { hex("#FFFFFF"), hex("#DCE2EE") }, -- nieaktywna zakładka w sklepie
+	Ad = { hex("#FF8BD8"), hex("#B83CF0") }, -- darmowy boost za reklamę
 }
 
 -- Tytuły Rebirth (nad głową i w oknie Rebirth): gradient z góry na dół dla każdego poziomu.

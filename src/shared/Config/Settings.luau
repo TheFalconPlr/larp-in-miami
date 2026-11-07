@@ -46,6 +46,25 @@ local Settings = {
 			Clothes = 14002284211, -- kafelek i okno CLOTHES
 			Rebirth = 18367579979, -- okno Rebirth i napis nad portalem
 			SellCash = 120428722694490, -- banknoty lecące z paska Bag do licznika L$ przy sprzedaży
+			Shop = 98363337879339, -- „Shop Icon”: kafelek SHOP i tytuł okna sklepu
+			Teleport = 17368164623, -- „Teleport Outline 256”: kafelek TELEPORT, okno teleportu
+			Boost = 79228072544070, -- „2X Speed”: boosty 2x LP (sklep, komunikaty)
+		},
+		-- Grafiki sklepu za Robuxy (ID Decali z Toolboxa). Z nich ShopArt składa grafiki gamepassów:
+		-- trzy jajka (Triple Open), jajko z błyskawicą (Fast Open), dwa łańcuchy, dwa zegarki itd.
+		-- 0 albo brak = zamiast obrazka emoji.
+		ShopArt = {
+			TwoX = 79228072544070, -- „2X Speed”: gamepass i boosty 2x LP
+			Egg = 17079629931, -- „Egg”: Triple Open, Fast Open, premium jajka w podziękowaniu
+			Bolt = 3674944390, -- „Speed”: błyskawica bez napisu (Fast Open)
+			Teleport = 17368164623, -- „Teleport Outline 256”
+			Chain = 17582470364, -- „GOLD CHAIN $_$”: Double Chain
+			Watch = 10198027043, -- „Battleship Diepio”: tarcza zegarka (Double Wrist, zegarek w Starter Packu)
+			-- Obrót obrazka zegarka (stopnie, + w prawo), żeby szare kawałki były paskiem u góry i u dołu,
+			-- i wielkość niebieskiej tarczy względem obrazka (na niej leży złota obręcz i wskazówki).
+			WatchRotation = 45,
+			WatchFace = 0.56,
+			Shine = 4917649610, -- „Shine”: połysk przesuwany po kartach i przyciskach
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",
@@ -107,6 +126,14 @@ local Settings = {
 		MergeFail = { Id = 116298781032555, Volume = 0.6, MinGap = 0.5 },
 		SecretReveal = { Id = 140367458608473, Volume = 0.8, MinGap = 0.5 },
 		SecretAnnounce = { Id = 76104215304832, Volume = 0.5, MinGap = 1 },
+
+		-- Sklep za Robuxy: otwarcie okna („whoosh”, ten sam plik co ClipPosted), zmiana zakładki,
+		-- podziękowanie po zakupie gamepassa albo Starter Packa (trąbka z konfetti) i po mniejszym
+		-- zakupie (boost, Sell Now). Lepsze dźwięki podmień tutaj.
+		ShopOpen = { Id = 137081214744553, Volume = 1, MinGap = 0.3 },
+		ShopTab = { Id = 100809160609628, Volume = 0.35, MinGap = 0.05 },
+		Purchase = { Id = 118248543183940, Volume = 0.7, MinGap = 0.5 },
+		PurchaseSmall = { Id = 111773238101465, Volume = 0.6, MinGap = 0.3 },
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

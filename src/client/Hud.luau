@@ -1455,9 +1455,18 @@ function Hud.start()
 	api.toast = toast
 	api.fadeFlash = fadeFlash -- krótkie ściemnienie ekranu (teleport)
 	api.passPrompt = nil -- function(klucz, przycisk): okno zakupu gamepassa (ustawia Shop.luau)
-	-- Chowa cały HUD (np. na czas otwierania jajka, jak w Pet Simulator 99).
-	function api.setVisible(visible)
-		gui.Enabled = visible
+	-- Chowa cały HUD (np. na czas otwierania jajka, jak w Pet Simulator 99). Z powodem (reason)
+	-- może go chować kilka rzeczy naraz (animacja jajka i podziękowanie po zakupie): HUD wraca,
+	-- gdy żadna go już nie chowa. Bez powodu działa jak dawniej (jeden wspólny powód).
+	local hiddenBy = {}
+	function api.setVisible(visible, reason)
+		reason = reason or "Default"
+		if visible then
+			hiddenBy[reason] = nil
+		else
+			hiddenBy[reason] = true
+		end
+		gui.Enabled = next(hiddenBy) == nil
 	end
 	-- L$ spoza Sell (np. sprzedaż petów): „+X” przy liczniku L$ i banknoty lecą do licznika.
 	function api.cashGain(amount)

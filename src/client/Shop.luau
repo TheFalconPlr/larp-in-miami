@@ -1,15 +1,16 @@
 -- Sklep za Robuxy (Etap 10) po stronie gracza:
---   • po prawej stronie ekranu kafelki SHOP i TELEPORT, pod nimi Starter Pack (z zegarem do końca
---     oferty) i aktywne boosty z pozostałym czasem,
---   • okno SHOP: Starter Pack, 11 gamepassów, boosty, Sell Now i reklama za nagrodę,
---   • okno TELEPORT: odblokowane strefy (gamepass Teleport),
+--   • po prawej stronie ekranu duży kafelek SHOP (koszyk; przy kliknięciu wylatują z niego małe
+--     koszyki), TELEPORT i Starter Pack z zegarem do końca oferty,
+--   • w prawym dolnym rogu aktywne boosty (2x LP, AUTO SELL) z pozostałym czasem: sam napis, bez tła,
+--   • okno SHOP (ShopWindow.luau) i okno TELEPORT (odblokowane strefy, gamepass Teleport),
 --   • ceny z MarketplaceService:GetProductInfoAsync (ceny regionalne gracza); zanim przyjdą, z Economy,
---   • komunikaty po zakupie (boost, Starter Pack, gamepass) i po końcu boosta.
+--   • po potwierdzonym zakupie podziękowanie (ShopThanks.luau), po końcu boosta komunikat.
 -- Zakup zawsze sprawdza i robi serwer (ShopService, Net „Buy”); tu jest tylko wygląd. Pety z premium
 -- jajek pokazuje animacja w Eggs.luau.
 
-local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
+local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
@@ -22,87 +23,32 @@ local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
 local Icons = require(script.Parent.Ui.Icons)
 local Sounds = require(script.Parent.Ui.Sounds)
+local Fx = require(script.Parent.Ui.Fx)
+local ShopArt = require(script.Parent.Ui.ShopArt)
+local Catalog = require(script.Parent.ShopCatalog)
+local ShopWindow = require(script.Parent.ShopWindow)
+local ShopThanks = require(script.Parent.ShopThanks)
 
 local Shop = {}
 
 local ROBUX = "\238\128\130" -- znak Robux (U+E002)
+local TEXT = Catalog.TEXT
+local Style = Enum.EasingStyle
+local Dir = Enum.EasingDirection
 
-local TEXT = {
-	Shop = "SHOP",
-	Teleport = "TELEPORT",
-	Title = "Shop",
-	Gamepasses = "GAMEPASSES",
-	Boosts = "BOOSTS",
-	Owned = "OWNED",
-	Soon = "SOON",
-	Starter = "STARTER PACK",
-	StarterShort = "STARTER",
-	StarterEnds = "Ends in %s · one time only!",
-	StarterItems = { "Rare Watch", "Epic Pet", "2x LP\n30 min", "Auto Sell\n30 min" },
-	Best = "BEST VALUE!",
-	Free = "FREE 2x LP",
-	FreeDesc = "Watch a video: %d min 2x LP · %d/%d left today", -- nagroda opisana przed reklamą (zasady Roblox)
-	Watch = "WATCH",
-	WatchTest = "WATCH (TEST)",
-	NoAds = "NO ADS NOW",
-	TeleportTitle = "Teleport",
-	TeleportNote = "Teleport to any unlocked zone!",
-	TeleportBuy = "GET TELEPORT",
-	ZoneButton = "%d · %s",
-	BoostLP = "2x LP",
-	BoostAutoSell = "AUTO SELL",
-	-- komunikaty
-	Reasons = {
-		Soon = "Coming soon!",
-		Owned = "You already own this!",
-		Expired = "This offer has ended",
-		Zone = "Unlock this zone first!",
-		Locked = "Unlock this zone first!",
-		EmptyBag = "Your bag is empty!",
-		Restricted = "Not available in your region",
-		NotRestricted = "Buy the Premium Egg instead!",
-		Limit = "No more free boosts today",
-		NoPass = "You need the Teleport gamepass",
-		Busy = "Finish what you're doing first",
-		Error = "Something went wrong, try again",
-	},
-	TestBuy = "TEST PURCHASE",
-	PassBought = "%s unlocked! Thank you!",
-	BoostGot = "%s +%d min!",
-	BoostDaily = "Verified bonus: 2x LP %d min!",
-	BoostAd = "Thanks for watching! 2x LP +%d min",
-	BoostEnded = "%s boost ended",
-	StarterGot = "Starter Pack unlocked!",
+-- Kafelki po prawej i napisy boostów (piksele bazowe).
+local SIDE = {
+	ShopTile = Vector2.new(118, 118),
+	ShopIcon = 136,
+	TeleportIcon = 92,
+	StarterButton = Vector2.new(176, 64),
+	TimerSize = 31,
+	TimerHeight = 38,
+	TimerSizeTouch = 25, -- napisy boostów obok przycisku skoku na telefonie
+	ShortScreen = 560, -- niższy ekran (telefon poziomo): kolumna po prawej od góry, ciaśniej
+	BurstCount = 8,
+	IdleEvery = 5,
 }
-
--- Gamepassy: nazwa, opis i ikona w sklepie (kolejność: Robux.PassOrder).
-local PASSES = {
-	TwoXLP = { name = "2x LP", desc = "Double LP from clicks and activities", icon = "LP", colors = Theme.Gradients.LP },
-	AutoSell = { name = "Auto Sell", desc = "Sell your Bag automatically, anywhere", icon = "Sell", colors = Theme.Gradients.Green },
-	AutoClick = { name = "Auto Click", desc = "Clicks for you, 3 times a second", icon = "Click", colors = Theme.Gradients.Yellow },
-	Verified = { name = "Verified", desc = "+10% LP, blue check and 15 min 2x LP daily", icon = "Verified", colors = Theme.Gradients.Cyan },
-	PetSlots = { name = "+2 Pet Slots", desc = "Equip 2 more pets", icon = "Pets", colors = Theme.Gradients.Pink },
-	TripleOpen = { name = "Triple Open", desc = "Open 3 eggs or boxes at once", icon = "Gift", colors = Theme.Gradients.Premium },
-	FastOpen = { name = "Fast Open", desc = "Open eggs and boxes 3× faster", icon = "Clock", colors = Theme.Gradients.Red },
-	TwoXBag = { name = "2x Bag", desc = "Double Bag capacity", icon = "Bag", colors = Theme.Gradients.Gold },
-	Teleport = { name = "Teleport", desc = "Teleport to any unlocked zone", icon = "Teleport", colors = Theme.Gradients.Cyan },
-	DoubleChain = { name = "Double Chain", desc = "Wear 2 chains at once", icon = "Chain", colors = Theme.Gradients.Gold },
-	DoubleWrist = { name = "Double Wrist", desc = "Wear 2 watches at once", icon = "Watch", colors = Theme.Gradients.Pink },
-}
-
--- Produkty w części BOOSTS.
-local BOOSTS = {
-	{ key = "Boost2xLP5", name = "2x LP · 5 min", desc = "Double LP for 5 minutes", icon = "Boost", colors = Theme.Gradients.LP },
-	{ key = "Boost2xLP15", name = "2x LP · 15 min", desc = "Double LP for 15 minutes", icon = "Boost", colors = Theme.Gradients.LP },
-	{ key = "Boost2xLP60", name = "2x LP · 1 hour", desc = "Double LP for 1 hour", icon = "Boost", colors = Theme.Gradients.LP },
-	{ key = "BoostAutoSell15", name = "Auto Sell · 15 min", desc = "Auto Sell for 15 minutes", icon = "Sell", colors = Theme.Gradients.Green },
-	{ key = "BoostAutoSell60", name = "Auto Sell · 1 hour", desc = "Auto Sell for 1 hour", icon = "Sell", colors = Theme.Gradients.Green },
-	{ key = "SellNow", name = "Sell Now", desc = "Sell your Bag from anywhere", icon = "SellCash", colors = Theme.Gradients.Gold },
-}
-
-local CARD = Vector2.new(196, 206)
-local CARD_GAP = 14
-local PANEL_SIZE = Vector2.new(900, 560)
 
 ----------------------------------------------------------------- Ceny
 local prices = {} -- ["Pass:TwoXLP"] = cena z GetProductInfoAsync
@@ -166,7 +112,8 @@ local function toast(text, colors, key, icon)
 end
 
 -- Prosi serwer o okno zakupu. kind: "Pass" albo "Product"; opts.Zone = strefa premium jajka.
--- Zwraca odpowiedź serwera ({ Ok, Reason, Test }) albo nil.
+-- Zwraca odpowiedź serwera ({ Ok, Reason, Test }) albo nil. Podziękowanie pokazuje dopiero
+-- potwierdzenie zakupu z serwera (Notify), nie ta odpowiedź.
 function Shop.buy(kind, key, opts, button)
 	local ok, result = pcall(function()
 		return Net.func("Buy"):InvokeServer(kind, key, opts)
@@ -175,9 +122,6 @@ function Shop.buy(kind, key, opts, button)
 		return nil
 	end
 	if result.Ok then
-		if result.Test then
-			toast(TEXT.TestBuy, Theme.Gradients.Cyan, "TestBuy")
-		end
 		return result
 	end
 	local reason = TEXT.Reasons[result.Reason]
@@ -207,263 +151,262 @@ local function timeText(seconds)
 end
 Shop.timeText = timeText
 
------------------------------------------------------------------ Karta w sklepie
--- Kolorowy pasek z ikoną, nazwa, opis i przycisk z ceną. Zwraca { card, button, setOwned, setPrice }.
-local function makeCard(parent, opts)
-	local card = Kit.new("Frame", {
-		Name = opts.name or "Card",
-		LayoutOrder = opts.order or 0,
-		Size = UDim2.fromOffset(CARD.X, CARD.Y),
-		BackgroundColor3 = Theme.White,
-		BorderSizePixel = 0,
-		ZIndex = 4,
-		Parent = parent,
-	})
-	Kit.corner(card, 20)
-	Kit.stroke(card, 3.5, Enum.ApplyStrokeMode.Border)
-	local band = Kit.new("Frame", {
-		Name = "Band",
-		Position = UDim2.fromOffset(7, 7),
-		Size = UDim2.new(1, -14, 0, 92),
-		BackgroundColor3 = Theme.White,
-		BorderSizePixel = 0,
-		ZIndex = 4,
-		Parent = card,
-	})
-	Kit.corner(band, 15)
-	Kit.gradient(band, opts.colors or Theme.Gradients.Cyan, 90)
-	Icons.make(opts.icon or "Shop", {
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromOffset(70, 70),
-		ZIndex = 5,
-		Parent = band,
-	})
-	if opts.tag ~= nil then
-		Kit.text(band, {
-			Name = "Tag",
-			AnchorPoint = Vector2.new(0, 0),
-			Position = UDim2.fromOffset(6, 4),
-			Size = UDim2.fromOffset(80, 26),
-			Rotation = -8,
-			Text = opts.tag,
-			ZIndex = 6,
-		}, { maxSize = 22, stroke = 3, gradient = Theme.Gradients.Gold })
-	end
-	Kit.text(card, {
-		Name = "Title",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 102),
-		Size = UDim2.new(1, -16, 0, 28),
-		Text = opts.title or "",
-		TextColor3 = Theme.Dark,
-		ZIndex = 5,
-	}, { maxSize = 23, stroke = 0 })
-	local desc = Kit.text(card, {
-		Name = "Desc",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 130),
-		Size = UDim2.new(1, -18, 0, 30),
-		Text = opts.desc or "",
-		TextColor3 = Theme.Muted,
-		TextWrapped = true,
-		ZIndex = 5,
-	}, { maxSize = 15, stroke = 0 })
-	local button = Kit.button(card, {
-		name = "Buy",
-		size = Vector2.new(170, 38),
-		text = "",
-		colors = Theme.Gradients.Green,
-		radius = 14,
-		edge = 4,
-		textSize = 22,
-		anchor = Vector2.new(0.5, 1),
-		position = UDim2.new(0.5, 0, 1, -7),
-		sound = false,
-	})
-	button.holder.ZIndex = 5
-	local api = { card = card, button = button, desc = desc, owned = false }
-	function api.setOwned(owned, text)
-		api.owned = owned
-		if owned then
-			button.setColors(Theme.Gradients.Gray)
-			button.setText(text or TEXT.Owned)
-		end
-	end
-	function api.setPrice(text)
-		if not api.owned then
-			button.setColors(opts.buttonColors or Theme.Gradients.Green)
-			button.setText(text)
-		end
-	end
-	return api
+-- Skala HUD (jak Hud.computeScale) do efektów liczonych w pikselach ekranu.
+local function hudScale()
+	local camera = Workspace.CurrentCamera
+	local view = (camera and camera.ViewportSize) or Theme.BaseSize
+	return math.clamp(math.min(view.X / Theme.BaseSize.X, view.Y / Theme.BaseSize.Y), Theme.MinScale, Theme.MaxScale)
 end
 
-local function sectionHeader(parent, text, order)
-	local holder = Kit.new("Frame", {
-		Name = "Header" .. order,
-		LayoutOrder = order,
-		Size = UDim2.new(1, -12, 0, 40),
-		BackgroundTransparency = 1,
-		Parent = parent,
-	})
-	Kit.line(holder, {
-		anchor = Vector2.new(0, 0.5),
-		position = UDim2.new(0, 6, 0.5, 0),
-		height = 40,
-		items = { { text = text, size = 30, colors = Theme.Gradients.Gold } },
-	})
-	return holder
-end
-
-local function grid(parent, name, order)
-	local frame = Kit.new("Frame", {
-		Name = name,
-		LayoutOrder = order,
-		Size = UDim2.fromOffset(4 * CARD.X + 3 * CARD_GAP, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		Parent = parent,
-	})
-	Kit.new("UIGridLayout", {
-		CellSize = UDim2.fromOffset(CARD.X, CARD.Y),
-		CellPadding = UDim2.fromOffset(CARD_GAP, CARD_GAP),
-		FillDirectionMaxCells = 4,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = frame,
-	})
-	return frame
-end
-
------------------------------------------------------------------ Start
-function Shop.start(hud)
-	hudRef = hud
-
-	------------------------------------------------------------- Kafelki po prawej
-	local root = Kit.new("Frame", {
-		Name = "ShopRoot",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -22, 0.46, 0),
-		Size = UDim2.fromOffset(172, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		Parent = hud.gui,
-	})
-	hud.registerScale(root)
-	Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 26),
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = root,
-	})
-	local shopTile = Kit.tile(root, {
+----------------------------------------------------------------- Kafelki po prawej
+-- Duży kafelek SHOP: koszyk wystaje nad kafelek, połysk i podskok co kilka sekund.
+local function makeShopTile(root)
+	local tile = Kit.button(root, {
 		name = "Shop",
-		icon = "Shop",
-		text = TEXT.Shop,
+		size = SIDE.ShopTile,
 		colors = Theme.Gradients.Premium,
+		radius = 30,
+		edge = 7,
 		order = 1,
 	})
-	local tpTile = Kit.tile(root, {
+	local icon = Icons.make("Shop", {
+		Name = "ShopIcon",
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0.5, 0, 0, 44),
+		Size = UDim2.fromOffset(SIDE.ShopIcon, SIDE.ShopIcon),
+		Rotation = -6,
+		ZIndex = 6,
+		Parent = tile.face,
+	})
+	Kit.text(tile.face, {
+		Name = "Label",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, 20),
+		Size = UDim2.new(1, 30, 0, 36),
+		Text = TEXT.Shop,
+		ZIndex = 7,
+	}, { maxSize = 30, stroke = 4 })
+	tile.icon = icon
+	tile.iconScale = Fx.scaleOf(icon)
+	tile.shine = Fx.shine(tile.face, { inset = 4, width = 60, strength = 0.8, zIndex = 5 })
+	Fx.button(tile, 1.08)
+	-- unoszenie koszyka bez końca
+	Fx.loop(icon, 1.3, { Position = UDim2.new(0.5, 0, 0, 38) }, Style.Sine)
+	return tile
+end
+
+local function makeTeleportTile(root)
+	local tile = Kit.tile(root, {
 		name = "Teleport",
 		icon = "Teleport",
+		iconSize = SIDE.TeleportIcon,
 		text = TEXT.Teleport,
-		colors = Theme.Gradients.Cyan,
+		colors = Theme.Gradients.Portal,
 		order = 2,
-		textSize = 19,
+		textSize = 21,
 	})
-	local tpLock = Icons.make("Lock", {
+	Fx.button(tile, 1.08)
+	local icon = tile.face:FindFirstChild("TeleportIcon")
+	if icon ~= nil then
+		icon.Rotation = -8
+		Fx.loop(icon, 1.6, { Rotation = 8 }, Style.Sine)
+	end
+	tile.lock = Icons.make("Lock", {
 		Name = "PassLock",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.new(1, -8, 0, 8),
 		Size = UDim2.fromOffset(30, 30),
 		Rotation = 10,
 		ZIndex = 8,
-		Parent = tpTile.face,
+		Parent = tile.face,
 	})
-	-- Starter Pack: przycisk z napisem i zegarem (tylko dopóki oferta trwa)
-	local starterButton = Kit.button(root, {
+	return tile
+end
+
+-- Starter Pack: prezent, napis i zegar; lekko się unosi i co chwilę błyszczy.
+local function makeStarterButton(root)
+	local button = Kit.button(root, {
 		name = "StarterPack",
-		size = Vector2.new(168, 60),
+		size = SIDE.StarterButton,
 		colors = Theme.Gradients.Starter,
-		radius = 18,
+		radius = 20,
 		order = 3,
 	})
-	Kit.text(starterButton.face, {
+	Icons.make("Gift", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.new(0, 22, 0.5, -2),
+		Size = UDim2.fromOffset(58, 58),
+		Rotation = -12,
+		ZIndex = 6,
+		Parent = button.face,
+	})
+	Kit.text(button.face, {
 		Name = "Title",
-		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 4),
-		Size = UDim2.new(1, -12, 0, 28),
+		Position = UDim2.fromOffset(46, 4),
+		Size = UDim2.new(1, -52, 0, 28),
 		Text = TEXT.Starter,
-		ZIndex = 4,
+		ZIndex = 5,
 	}, { maxSize = 22, stroke = 3 })
-	local starterTimer = Kit.text(starterButton.face, {
+	button.timer = Kit.text(button.face, {
 		Name = "Timer",
-		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, -3),
-		Size = UDim2.new(1, -12, 0, 24),
+		AnchorPoint = Vector2.new(0, 1),
+		Position = UDim2.new(0, 46, 1, -4),
+		Size = UDim2.new(1, -52, 0, 26),
 		Text = "",
-		ZIndex = 4,
-	}, { maxSize = 20, stroke = 2.5, gradient = Theme.Gradients.Gold })
-	local starterPulse = Kit.new("UIScale", { Parent = starterButton.body })
-	TweenService:Create(starterPulse, TweenInfo.new(0.7, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Scale = 1.06 }):Play()
-	starterButton.holder.Visible = false
+		ZIndex = 5,
+	}, { maxSize = 22, stroke = 3, gradient = Theme.Gradients.Gold })
+	button.shine = Fx.shine(button.face, { inset = 3, width = 56, strength = 0.85, zIndex = 4 })
+	Fx.button(button, 1.06)
+	Fx.loop(button.body, 0.9, { Position = UDim2.new(0.5, 0, 0.5, -5) }, Style.Sine)
+	button.holder.Visible = false
+	return button
+end
 
-	-- aktywne boosty: pigułki z czasem
-	local boostFrame = Kit.new("Frame", {
-		Name = "Boosts",
-		LayoutOrder = 4,
-		Size = UDim2.fromOffset(172, 0),
+----------------------------------------------------------------- Boosty w prawym dolnym rogu
+-- Sam napis z obrysem (bez tła): nazwa boosta w jego kolorze i czas na złoto.
+local function timerLine(parent, name, colors, order)
+	local frame = Kit.new("Frame", {
+		Name = name,
+		LayoutOrder = order,
+		Size = UDim2.fromOffset(360, SIDE.TimerHeight),
+		BackgroundTransparency = 1,
+		Visible = false,
+		Parent = parent,
+	})
+	local body = Kit.new("Frame", {
+		Name = "Body",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromScale(1, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = frame,
+	})
+	local time = Kit.text(body, {
+		Name = "Time",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.fromScale(1, 0.5),
+		Size = UDim2.fromOffset(120, SIDE.TimerHeight),
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Right,
+	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = Theme.Gradients.Gold })
+	local label = Kit.text(body, {
+		Name = "Name",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -130, 0.5, 0),
+		Size = UDim2.fromOffset(220, SIDE.TimerHeight),
+		Text = TEXT[name == "LP" and "BoostLP" or "BoostAutoSell"],
+		TextXAlignment = Enum.TextXAlignment.Right,
+	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = colors })
+	local line = { frame = frame, time = time, label = label, scale = Fx.scaleOf(body), gradient = time:FindFirstChildOfClass("UIGradient"), last = 0, size = SIDE.TimerSize }
+	-- rozmiar napisu (mniejszy obok przycisku skoku) i szerokości z treści
+	function line.layout(size)
+		line.size = size or line.size
+		local h = math.floor(line.size * 1.25)
+		frame.Size = UDim2.fromOffset(360, h)
+		for _, label_ in ipairs({ time, label }) do
+			local limit = label_:FindFirstChildOfClass("UITextSizeConstraint")
+			if limit ~= nil then
+				limit.MaxTextSize = line.size
+			end
+		end
+		local w = Kit.measure(time.Text, line.size).X + 8
+		time.Size = UDim2.fromOffset(w, h)
+		local lw = Kit.measure(label.Text, line.size).X + 8
+		label.Size = UDim2.fromOffset(lw, h)
+		label.Position = UDim2.new(1, -w - math.floor(line.size * 0.35), 0.5, 0)
+	end
+	return line
+end
+
+----------------------------------------------------------------- Start
+function Shop.start(hud)
+	hudRef = hud
+	ShopThanks.start(hud)
+
+	------------------------------------------------------------- Kafelki po prawej
+	local root = Kit.new("Frame", {
+		Name = "ShopRoot",
+		AnchorPoint = Vector2.new(1, 0.5),
+		Position = UDim2.new(1, -24, 0.46, 0),
+		Size = UDim2.fromOffset(184, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
-		Parent = root,
+		Parent = hud.gui,
 	})
-	Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 8),
+	hud.registerScale(root)
+	local rootList = Kit.new("UIListLayout", {
+		Padding = UDim.new(0, 30),
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = boostFrame,
+		Parent = root,
 	})
-	local boostPills = {}
-	local function boostPill(kind, name, icon, colors, order)
-		local holder = Kit.new("Frame", {
-			Name = kind,
-			LayoutOrder = order,
-			Size = UDim2.fromOffset(168, 42),
-			BackgroundColor3 = Theme.White,
-			BorderSizePixel = 0,
-			Visible = false,
-			Parent = boostFrame,
-		})
-		Kit.corner(holder, 21)
-		Kit.stroke(holder, 3.5, Enum.ApplyStrokeMode.Border)
-		Kit.gradient(holder, colors, 90)
-		Icons.make(icon, {
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 6, 0.5, 0),
-			Size = UDim2.fromOffset(32, 32),
-			ZIndex = 2,
-			Parent = holder,
-		})
-		Kit.text(holder, {
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 42, 0.5, -8),
-			Size = UDim2.fromOffset(118, 18),
-			Text = name,
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 2,
-		}, { maxSize = 16, stroke = 2 })
-		local timer = Kit.text(holder, {
-			AnchorPoint = Vector2.new(0, 0.5),
-			Position = UDim2.new(0, 42, 0.5, 9),
-			Size = UDim2.fromOffset(118, 20),
-			Text = "",
-			TextXAlignment = Enum.TextXAlignment.Left,
-			ZIndex = 2,
-		}, { maxSize = 19, stroke = 2.5, gradient = Theme.Gradients.Gold })
-		boostPills[kind] = { holder = holder, timer = timer }
+	-- Niski ekran (telefon poziomo): kolumna od góry i ciaśniej, żeby nie wchodziła na przycisk skoku.
+	local function placeColumn()
+		local camera = Workspace.CurrentCamera
+		local viewY = (camera and camera.ViewportSize.Y) or Theme.BaseSize.Y
+		if viewY < SIDE.ShortScreen then
+			root.AnchorPoint = Vector2.new(1, 0)
+			root.Position = UDim2.new(1, -18, 0, 4)
+			rootList.Padding = UDim.new(0, 14)
+		else
+			root.AnchorPoint = Vector2.new(1, 0.5)
+			root.Position = UDim2.new(1, -24, 0.46, 0)
+			rootList.Padding = UDim.new(0, 30)
+		end
 	end
-	boostPill("LP", TEXT.BoostLP, "Boost", Theme.Gradients.LP, 1)
-	boostPill("AutoSell", TEXT.BoostAutoSell, "Sell", Theme.Gradients.Green, 2)
+	placeColumn()
+	if Workspace.CurrentCamera ~= nil then
+		Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(placeColumn)
+	end
+	local shopTile = makeShopTile(root)
+	local tpTile = makeTeleportTile(root)
+	local starterButton = makeStarterButton(root)
+
+	-- boosty: napisy w prawym dolnym rogu (na telefonie nad przyciskiem skoku)
+	local timers = Kit.new("Frame", {
+		Name = "BoostTimers",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, -22, 1, -14),
+		Size = UDim2.fromOffset(360, 0),
+		AutomaticSize = Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		Parent = hud.gui,
+	})
+	hud.registerScale(timers)
+	Kit.new("UIListLayout", {
+		Padding = UDim.new(0, 0),
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		VerticalAlignment = Enum.VerticalAlignment.Bottom,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+		Parent = timers,
+	})
+	local boostLines = {
+		LP = timerLine(timers, "LP", Theme.Gradients.LP, 1),
+		AutoSell = timerLine(timers, "AutoSell", Theme.Gradients.Money, 2),
+	}
+	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+	-- Na telefonie w prawym dolnym rogu jest przycisk skoku: napisy stoją wtedy tuż na lewo od niego
+	-- (w tym samym rogu, mniejsze), bo nad nim jest kolumna SHOP / TELEPORT / Starter Pack.
+	local timerSize = SIDE.TimerSize
+	local function placeTimers()
+		local right, bottom, size = 22, 14, SIDE.TimerSize
+		local touchGui = playerGui:FindFirstChild("TouchGui")
+		local jump = touchGui and touchGui:FindFirstChild("JumpButton", true)
+		if touchGui ~= nil and touchGui:IsA("ScreenGui") and touchGui.Enabled and jump ~= nil and jump:IsA("GuiObject") and jump.Visible then
+			local camera = Workspace.CurrentCamera
+			local view = (camera and camera.ViewportSize) or Theme.BaseSize
+			right = math.max(right, view.X - jump.AbsolutePosition.X + 10)
+			bottom = 10
+			size = SIDE.TimerSizeTouch
+		end
+		timers.Position = UDim2.new(1, -right, 1, -bottom)
+		if size ~= timerSize then
+			timerSize = size
+			for _, line in pairs(boostLines) do
+				line.layout(size)
+			end
+		end
+	end
 
 	-- czasy liczymy u siebie od ostatniego stanu z serwera (serwer odlicza tylko w grze)
 	local boostEnds = { LP = 0, AutoSell = 0 }
@@ -477,195 +420,8 @@ function Shop.start(hud)
 	end
 
 	------------------------------------------------------------- Okno SHOP
-	local panel = Kit.panel(hud.gui, {
-		name = "ShopPanel",
-		size = PANEL_SIZE,
-		title = TEXT.Title,
-		icon = "Shop",
-		padding = 22,
-		top = 52,
-		bottom = 20,
-	})
-	hud.registerScale(panel.holder)
-	hud.addWindow(panel)
-	local scroll = Kit.new("ScrollingFrame", {
-		Name = "Scroll",
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ScrollBarThickness = 8,
-		ScrollBarImageColor3 = Theme.Muted,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollingDirection = Enum.ScrollingDirection.Y,
-		ZIndex = 3,
-		Parent = panel.content,
-	})
-	Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 12),
-		HorizontalAlignment = Enum.HorizontalAlignment.Center,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Parent = scroll,
-	})
-	Kit.new("UIPadding", { PaddingTop = UDim.new(0, 6), PaddingBottom = UDim.new(0, 12), Parent = scroll })
-
-	-- Starter Pack: szeroka karta na górze
-	local starterCard = Kit.new("Frame", {
-		Name = "StarterCard",
-		LayoutOrder = 1,
-		Size = UDim2.fromOffset(4 * CARD.X + 3 * CARD_GAP, 176),
-		BackgroundColor3 = Theme.White,
-		BorderSizePixel = 0,
-		Visible = false,
-		ZIndex = 4,
-		Parent = scroll,
-	})
-	Kit.corner(starterCard, 22)
-	Kit.stroke(starterCard, 4, Enum.ApplyStrokeMode.Border)
-	Kit.gradient(starterCard, Theme.Gradients.Starter, 90)
-	Kit.text(starterCard, {
-		Name = "Title",
-		Position = UDim2.fromOffset(22, 8),
-		Size = UDim2.fromOffset(330, 48),
-		Text = TEXT.Starter,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 5,
-	}, { maxSize = 42, stroke = 4, gradient = Theme.Gradients.Gold })
-	local starterCardTimer = Kit.text(starterCard, {
-		Name = "Timer",
-		Position = UDim2.fromOffset(24, 54),
-		Size = UDim2.fromOffset(420, 24),
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Left,
-		ZIndex = 5,
-	}, { maxSize = 20, stroke = 2.5 })
-	local sp = Economy.Robux.Products.StarterPack
-	local starterIcons = { "Watch", "Pets", "Boost", "Sell" }
-	local starterLabels = {
-		sp.Watch .. " Watch",
-		sp.PetRarity .. " Pet",
-		string.format("2x LP\n%d min", sp.BoostMinutes),
-		string.format("Auto Sell\n%d min", sp.AutoSellMinutes),
-	}
-	for i = 1, 4 do
-		local tile = Kit.new("Frame", {
-			Name = "Item" .. i,
-			Position = UDim2.fromOffset(22 + (i - 1) * 122, 84),
-			Size = UDim2.fromOffset(112, 82),
-			BackgroundColor3 = Theme.White,
-			BorderSizePixel = 0,
-			ZIndex = 5,
-			Parent = starterCard,
-		})
-		Kit.corner(tile, 14)
-		Kit.stroke(tile, 3, Enum.ApplyStrokeMode.Border)
-		Icons.make(starterIcons[i], {
-			AnchorPoint = Vector2.new(0.5, 0),
-			Position = UDim2.new(0.5, 0, 0, 4),
-			Size = UDim2.fromOffset(40, 40),
-			ZIndex = 6,
-			Parent = tile,
-		})
-		Kit.text(tile, {
-			AnchorPoint = Vector2.new(0.5, 1),
-			Position = UDim2.new(0.5, 0, 1, -3),
-			Size = UDim2.new(1, -8, 0, 34),
-			Text = starterLabels[i],
-			TextColor3 = Theme.Dark,
-			TextWrapped = true,
-			ZIndex = 6,
-		}, { maxSize = 15, stroke = 0 })
-	end
-	Kit.text(starterCard, {
-		Name = "Best",
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.new(1, -120, 0, 40),
-		Size = UDim2.fromOffset(190, 38),
-		Rotation = 6,
-		Text = TEXT.Best,
-		ZIndex = 6,
-	}, { maxSize = 30, stroke = 3.5, gradient = Theme.Gradients.Gold })
-	local starterBuy = Kit.button(starterCard, {
-		name = "Buy",
-		size = Vector2.new(220, 70),
-		text = "",
-		colors = Theme.Gradients.Green,
-		textSize = 36,
-		anchor = Vector2.new(1, 1),
-		position = UDim2.new(1, -18, 1, -14),
-		sound = false,
-	})
-	starterBuy.holder.ZIndex = 6
-	Shop.onPrice("Product", "StarterPack", function()
-		starterBuy.setText(Shop.priceText("Product", "StarterPack"))
-	end)
-	starterBuy.Activated:Connect(function()
-		Sounds.play("Button")
-		Shop.buy("Product", "StarterPack", nil, starterBuy)
-	end)
-
-	-- gamepassy
-	sectionHeader(scroll, TEXT.Gamepasses, 2)
-	local passGrid = grid(scroll, "Gamepasses", 3)
-	local passCards = {}
-	for i, key in ipairs(Robux.PassOrder) do
-		local info = PASSES[key]
-		if info ~= nil and Robux.Gamepasses[key] ~= nil then
-			local card = makeCard(passGrid, {
-				name = key,
-				order = i,
-				title = info.name,
-				desc = info.desc,
-				icon = info.icon,
-				colors = info.colors,
-			})
-			passCards[key] = card
-			Shop.onPrice("Pass", key, function()
-				card.setPrice(Shop.priceText("Pass", key))
-			end)
-			card.button.Activated:Connect(function()
-				if card.owned then
-					return
-				end
-				Sounds.play("Button")
-				Shop.buy("Pass", key, nil, card.button)
-			end)
-		end
-	end
-
-	-- boosty i reklama
-	sectionHeader(scroll, TEXT.Boosts, 4)
-	local boostGrid = grid(scroll, "BoostGrid", 5)
-	local adCard = makeCard(boostGrid, {
-		name = "FreeBoost",
-		order = 0,
-		title = TEXT.Free,
-		desc = "",
-		icon = "Ad",
-		colors = Theme.Gradients.Pink,
-		tag = "FREE",
-		buttonColors = Theme.Gradients.Pink,
-	})
-	adCard.card.Visible = false
-	for i, entry in ipairs(BOOSTS) do
-		if Robux.Products[entry.key] ~= nil then
-			local card = makeCard(boostGrid, {
-				name = entry.key,
-				order = i,
-				title = entry.name,
-				desc = entry.desc,
-				icon = entry.icon,
-				colors = entry.colors,
-			})
-			Shop.onPrice("Product", entry.key, function()
-				card.setPrice(Shop.priceText("Product", entry.key))
-			end)
-			card.button.Activated:Connect(function()
-				Sounds.play("Button")
-				Shop.buy("Product", entry.key, nil, card.button)
-			end)
-		end
-	end
+	local shopWindow, win = ShopWindow.create(hud, Shop)
+	hud.addWindow(shopWindow)
 
 	-- reklama za nagrodę: tylko gdy Roblox ma reklamę dla gracza (albo tester bez ID produktu)
 	local adAvailable = false
@@ -675,22 +431,16 @@ function Shop.start(hud)
 		if view == nil then
 			return
 		end
-		local left = view.AdsLeft or 0
 		local tester = view.IsAdmin == true and Robux.productId(Robux.AdReward) == nil
-		local show = view.AdsReady == true and (adAvailable or tester)
-		adCard.card.Visible = show
 		local reward = Robux.Products[Robux.AdReward]
-		adCard.desc.Text = string.format(TEXT.FreeDesc, (reward and reward.Minutes) or 0, left, Economy.Bonuses.RewardedVideoDailyMax)
-		if left <= 0 then
-			adCard.setOwned(true, TEXT.NoAds)
-		else
-			adCard.owned = false
-			if tester then
-				adCard.setPrice(TEXT.WatchTest)
-			else
-				adCard.setPrice(TEXT.Watch)
-			end
-		end
+		win.setAd({
+			show = view.AdsReady == true and (adAvailable or tester),
+			left = view.AdsLeft or 0,
+			max = Economy.Bonuses.RewardedVideoDailyMax,
+			minutes = (reward and reward.Minutes) or 0,
+			tester = tester,
+			waiting = adWatching,
+		})
 	end
 	-- GetAdAvailabilityNowAsync tuż przed pokazaniem przycisku (jedna dostępność = jedna reklama)
 	local function checkAd()
@@ -701,18 +451,17 @@ function Shop.start(hud)
 		adAvailable = ok and available == true
 		renderAd()
 	end
-	adCard.button.Activated:Connect(function()
-		if adCard.owned or adWatching then
+	win.ad.button.Activated:Connect(function()
+		if win.ad.used or adWatching then
 			return
 		end
 		Sounds.play("Button")
 		adWatching = true
-		adCard.setOwned(true, "...")
+		renderAd()
 		local ok, result = pcall(function()
 			return Net.func("WatchAd"):InvokeServer()
 		end)
 		adWatching = false
-		adCard.owned = false
 		if ok and type(result) == "table" and not result.Ok then
 			local reason = TEXT.Reasons[result.Reason]
 			if reason ~= nil then
@@ -741,12 +490,13 @@ function Shop.start(hud)
 			name = "TeleportZone" .. n,
 			size = Vector2.new(500, 58),
 			text = string.format(TEXT.ZoneButton, n, zone.Name),
-			colors = Theme.Gradients.Cyan,
+			colors = Theme.Gradients.Portal,
 			textSize = 28,
 			anchor = Vector2.new(0.5, 0),
 			position = UDim2.new(0.5, 0, 0, (n - 1) * 70),
 			sound = false,
 		})
+		Fx.button(b, 1.03)
 		b.lock = Icons.make("Lock", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(1, -24, 0.5, -2),
@@ -772,6 +522,7 @@ function Shop.start(hud)
 		position = UDim2.new(0.5, 0, 1, 0),
 		sound = false,
 	})
+	Fx.button(tpBuy)
 
 	local function renderTeleport()
 		local view = State.view
@@ -784,14 +535,14 @@ function Shop.start(hud)
 			local open = n <= unlocked
 			b.lock.Visible = not open
 			if open and owns then
-				b.setColors(Theme.Gradients.Cyan)
+				b.setColors(Theme.Gradients.Portal)
 			else
 				b.setColors(Theme.Gradients.Gray)
 			end
 		end
 		tpNote.holder.Visible = not owns
 		tpBuy.holder.Visible = not owns
-		tpLock.Visible = not owns
+		tpTile.lock.Visible = not owns
 	end
 
 	for n, b in ipairs(zoneButtons) do
@@ -838,60 +589,105 @@ function Shop.start(hud)
 	local function render(view)
 		readTimers(view)
 		local passes = view.Passes or {}
-		for key, card in pairs(passCards) do
-			if passes[key] then
-				card.setOwned(true)
-			elseif card.owned then
-				card.owned = false
-				card.setPrice(Shop.priceText("Pass", key))
-			end
+		for key in pairs(Catalog.PASSES) do
+			win.setOwned(key, passes[key] == true)
 		end
 		local starterOn = (view.StarterLeft or 0) > 0
 		starterButton.holder.Visible = starterOn
-		starterCard.Visible = starterOn
+		win.setStarter(view.StarterLeft or 0)
 		renderAd()
 		renderTeleport()
 	end
 	State.onChange(render)
 
-	-- zegary (Starter Pack i boosty) co ćwierć sekundy
+	-- zegary (Starter Pack i boosty) co ćwierć sekundy; miejsce napisów co 2 s
 	task.spawn(function()
+		local tick = 0
 		while true do
 			local now = os.clock()
-			for kind, pill in pairs(boostPills) do
+			for kind, line in pairs(boostLines) do
 				local left = boostEnds[kind] - now
-				pill.holder.Visible = left > 0
-				if left > 0 then
-					pill.timer.Text = timeText(left)
+				local on = left > 0
+				if on ~= line.frame.Visible then
+					line.frame.Visible = on
+					if on then
+						Fx.pop(line.scale, 0, 0.4)
+					end
 				end
+				if on then
+					local text = timeText(left)
+					if text ~= line.time.Text then
+						line.time.Text = text
+						line.layout()
+					end
+					-- dokupiony czas: podskok; ostatnie pół minuty: czas na czerwono
+					if left > line.last + 5 and line.last > 0 then
+						Fx.bump(line.scale, 1.25, 0.4)
+					end
+					local warn = left < 30
+					if warn ~= line.warn and line.gradient ~= nil then
+						line.warn = warn
+						local colors = Theme.Gradients.Gold
+						if warn then
+							colors = Theme.Gradients.Red
+						end
+						line.gradient.Color = ColorSequence.new(colors[1], colors[2])
+					end
+				end
+				line.last = math.max(0, left)
 			end
 			local starterLeft = starterEnds - now
 			if starterLeft > 0 then
-				local text = timeText(starterLeft)
-				starterTimer.Text = text
-				starterCardTimer.Text = string.format(TEXT.StarterEnds, text)
+				starterButton.timer.Text = timeText(starterLeft)
+				win.setStarter(starterLeft)
 			elseif starterButton.holder.Visible then
 				starterButton.holder.Visible = false
-				starterCard.Visible = false
+				win.setStarter(0)
+			end
+			tick = tick + 1
+			if tick % 8 == 1 then
+				placeTimers()
+			end
+			-- kafelek SHOP: co kilka sekund połysk i podskok koszyka, Starter Pack: połysk
+			if tick % (SIDE.IdleEvery * 4) == 0 and not shopWindow.isOpen() then
+				shopTile.shine.play(0.6)
+				Fx.bump(shopTile.iconScale, 1.15, 0.45)
+				if starterButton.holder.Visible then
+					task.delay(0.4, function()
+						starterButton.shine.play(0.55)
+					end)
+				end
 			end
 			task.wait(0.25)
 		end
 	end)
 
 	------------------------------------------------------------- Otwieranie okien
-	local function openShop()
-		if panel.isOpen() then
-			panel.hide()
+	-- Kliknięcie SHOP: z kafelka wylatują małe koszyki, rozchodzi się fala, okno wyskakuje.
+	local function shopBurst(face)
+		local center = face.AbsolutePosition + face.AbsoluteSize / 2
+		local k = hudScale()
+		Fx.ring(hud.gui, UDim2.fromOffset(center.X, center.Y), 50 * k, 260 * k, Theme.White, 58, 0.5)
+		Fx.burst(hud.gui, center, function()
+			return ShopArt.mini("Shop")
+		end, { count = SIDE.BurstCount, size = 48, distance = 210, angle = 205, spread = 150, scale = k, time = 0.85, zIndex = 60 })
+	end
+	local function openShop(face)
+		if shopWindow.isOpen() then
+			shopWindow.hide()
 			return
 		end
-		scroll.CanvasPosition = Vector2.new(0, 0)
-		hud.openWindow(panel)
+		shopBurst(face or shopTile.face)
+		hud.openWindow(shopWindow)
 		task.spawn(checkAd)
 	end
-	shopTile.Activated:Connect(openShop)
+	Shop.open = openShop
+	shopTile.Activated:Connect(function()
+		openShop(shopTile.face)
+	end)
 	starterButton.Activated:Connect(function()
-		if not panel.isOpen() then
-			openShop()
+		if not shopWindow.isOpen() then
+			openShop(starterButton.face)
 		end
 	end)
 	tpTile.Activated:Connect(function()
@@ -909,32 +705,40 @@ function Shop.start(hud)
 		Shop.buy("Pass", key, nil, button)
 	end
 
-	------------------------------------------------------------- Komunikaty
+	------------------------------------------------------------- Podziękowania i komunikaty
+	local function boostName(boost)
+		if boost == "AutoSell" then
+			return Catalog.PRODUCTS.BoostAutoSell15.name, "BoostAutoSell"
+		end
+		return Catalog.PRODUCTS.Boost2xLP5.name, "Boost2xLP"
+	end
 	State.onNotify(function(payload)
 		if payload.Kind == "Purchase" then
 			if payload.Result == "Boost" then
-				Sounds.play("Unlock", { volume = 0.5 })
 				if payload.Daily then
+					Sounds.play("Unlock", { volume = 0.5 })
 					toast(string.format(TEXT.BoostDaily, payload.Minutes or 0), Theme.Gradients.Cyan, "BoostDaily", "Verified")
 				elseif payload.Ad then
+					Sounds.play("Unlock", { volume = 0.5 })
 					toast(string.format(TEXT.BoostAd, payload.Minutes or 0), Theme.Gradients.LP, "BoostAd", "Boost")
 				else
-					local name = TEXT.BoostLP
-					local icon = "Boost"
-					if payload.Boost == "AutoSell" then
-						name = TEXT.BoostAutoSell
-						icon = "Sell"
-					end
-					toast(string.format(TEXT.BoostGot, name, payload.Minutes or 0), Theme.Gradients.LP, "BoostGot" .. tostring(payload.Boost), icon)
+					local name, art = boostName(payload.Boost)
+					ShopThanks.show({ mode = "compact", art = art, name = name, sub = string.format(TEXT.ThanksBoost, payload.Minutes or 0), test = payload.Test })
 				end
 			elseif payload.Result == "Starter" then
-				Sounds.play("Reward")
-				toast(TEXT.StarterGot, Theme.Gradients.Gold, "StarterGot", "Gift")
+				ShopThanks.show({ mode = "full", art = "Starter", name = Catalog.PRODUCTS.StarterPack.name, sub = TEXT.ThanksStarter, items = Catalog.STARTER_ITEMS, test = payload.Test })
+			elseif payload.Result == "Pets" then
+				local info = Catalog.PRODUCTS[payload.Key] or Catalog.PRODUCTS.PremiumEgg1
+				local count = (type(payload.Pets) == "table" and #payload.Pets) or 1
+				ShopThanks.show({ mode = "compact", art = info.art, name = info.name, sub = "x" .. count, test = payload.Test, waitCalm = true })
+			elseif payload.Result == "Sell" then
+				ShopThanks.show({ mode = "compact", art = "SellNow", name = Catalog.PRODUCTS.SellNow.name, sub = TEXT.ThanksSell, test = payload.Test })
 			end
 		elseif payload.Kind == "PassBought" then
-			local info = PASSES[payload.Key]
-			Sounds.play("Unlock")
-			toast(string.format(TEXT.PassBought, (info and info.name) or tostring(payload.Key)), Theme.Gradients.Gold, "PassBought", (info and info.icon) or "Gift")
+			local info = Catalog.PASSES[payload.Key]
+			if info ~= nil then
+				ShopThanks.show({ mode = "full", art = info.art, name = info.name, sub = TEXT.ThanksPass, test = payload.Test })
+			end
 		elseif payload.Kind == "BoostEnded" then
 			local name = TEXT.BoostLP
 			if payload.Boost == "AutoSell" then

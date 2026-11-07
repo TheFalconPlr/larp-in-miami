@@ -16,7 +16,7 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 | --- | --- | --- |
 | `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Config/RobuxIds` (ID gamepassów i produktów z Creator Hub, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Shop` (zakupy za Robuxy: premium jajka, boosty, Starter Pack, reklamy, numery zakupów), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Robux` (ID i ceny gamepassów i produktów), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
 | `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), ShopService (zakupy za Robuxy, reklamy, teleport), AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Shop` (sklep za Robuxy, Starter Pack, boosty, teleport), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Shop` (kafelki SHOP i TELEPORT, Starter Pack, boosty w rogu, ceny i zakup), `ShopWindow` (okno sklepu), `ShopThanks` (podziękowanie po zakupie), `ShopCatalog` (nazwy, opisy i grafiki produktów), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `Ui/Fx` (animacje i efekty: połysk, promienie, iskry, konfetti), `Ui/ShopArt` (grafiki gamepassów z obrazków), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -301,8 +301,19 @@ Do testu: `/zone 5` i `/cash 1Qi`, a potem REBIRTH przy portalu. Rebirth zeruje 
 
 Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad Roblox o płatnych losowaniach (ogłoszenie z 26 maja 2026). Za Robuxy nigdy nie ma stref, aut, jachtów, odrzutowców, Rebirthów, L$ ani Aury.
 
-- **Po prawej stronie ekranu** są kafelki SHOP i TELEPORT, pod nimi przycisk Starter Pack z zegarem (tylko przez 72 h od pierwszego wejścia) i pigułki aktywnych boostów z pozostałym czasem. Boosty lecą tylko wtedy, gdy grasz.
-- **Okno SHOP:** na górze Starter Pack (79 R$: zegarek Rare, pet Epic z najwyższej odblokowanej strefy, 30 min 2x LP i 30 min Auto Sell; raz na konto), potem 11 gamepassów (kupione mają OWNED), boosty (2x LP na 5, 15 i 60 min, Auto Sell na 15 i 60 min), Sell Now (sprzedaje Bag, gdziekolwiek jesteś) i darmowy boost za reklamę.
+- **Po prawej stronie ekranu** jest duży kafelek SHOP (koszyk), TELEPORT i przycisk Starter Pack z zegarem (tylko przez 72 h od pierwszego wejścia). Na niskim ekranie (telefon poziomo) kolumna stoi od góry, żeby nie wchodziła na przycisk skoku.
+- **Boosty w prawym dolnym rogu:** sam napis bez tła, np. „2x LP 14:47” i „AUTO SELL 1:14:52”. Przy dokupionym czasie napis podskakuje, a w ostatnich 30 s czas robi się czerwony. Na telefonie napisy są mniejsze i stoją tuż na lewo od przycisku skoku. Boosty lecą tylko wtedy, gdy grasz.
+- **Okno SHOP:** po lewej zakładki OFFERS / PASSES / BOOSTS, które płynnie przewijają do swojej części, a podświetlenie zakładki idzie za przewijaniem.
+  - **OFFERS:** Starter Pack (79 R$: zegarek Rare, pet Epic z najwyższej odblokowanej strefy, 30 min 2x LP i 30 min Auto Sell; raz na konto) i darmowy boost za reklamę.
+  - **PASSES:** 2x LP i Auto Sell na dużych kartach, pozostałe 9 w siatce 3×3. Kupione mają zielone OWNED ze znaczkiem.
+  - **BOOSTS:** 2x LP (5 min, 15 min, 1 h) i Auto Sell (15 min, 1 h) na jednej karcie z czasami do wyboru oraz Sell Now (sprzedaje Bag, gdziekolwiek jesteś). Czas z najniższą ceną za minutę ma złoty kafelek i wstążkę BEST DEAL (liczone z cen gracza, więc zawsze prawdziwe).
+- **Wygląd i animacje sklepu** (jak w Pet Simulator 99, ale po swojemu): każdy gamepass ma własną grafikę z animacją, np. trzy kołyszące się jajka (Triple Open), jajko z błyskawicą i smugami pędu (Fast Open), portal z krążącymi kropkami (Teleport), dwa łańcuchy kołyszące się na zawiasach (Double Chain), dwa zegarki z chodzącymi wskazówkami (Double Wrist). Za grafikami są promienie, w tle kart powoli spadają małe ikony gamepassa, a po kartach i przyciskach z ceną co chwilę przechodzi połysk (obrazek „Shine”).
+  - **Otwarcie:** z kafelka SHOP wylatują małe koszyki i rozchodzi się fala. Świat ciemnieje i się rozmywa, okno wyskakuje, a karty wjeżdżają po kolei.
+  - **Mysz:** karta lekko rośnie po najechaniu, a przyciski rosną, wciskają się i sprężynują.
+  - Animacje tła działają tylko przy otwartym oknie i tylko dla widocznych kart.
+- **Podziękowanie po zakupie** pokazuje się tylko po potwierdzeniu zakupu przez serwer, więc anulowany albo nieudany zakup nic nie pokazuje.
+  - **Gamepass i Starter Pack:** świat ciemnieje, HUD na chwilę znika (jak przy otwieraniu jajka), za grafiką kręcą się złote promienie, wylatuje konfetti, a na złotej wstędze jest „THANK YOU!” z połyskiem. Znika po kliknięciu albo po kilku sekundach.
+  - **Boost, Sell Now i premium jajka (po animacji wyklucia):** mała karta wjeżdża u góry ekranu, pod podpowiedzią. Kolejny taki zakup podmienia jej treść, zamiast dokładać nowe okna, a kolejne duże podziękowania czekają w kolejce i trwają krócej.
 - **Ceny** w całym UI przychodzą z `GetProductInfoAsync`, więc gracz widzi swoją cenę regionalną. Dopóki gamepass albo produkt nie ma ID, widać cenę z ekonomii.
 - **Gamepassy:**
   - 2x LP (+100% LP).
@@ -332,6 +343,20 @@ Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad 
 6. **Kwestionariusz Maturity & Compliance:** zaznacz płatne losowania (premium jajka).
 
 **Test bez ID:** w trybie testowym każdy przycisk kupna działa „na niby” (bez Robuxów, z napisem TEST PURCHASE), tak samo karta reklamy (2 s udawanej reklamy). Zwykły gracz zobaczy „Coming soon!”. Z prawdziwymi ID Studio i tak nie pobiera Robuxów (okna zakupu są testowe). Gracza z ograniczeniem udajesz komendą `/policy on` albo emulatorem gracza w Studio (Test → Player Emulator, opcja `ArePaidRandomItemsRestricted`).
+
+**Grafiki i dźwięki sklepu** są w `src/shared/Config/Settings.luau`:
+
+- **Ikony:** `Ui.Icons.Shop`, `Teleport` i `Boost`.
+- **Grafiki gamepassów:** `Ui.ShopArt`, czyli ID Decali z Toolboxa:
+  - jajko,
+  - błyskawica,
+  - 2X,
+  - portal,
+  - łańcuch,
+  - zegarek („Battleship Diepio”),
+  - połysk „Shine”.
+- **Zegarek:** gdyby stał krzywo, popraw `WatchRotation` (obrót obrazka). Gdyby złota obręcz nie pasowała do niebieskiej tarczy, popraw `WatchFace`.
+- **Dźwięki:** `ShopOpen`, `ShopTab`, `Purchase` i `PurchaseSmall`. Na razie to dźwięki już używane w grze: „whoosh”, klik, trąbka i dźwięk sprzedaży.
 
 **Twoje stoiska.**
 
