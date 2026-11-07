@@ -136,11 +136,12 @@ function Fx.scaleOf(obj)
 end
 
 ----------------------------------------------------------------- Połysk
--- Jasny pas przesuwany ukośnie po ramce (jak odbicie światła na szkle). Obrazek „Shine”
--- (Settings.Ui.ShopArt.Shine) rozciągnięty w wysoki pas z miękkimi brzegami; bez ID biały pas.
--- Warstwa jest o inset pikseli mniejsza od ramki z każdej strony, bo Roblox obcina prostokątem,
--- a rogi kart są zaokrąglone. opts: inset, width (szerokość pasa), angle, strength (0–1), zIndex.
--- Zwraca { frame, play(time, delay) }.
+-- Odbicie światła przesuwane od lewej do prawej po ramce (jak po szybie). Obrazek „Window Shine 2”
+-- (Settings.Ui.ShopArt.Shine: ukośne smugi) ma wysokość ramki i szerokość ShineWidth × wysokość
+-- (opts.ratio), więc smugi wyglądają tak samo na wąskim przycisku i na dużej karcie. Bez ID: biały pas
+-- pochylony o angle (opts.width = jego szerokość). Warstwa jest o inset pikseli mniejsza od ramki
+-- z każdej strony, bo Roblox obcina prostokątem, a rogi kart są zaokrąglone.
+-- opts: inset, top, bottom, ratio, width, angle, strength (0–1), zIndex. Zwraca { frame, play(time, delay), stop() }.
 local SHINE_FADE = NumberSequence.new({
 	NumberSequenceKeypoint.new(0, 1),
 	NumberSequenceKeypoint.new(0.3, 0.55),
@@ -148,10 +149,16 @@ local SHINE_FADE = NumberSequence.new({
 	NumberSequenceKeypoint.new(0.7, 0.55),
 	NumberSequenceKeypoint.new(1, 1),
 })
+-- miękkie boki obrazka (gdyby jego brzegi nie były przezroczyste)
+local SHINE_EDGES = NumberSequence.new({
+	NumberSequenceKeypoint.new(0, 1),
+	NumberSequenceKeypoint.new(0.14, 0),
+	NumberSequenceKeypoint.new(0.86, 0),
+	NumberSequenceKeypoint.new(1, 1),
+})
 function Fx.shine(parent, opts)
 	opts = opts or {}
 	local inset = opts.inset or 0
-	local width = opts.width or 90
 	local clip = new("Frame", {
 		Name = "Shine",
 		Position = UDim2.fromOffset(inset, inset + (opts.top or 0)),
@@ -163,40 +170,52 @@ function Fx.shine(parent, opts)
 	})
 	local strength = opts.strength or 0.75
 	local image = Fx.image(ART.Shine)
-	local band
+	local band, from, to
 	if image ~= nil then
+		-- start: cały obrazek na lewo od ramki, koniec: cały na prawo (AnchorPoint jedzie razem z
+		-- Position, więc lewy brzeg przesuwa się równo od −szerokości do prawego brzegu ramki)
 		band = new("ImageLabel", {
 			Name = "Band",
 			Image = image,
 			ScaleType = Enum.ScaleType.Stretch,
-			ImageTransparency = 1 - strength,
+			-- smugi w obrazku są delikatne (ok. 35% krycia), więc pełną siłę dajemy już od strength 0.8
+			ImageTransparency = math.max(0, 1 - strength * 1.25),
 			BackgroundTransparency = 1,
+			SizeConstraint = Enum.SizeConstraint.RelativeYY,
+			Size = UDim2.fromScale(opts.ratio or ART.ShineWidth or 1, 1),
 		})
+		new("UIGradient", { Transparency = SHINE_EDGES, Parent = band })
+		from = { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(0, 0.5) }
+		to = { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(1, 0.5) }
 	else
+		local width = opts.width or 90
 		band = new("Frame", {
 			Name = "Band",
 			BackgroundColor3 = Theme.White,
 			BackgroundTransparency = 1 - strength * 0.7,
 			BorderSizePixel = 0,
+			Size = UDim2.new(0, width, 2.6, 0),
+			Rotation = opts.angle or 20,
 		})
+		new("UIGradient", { Transparency = SHINE_FADE, Parent = band })
+		from = { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0, -width, 0.5, 0) }
+		to = { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, width, 0.5, 0) }
 	end
-	band.AnchorPoint = Vector2.new(0.5, 0.5)
-	band.Size = UDim2.new(0, width, 2.6, 0)
-	band.Position = UDim2.new(0, -width, 0.5, 0)
-	band.Rotation = opts.angle or 20
+	band.AnchorPoint = from.AnchorPoint
+	band.Position = from.Position
 	band.Visible = false
 	band.ZIndex = opts.zIndex or 20
 	band.Parent = clip
-	new("UIGradient", { Transparency = SHINE_FADE, Rotation = 0, Parent = band })
 	local api = { frame = clip }
 	local current = nil
 	function api.play(time, delay)
 		if current ~= nil then
 			current:Cancel()
 		end
-		band.Position = UDim2.new(0, -width, 0.5, 0)
+		band.AnchorPoint = from.AnchorPoint
+		band.Position = from.Position
 		band.Visible = true
-		current = Fx.tween(band, time or 0.7, { Position = UDim2.new(1, width, 0.5, 0) }, Style.Sine, Dir.InOut, delay or 0)
+		current = Fx.tween(band, time or 0.7, { AnchorPoint = to.AnchorPoint, Position = to.Position }, Style.Sine, Dir.InOut, delay or 0)
 		return current
 	end
 	function api.stop()

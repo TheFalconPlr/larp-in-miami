@@ -46,7 +46,7 @@ local SIDE = {
 	TimerHeight = 38,
 	TimerSizeTouch = 25, -- napisy boostów obok przycisku skoku na telefonie
 	ShortScreen = 560, -- niższy ekran (telefon poziomo): kolumna po prawej od góry, ciaśniej
-	BurstCount = 8,
+	BurstCount = 14, -- małe koszyki wylatujące dookoła kafelka SHOP
 	IdleEvery = 5,
 }
 
@@ -168,6 +168,7 @@ local function makeShopTile(root)
 		radius = 30,
 		edge = 7,
 		order = 1,
+		sound = false, -- otwarcie sklepu ma własne dźwięki (ShopWindow)
 	})
 	local icon = Icons.make("Shop", {
 		Name = "ShopIcon",
@@ -231,6 +232,7 @@ local function makeStarterButton(root)
 		colors = Theme.Gradients.Starter,
 		radius = 20,
 		order = 3,
+		sound = false, -- otwiera sklep, który ma własne dźwięki
 	})
 	Icons.make("Gift", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
@@ -263,7 +265,25 @@ local function makeStarterButton(root)
 end
 
 ----------------------------------------------------------------- Boosty w prawym dolnym rogu
--- Sam napis z obrysem (bez tła): nazwa boosta w jego kolorze i czas na złoto.
+-- Sam napis z obrysem (bez tła): nazwa boosta w jego kolorze i czas na złoto. Napisy trzymają się
+-- lewej strony, a czas ma miejsce o stałej szerokości (jak dla najszerszych cyfr), więc zmiana cyfr
+-- co sekundę niczego nie przesuwa; szerokość zmienia się tylko, gdy zmienia się zapis (np. 1:00:00 → 59:59).
+local wideDigit = { size = 0, char = "0" }
+local function slotText(text, size)
+	if wideDigit.size ~= size then
+		wideDigit.size = size
+		local best = -1
+		for d = 0, 9 do
+			local w = Kit.measure(tostring(d), size).X
+			if w > best then
+				best = w
+				wideDigit.char = tostring(d)
+			end
+		end
+	end
+	return (string.gsub(text, "%d", wideDigit.char))
+end
+
 local function timerLine(parent, name, colors, order)
 	local frame = Kit.new("Frame", {
 		Name = name,
@@ -273,6 +293,7 @@ local function timerLine(parent, name, colors, order)
 		Visible = false,
 		Parent = parent,
 	})
+	-- podskok i wyskoczenie rosną od prawej krawędzi (przy krawędzi ekranu nie wychodzą poza niego)
 	local body = Kit.new("Frame", {
 		Name = "Body",
 		AnchorPoint = Vector2.new(1, 0.5),
@@ -281,39 +302,50 @@ local function timerLine(parent, name, colors, order)
 		BackgroundTransparency = 1,
 		Parent = frame,
 	})
-	local time = Kit.text(body, {
-		Name = "Time",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.fromScale(1, 0.5),
-		Size = UDim2.fromOffset(120, SIDE.TimerHeight),
-		Text = "",
-		TextXAlignment = Enum.TextXAlignment.Right,
-	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = Theme.Gradients.Gold })
 	local label = Kit.text(body, {
 		Name = "Name",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, -130, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromScale(0, 0.5),
 		Size = UDim2.fromOffset(220, SIDE.TimerHeight),
 		Text = TEXT[name == "LP" and "BoostLP" or "BoostAutoSell"],
-		TextXAlignment = Enum.TextXAlignment.Right,
+		TextXAlignment = Enum.TextXAlignment.Left,
 	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = colors })
-	local line = { frame = frame, time = time, label = label, scale = Fx.scaleOf(body), gradient = time:FindFirstChildOfClass("UIGradient"), last = 0, size = SIDE.TimerSize }
-	-- rozmiar napisu (mniejszy obok przycisku skoku) i szerokości z treści
+	local time = Kit.text(body, {
+		Name = "Time",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 230, 0.5, 0),
+		Size = UDim2.fromOffset(120, SIDE.TimerHeight),
+		Text = "",
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = Theme.Gradients.Gold })
+	local line = { frame = frame, time = time, label = label, scale = Fx.scaleOf(body), gradient = time:FindFirstChildOfClass("UIGradient"), last = 0, size = SIDE.TimerSize, width = 0, slot = "" }
+	-- rozmiar napisu (mniejszy obok przycisku skoku) i szerokości: nazwa z treści, czas ze wzoru cyfr.
+	-- Zwraca true, gdy zmieniła się szerokość całego napisu.
 	function line.layout(size)
+		local slot = slotText(time.Text, size or line.size)
+		if size == nil and slot == line.slot then
+			return false
+		end
 		line.size = size or line.size
+		line.slot = slot
 		local h = math.floor(line.size * 1.25)
-		frame.Size = UDim2.fromOffset(360, h)
 		for _, label_ in ipairs({ time, label }) do
 			local limit = label_:FindFirstChildOfClass("UITextSizeConstraint")
 			if limit ~= nil then
 				limit.MaxTextSize = line.size
 			end
 		end
-		local w = Kit.measure(time.Text, line.size).X + 8
-		time.Size = UDim2.fromOffset(w, h)
 		local lw = Kit.measure(label.Text, line.size).X + 8
+		local gap = math.floor(line.size * 0.35)
+		local tw = Kit.measure(slot, line.size).X + 8
 		label.Size = UDim2.fromOffset(lw, h)
-		label.Position = UDim2.new(1, -w - math.floor(line.size * 0.35), 0.5, 0)
+		time.Position = UDim2.new(0, lw + gap, 0.5, 0)
+		time.Size = UDim2.fromOffset(tw, h)
+		local width = lw + gap + tw
+		frame.Size = UDim2.fromOffset(width, h)
+		local changed = width ~= line.width
+		line.width = width
+		return changed
 	end
 	return line
 end
@@ -367,15 +399,15 @@ function Shop.start(hud)
 		Name = "BoostTimers",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -22, 1, -14),
-		Size = UDim2.fromOffset(360, 0),
+		Size = UDim2.fromOffset(0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Parent = hud.gui,
 	})
 	hud.registerScale(timers)
-	Kit.new("UIListLayout", {
+	local timersList = Kit.new("UIListLayout", {
 		Padding = UDim.new(0, 0),
-		HorizontalAlignment = Enum.HorizontalAlignment.Right,
+		HorizontalAlignment = Enum.HorizontalAlignment.Left,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = timers,
@@ -384,12 +416,26 @@ function Shop.start(hud)
 		LP = timerLine(timers, "LP", Theme.Gradients.LP, 1),
 		AutoSell = timerLine(timers, "AutoSell", Theme.Gradients.Money, 2),
 	}
+	-- kontener ma szerokość najszerszego widocznego napisu: prawa krawędź stoi w rogu ekranu,
+	-- a napisy zaczynają się w jednym miejscu po lewej
+	local function fitTimers()
+		local width = 0
+		for _, line in pairs(boostLines) do
+			if line.frame.Visible then
+				width = math.max(width, line.width)
+			end
+		end
+		timers.Size = UDim2.fromOffset(width, 0)
+	end
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	-- Na telefonie w prawym dolnym rogu jest przycisk skoku: napisy stoją wtedy tuż na lewo od niego
-	-- (w tym samym rogu, mniejsze), bo nad nim jest kolumna SHOP / TELEPORT / Starter Pack.
+	-- (w tym samym rogu, mniejsze), bo nad nim jest kolumna SHOP / TELEPORT / Starter Pack. Tam trzymają
+	-- się prawej, bo krótszy górny napis wyrównany do lewej wchodziłby na pasek Bag (na komputerze
+	-- jest dość miejsca, więc trzymają się lewej). Cyfry niczego nie przesuwają w obu przypadkach.
 	local timerSize = SIDE.TimerSize
 	local function placeTimers()
 		local right, bottom, size = 22, 14, SIDE.TimerSize
+		local align = Enum.HorizontalAlignment.Left
 		local touchGui = playerGui:FindFirstChild("TouchGui")
 		local jump = touchGui and touchGui:FindFirstChild("JumpButton", true)
 		if touchGui ~= nil and touchGui:IsA("ScreenGui") and touchGui.Enabled and jump ~= nil and jump:IsA("GuiObject") and jump.Visible then
@@ -398,13 +444,16 @@ function Shop.start(hud)
 			right = math.max(right, view.X - jump.AbsolutePosition.X + 10)
 			bottom = 10
 			size = SIDE.TimerSizeTouch
+			align = Enum.HorizontalAlignment.Right
 		end
 		timers.Position = UDim2.new(1, -right, 1, -bottom)
+		timersList.HorizontalAlignment = align
 		if size ~= timerSize then
 			timerSize = size
 			for _, line in pairs(boostLines) do
 				line.layout(size)
 			end
+			fitTimers()
 		end
 	end
 
@@ -611,14 +660,19 @@ function Shop.start(hud)
 				if on ~= line.frame.Visible then
 					line.frame.Visible = on
 					if on then
+						line.time.Text = timeText(left)
+						line.layout()
 						Fx.pop(line.scale, 0, 0.4)
 					end
+					fitTimers()
 				end
 				if on then
 					local text = timeText(left)
 					if text ~= line.time.Text then
 						line.time.Text = text
-						line.layout()
+						if line.layout() then
+							fitTimers()
+						end
 					end
 					-- dokupiony czas: podskok; ostatnie pół minuty: czas na czerwono
 					if left > line.last + 5 and line.last > 0 then
@@ -668,9 +722,10 @@ function Shop.start(hud)
 		local center = face.AbsolutePosition + face.AbsoluteSize / 2
 		local k = hudScale()
 		Fx.ring(hud.gui, UDim2.fromOffset(center.X, center.Y), 50 * k, 260 * k, Theme.White, 58, 0.5)
+		-- dookoła, od losowego kąta (część może wylecieć za ekran)
 		Fx.burst(hud.gui, center, function()
 			return ShopArt.mini("Shop")
-		end, { count = SIDE.BurstCount, size = 48, distance = 210, angle = 205, spread = 150, scale = k, time = 0.85, zIndex = 60 })
+		end, { count = SIDE.BurstCount, size = 48, distance = 230, angle = math.random(0, 359), spread = 360, scale = k, time = 0.85, zIndex = 60 })
 	end
 	local function openShop(face)
 		if shopWindow.isOpen() then

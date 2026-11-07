@@ -24,6 +24,7 @@ local Pattern = require(script.Parent.Ui.Pattern)
 local Fx = require(script.Parent.Ui.Fx)
 local ShopArt = require(script.Parent.Ui.ShopArt)
 local Catalog = require(script.Parent.ShopCatalog)
+local State = require(script.Parent.State)
 
 local ShopWindow = {}
 
@@ -36,7 +37,9 @@ local Dir = Enum.EasingDirection
 local L = {
 	Size = Vector2.new(1080, 600),
 	Radius = 34,
-	Fit = Vector2.new(1190, 700), -- okno z tytułem nad górną krawędzią i przyciskiem X (do dopasowania)
+	FitWidth = 1190, -- okno z przyciskiem X wystającym w prawo (do dopasowania szerokości ekranu)
+	Overhang = 70, -- tyle nad górną krawędź okna wystaje koszyk z napisem „Shop”
+	Margin = 6, -- odstęp tytułu od paska Robloxa u góry ekranu
 	RailX = 22,
 	RailTop = 26,
 	Tab = Vector2.new(150, 100),
@@ -286,9 +289,12 @@ local function passPrice(win, card, key)
 	end)
 	card.button.Activated:Connect(function()
 		if card.owned then
+			-- już kupiony: odmowa (dźwięk błędu i potrząśnięcie przyciskiem OWNED)
+			Sounds.play("NotEnough")
+			Kit.shake(card.button.body)
 			return
 		end
-		Sounds.play("Button")
+		Sounds.play("ShopBuy")
 		win.shop.buy("Pass", key, nil, card.button)
 	end)
 end
@@ -440,7 +446,7 @@ local function starterHero(win, parent, order)
 		card.button.setText(win.shop.priceText("Product", "StarterPack"))
 	end)
 	card.button.Activated:Connect(function()
-		Sounds.play("Button")
+		Sounds.play("ShopBuy")
 		win.shop.buy("Product", "StarterPack", nil, card.button)
 	end)
 	win.starter = card
@@ -521,7 +527,7 @@ local function boostOption(win, card, option, x, width)
 		end
 	end)
 	button.Activated:Connect(function()
-		Sounds.play("Button")
+		Sounds.play("ShopBuy")
 		win.shop.buy("Product", option.key, nil, button)
 	end)
 	return entry
@@ -614,7 +620,11 @@ local function sellNowCard(win, parent, width, order)
 		card.button.setText(win.shop.priceText("Product", info.key))
 	end)
 	card.button.Activated:Connect(function()
-		Sounds.play("Button")
+		-- pusty Bag: bez „ka-ching” (serwer odmówi, a Shop.buy da dźwięk błędu i komunikat)
+		local view = State.view
+		if view == nil or (view.Bag or 0) > 0 then
+			Sounds.play("ShopBuy")
+		end
 		win.shop.buy("Product", info.key, nil, card.button)
 	end)
 	return card
@@ -951,12 +961,17 @@ function ShopWindow.create(hud, shop)
 		local camera = Workspace.CurrentCamera
 		local view = (camera and camera.ViewportSize) or Theme.BaseSize
 		local inset = GuiService:GetGuiInset()
-		local s = math.min((view.X - 24) / L.Fit.X, (view.Y - inset.Y - 12) / L.Fit.Y)
+		local area = view.Y - inset.Y
+		-- Okno stoi na środku ekranu. Nad nim wystaje koszyk z napisem (Overhang), który nie może wejść
+		-- pod przyciski Robloxa u góry, więc tyle samo miejsca zostawiamy pod oknem.
+		local s = math.min((view.X - 24) / L.FitWidth, (area - 2 * L.Margin) / (L.Size.Y + 2 * L.Overhang))
 		local hudScale = math.min(view.X / Theme.BaseSize.X, view.Y / Theme.BaseSize.Y)
 		s = math.min(s, math.clamp(hudScale, Theme.MinScale, Theme.MaxScale))
 		fit.Scale = math.max(0.35, s)
-		-- tytuł wystaje nad okno, więc okno stoi trochę niżej niż środek ekranu
-		win.baseY = math.floor(30 * fit.Scale)
+		-- środek okna na środku całego ekranu (warstwa HUD zaczyna się pod paskiem, stąd pół paska
+		-- w górę), chyba że tytuł wszedłby wtedy pod pasek: wtedy okno stoi tyle niżej, ile trzeba
+		local lowest = L.Margin + (L.Size.Y / 2 + L.Overhang) * fit.Scale - area / 2
+		win.baseY = math.floor(math.max(-inset.Y / 2, lowest) + 0.5)
 		if holder.Visible and not win.closing then
 			holder.Position = UDim2.new(0.5, 0, 0.5, win.baseY)
 		end
@@ -1115,6 +1130,9 @@ function ShopWindow.create(hud, shop)
 	if blur == nil then
 		blur = new("BlurEffect", { Name = "ShopBlur", Size = 0, Parent = Lighting })
 	end
+	-- muzyka sklepu (gra, dopóki okno jest otwarte; muzyka gry w tym czasie cichnie)
+	local music = Sounds.track("ShopMusic")
+	task.delay(8, music.preload)
 	local api = { holder = holder }
 	function api.isOpen()
 		return holder.Visible
@@ -1132,6 +1150,11 @@ function ShopWindow.create(hud, shop)
 		holder.Visible = true
 		backdrop.Visible = true
 		Sounds.play("ShopOpen")
+		Sounds.play("ShopOpenSfx")
+		music.play()
+		if hud.setEffectsVisible ~= nil then
+			hud.setEffectsVisible(false)
+		end
 		-- świat ciemnieje i się rozmywa, okno wyskakuje z dołu
 		backdrop.BackgroundTransparency = 1
 		Fx.tween(backdrop, 0.28, { BackgroundTransparency = 0.5 }, Style.Quad, Dir.Out)
@@ -1186,6 +1209,10 @@ function ShopWindow.create(hud, shop)
 		win.token = win.token + 1
 		local token = win.token
 		win.bin.clean()
+		music.stop()
+		if hud.setEffectsVisible ~= nil then
+			hud.setEffectsVisible(true)
+		end
 		Fx.tween(pop, 0.16, { Scale = 0.86 }, Style.Quad, Dir.In)
 		Fx.tween(backdrop, 0.22, { BackgroundTransparency = 1 }, Style.Quad, Dir.Out)
 		for _, strip in ipairs(win.vignette) do

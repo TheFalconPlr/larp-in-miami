@@ -1468,6 +1468,11 @@ function Hud.start()
 		end
 		gui.Enabled = next(hiddenBy) == nil
 	end
+	-- Warstwa efektów (napisy „+LP” przy klikaniu, banknoty po sprzedaży) leży nad oknami HUD, więc
+	-- otwarte okno sklepu chowa ją na swój czas (inaczej banknoty z Auto Sell latały po kartach).
+	function api.setEffectsVisible(visible)
+		popsGui.Enabled = visible
+	end
 	-- L$ spoza Sell (np. sprzedaż petów): „+X” przy liczniku L$ i banknoty lecą do licznika.
 	function api.cashGain(amount)
 		if amount <= 0 then

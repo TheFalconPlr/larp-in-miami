@@ -1,5 +1,7 @@
 -- Dźwięki UI po stronie gracza (słyszy je tylko on). Nazwy i ID w Settings.Sounds.
 -- Każdy dźwięk ma kilka kopii, żeby szybkie kliknięcia mogły na siebie nachodzić.
+-- Muzyka gry gra przez SoundGroup „Music” (Settings.Music), którą można płynnie ściszyć, np. na czas
+-- muzyki sklepu (Sounds.track + Sounds.duckMusic).
 
 local SoundService = game:GetService("SoundService")
 local ContentProvider = game:GetService("ContentProvider")
@@ -214,6 +216,9 @@ function Sounds.start(name, opts)
 	else
 		sound.Volume = volume
 	end
+	if info.Music == true then
+		sound.SoundGroup = Sounds.musicGroup()
+	end
 	sound.Parent = SoundService
 	sound.TimePosition = info.Start or 0
 	sound:Play()
@@ -254,6 +259,139 @@ function Sounds.start(name, opts)
 		else
 			sound:Destroy()
 		end
+	end
+	return handle
+end
+
+----------------------------------------------------------------- Muzyka gry i muzyka sklepu
+local MUSIC = Settings.Music or {}
+local musicGroup = nil
+local musicBase = 1 -- głośność grupy ustawiona w Studio (do niej wraca po ściszeniu)
+local duckReasons = {}
+local duckTween = nil
+
+-- SoundGroup muzyki gry (z SoundService albo nowa). Dźwięki włożone do niej w Studio (też później)
+-- dostają SoundGroup = ta grupa, więc grają przez nią i cichną razem z nią.
+function Sounds.musicGroup()
+	if musicGroup ~= nil and musicGroup.Parent ~= nil then
+		return musicGroup
+	end
+	local name = MUSIC.Group or "Music"
+	local group = SoundService:FindFirstChild(name)
+	if group == nil or not group:IsA("SoundGroup") then
+		group = Instance.new("SoundGroup")
+		group.Name = name
+		group.Volume = 1
+		group.Parent = SoundService
+	end
+	musicGroup = group
+	musicBase = group.Volume
+	local function route(item)
+		if item:IsA("Sound") then
+			item.SoundGroup = group
+		end
+	end
+	for _, item in ipairs(group:GetDescendants()) do
+		route(item)
+	end
+	group.DescendantAdded:Connect(route)
+	return group
+end
+
+-- Ściszenie muzyki gry z powodu reason (np. "Shop"); wraca, gdy nic jej już nie ścisza.
+function Sounds.duckMusic(reason, on)
+	if on then
+		duckReasons[reason] = true
+	else
+		duckReasons[reason] = nil
+	end
+	local group = Sounds.musicGroup()
+	local target, time = musicBase, MUSIC.RestoreTime or 1.2
+	if next(duckReasons) ~= nil then
+		target, time = musicBase * (MUSIC.DuckVolume or 0), MUSIC.DuckTime or 0.6
+	end
+	if duckTween ~= nil then
+		duckTween:Cancel()
+	end
+	duckTween = TweenService:Create(group, TweenInfo.new(time, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = target })
+	duckTween:Play()
+end
+
+-- Muzyka na wyłączność (np. w otwartym sklepie): jedna kopia na nazwę, w pętli, wchodzi i schodzi
+-- płynnie (FadeIn, FadeOut), a na czas grania ścisza muzykę gry. Po krótkiej przerwie gra dalej od
+-- tego samego miejsca, po dłuższej niż Restart sekund od początku. Zwraca { play(), stop(), preload() };
+-- bez ID w Settings nic nie gra i niczego nie ścisza.
+local tracks = {}
+function Sounds.track(name)
+	if tracks[name] ~= nil then
+		return tracks[name]
+	end
+	local handle = {}
+	tracks[name] = handle
+	local info = Settings.Sounds and Settings.Sounds[name]
+	local ids = info and soundIds(info)
+	if ids == nil then
+		function handle.play() end
+		function handle.stop() end
+		function handle.preload() end
+		return handle
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "Larp" .. name .. "Track"
+	sound.SoundId = assetId(ids[1])
+	sound.Looped = true
+	sound.Volume = 0
+	sound.Parent = SoundService
+	local volume = info.Volume or 0.5
+	local tween = nil
+	local token = 0
+	local state = "idle" -- idle (jeszcze nie grała), playing, fading (cichnie po stop), paused
+	local stoppedAt = nil
+	local function fade(target, seconds)
+		if tween ~= nil then
+			tween:Cancel()
+		end
+		tween = TweenService:Create(sound, TweenInfo.new(seconds, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Volume = target })
+		tween:Play()
+	end
+	function handle.play()
+		token = token + 1
+		Sounds.duckMusic(name, true)
+		if state == "paused" and stoppedAt ~= nil and os.clock() - stoppedAt <= (info.Restart or 20) then
+			sound:Resume()
+		elseif state == "paused" or state == "idle" then
+			sound.TimePosition = info.Start or 0
+			sound:Play()
+		end
+		-- „fading”: jeszcze gra (cichnie po zamknięciu), więc tylko wraca do pełnej głośności
+		state = "playing"
+		fade(volume, info.FadeIn or 1)
+	end
+	function handle.stop()
+		if state ~= "playing" then
+			return
+		end
+		token = token + 1
+		local mine = token
+		state = "fading"
+		stoppedAt = os.clock()
+		Sounds.duckMusic(name, false)
+		local out = info.FadeOut or 0.8
+		fade(0, out)
+		task.delay(out, function()
+			if token == mine then
+				sound:Pause()
+				state = "paused"
+			end
+		end)
+	end
+	-- wczytanie w tle (żeby przy pierwszym otwarciu nie było ciszy)
+	function handle.preload()
+		task.spawn(function()
+			pcall(function()
+				ContentProvider:PreloadAsync({ sound })
+			end)
+		end)
 	end
 	return handle
 end

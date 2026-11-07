@@ -64,7 +64,10 @@ local Settings = {
 			-- i wielkość niebieskiej tarczy względem obrazka (na niej leży złota obręcz i wskazówki).
 			WatchRotation = 45,
 			WatchFace = 0.56,
-			Shine = 4917649610, -- „Shine”: połysk przesuwany po kartach i przyciskach
+			-- „Window Shine 2”: ukośne smugi światła (jak odbicie na szybie) przesuwane po kartach
+			-- i przyciskach. ShineWidth = szerokość obrazka względem wysokości ramki (1 = kwadrat).
+			Shine = 159602435,
+			ShineWidth = 1,
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",
@@ -103,14 +106,14 @@ local Settings = {
 		-- odrzutowiec: silnik przez cały lot (cichy plik, dlatego głośność 2.5); na pasie rozkręca się
 		-- od 30% do pełnej głośności i trochę wyżej. Do tego muzyka w locie i „ding” w kabinie na starcie.
 		JetEngine = { Id = 116765821564780, Volume = 2.5, Looped = true, FadeIn = 6, FadeFrom = 0.3, FadeOut = 1.5 },
-		JetMusic = { Id = 9046476113, Volume = 0.4, Looped = true, FadeIn = 3, FadeOut = 2 },
+		JetMusic = { Id = 9046476113, Volume = 0.4, Looped = true, FadeIn = 3, FadeOut = 2, Music = true },
 		JetCabin = { Id = 76104215304832, Volume = 0.6, MinGap = 1 },
 		-- jacht: muzyka przez całą imprezę, a na koniec trąbka z wybuchem konfetti (potem oklaski Reward)
-		PartyMusic = { Id = 1838028467, Volume = 0.5, Looped = true, FadeIn = 2, FadeOut = 1 },
+		PartyMusic = { Id = 1838028467, Volume = 0.5, Looped = true, FadeIn = 2, FadeOut = 1, Music = true },
 		PartyHorn = { Id = 118248543183940, Volume = 0.8, MinGap = 0.3 },
 
 		-- Wywiad: muzyka talk show przez cały program (ściszana na chwilę przy reakcjach studia).
-		InterviewMusic = { Id = 9048498225, Volume = 0.3, Looped = true, FadeIn = 1, FadeOut = 1.2 },
+		InterviewMusic = { Id = 9048498225, Volume = 0.3, Looped = true, FadeIn = 1, FadeOut = 1.2, Music = true },
 		AnswerPick = { Volume = 0.6, MinGap = 0.1 }, -- wybór odpowiedzi (bez ID gra zwykły Button)
 		AnswerTick = { Id = 507267777, Volume = 0.5, Looped = true }, -- tykanie zegara, gdy wybierasz odpowiedź
 		ReactBoom = { Id = 140367458608473, Volume = 0.7 }, -- „vine boom” przy zbliżeniu na prowadzącego
@@ -127,13 +130,29 @@ local Settings = {
 		SecretReveal = { Id = 140367458608473, Volume = 0.8, MinGap = 0.5 },
 		SecretAnnounce = { Id = 76104215304832, Volume = 0.5, MinGap = 1 },
 
-		-- Sklep za Robuxy: otwarcie okna („whoosh”, ten sam plik co ClipPosted), zmiana zakładki,
-		-- podziękowanie po zakupie gamepassa albo Starter Packa (trąbka z konfetti) i po mniejszym
-		-- zakupie (boost, Sell Now). Lepsze dźwięki podmień tutaj.
+		-- Sklep za Robuxy: otwarcie okna (ShopOpenSfx razem z „whoosh” ShopOpen, ten sam plik co
+		-- ClipPosted), „ka-ching” przy kliknięciu przycisku z ceną (zanim wyskoczy okno zakupu), zmiana
+		-- zakładki, podziękowanie po zakupie gamepassa albo Starter Packa (trąbka z konfetti) i po
+		-- mniejszym zakupie (boost, Sell Now).
 		ShopOpen = { Id = 137081214744553, Volume = 1, MinGap = 0.3 },
+		ShopOpenSfx = { Id = 139871344666404, Volume = 0.7, MinGap = 0.3 },
+		ShopBuy = { Id = 88168334908542, Volume = 0.7, MinGap = 0.15 },
 		ShopTab = { Id = 100809160609628, Volume = 0.35, MinGap = 0.05 },
 		Purchase = { Id = 118248543183940, Volume = 0.7, MinGap = 0.5 },
 		PurchaseSmall = { Id = 111773238101465, Volume = 0.6, MinGap = 0.3 },
+		-- Muzyka sklepu: gra w pętli, dopóki okno SHOP jest otwarte (wchodzi przez FadeIn sekund,
+		-- schodzi przez FadeOut). Po krótkiej przerwie gra dalej od tego samego miejsca, po dłuższej
+		-- niż Restart sekund od początku. W tym czasie muzyka gry (Music niżej) cichnie.
+		ShopMusic = { Id = 106495808773197, Volume = 0.45, Looped = true, FadeIn = 1.2, FadeOut = 0.9, Restart = 20 },
+	},
+	-- Muzyka gry: dźwięki z Music = true (wyżej) i każdy dźwięk włożony w Studio do SoundGroup o tej
+	-- nazwie w SoundService (Group; gdy jej nie ma, gra tworzy ją u gracza). Na czas muzyki sklepu
+	-- grupa cichnie do DuckVolume (0 = cisza) przez DuckTime sekund, a potem wraca przez RestoreTime.
+	Music = {
+		Group = "Music",
+		DuckVolume = 0,
+		DuckTime = 0.6,
+		RestoreTime = 1.2,
 	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.

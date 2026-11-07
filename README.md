@@ -302,15 +302,17 @@ Do testu: `/zone 5` i `/cash 1Qi`, a potem REBIRTH przy portalu. Rebirth zeruje 
 Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad Roblox o płatnych losowaniach (ogłoszenie z 26 maja 2026). Za Robuxy nigdy nie ma stref, aut, jachtów, odrzutowców, Rebirthów, L$ ani Aury.
 
 - **Po prawej stronie ekranu** jest duży kafelek SHOP (koszyk), TELEPORT i przycisk Starter Pack z zegarem (tylko przez 72 h od pierwszego wejścia). Na niskim ekranie (telefon poziomo) kolumna stoi od góry, żeby nie wchodziła na przycisk skoku.
-- **Boosty w prawym dolnym rogu:** sam napis bez tła, np. „2x LP 14:47” i „AUTO SELL 1:14:52”. Przy dokupionym czasie napis podskakuje, a w ostatnich 30 s czas robi się czerwony. Na telefonie napisy są mniejsze i stoją tuż na lewo od przycisku skoku. Boosty lecą tylko wtedy, gdy grasz.
+- **Boosty w prawym dolnym rogu:** sam napis bez tła, np. „2x LP 14:47” i „AUTO SELL 1:14:52”. Napisy trzymają się lewej, a czas ma stałe miejsce, więc zmiana cyfr co sekundę niczego nie przesuwa. Przy dokupionym czasie napis podskakuje, a w ostatnich 30 s czas robi się czerwony. Na telefonie napisy są mniejsze, stoją tuż na lewo od przycisku skoku i trzymają się prawej, żeby nie wchodziły na pasek Bag. Boosty lecą tylko wtedy, gdy grasz.
 - **Okno SHOP:** po lewej zakładki OFFERS / PASSES / BOOSTS, które płynnie przewijają do swojej części, a podświetlenie zakładki idzie za przewijaniem.
   - **OFFERS:** Starter Pack (79 R$: zegarek Rare, pet Epic z najwyższej odblokowanej strefy, 30 min 2x LP i 30 min Auto Sell; raz na konto) i darmowy boost za reklamę.
   - **PASSES:** 2x LP i Auto Sell na dużych kartach, pozostałe 9 w siatce 3×3. Kupione mają zielone OWNED ze znaczkiem.
   - **BOOSTS:** 2x LP (5 min, 15 min, 1 h) i Auto Sell (15 min, 1 h) na jednej karcie z czasami do wyboru oraz Sell Now (sprzedaje Bag, gdziekolwiek jesteś). Czas z najniższą ceną za minutę ma złoty kafelek i wstążkę BEST DEAL (liczone z cen gracza, więc zawsze prawdziwe).
 - **Wygląd i animacje sklepu** (jak w Pet Simulator 99, ale po swojemu): każdy gamepass ma własną grafikę z animacją, np. trzy kołyszące się jajka (Triple Open), jajko z błyskawicą i smugami pędu (Fast Open), portal z krążącymi kropkami (Teleport), dwa łańcuchy kołyszące się na zawiasach (Double Chain), dwa zegarki z chodzącymi wskazówkami (Double Wrist). Za grafikami są promienie, w tle kart powoli spadają małe ikony gamepassa, a po kartach i przyciskach z ceną co chwilę przechodzi połysk (obrazek „Shine”).
-  - **Otwarcie:** z kafelka SHOP wylatują małe koszyki i rozchodzi się fala. Świat ciemnieje i się rozmywa, okno wyskakuje, a karty wjeżdżają po kolei.
+  - **Otwarcie:** z kafelka SHOP dookoła wylatują małe koszyki i rozchodzi się fala. Świat ciemnieje i się rozmywa, okno wyskakuje na środek ekranu, a karty wjeżdżają po kolei. Gra dźwięk otwarcia z „whoosh”.
+  - **Muzyka:** dopóki sklep jest otwarty, gra w pętli jego muzyka, a muzyka gry płynnie cichnie. Po zamknięciu muzyka sklepu cichnie, a muzyka gry wraca. Gdy wrócisz do sklepu szybko, muzyka gra dalej, a po dłuższej przerwie od początku.
+  - **Kliknięcie w cenę:** „ka-ching”, zanim wyskoczy okno zakupu. Kupiony gamepass (OWNED) odpowiada dźwiękiem błędu i potrząśnięciem.
   - **Mysz:** karta lekko rośnie po najechaniu, a przyciski rosną, wciskają się i sprężynują.
-  - Animacje tła działają tylko przy otwartym oknie i tylko dla widocznych kart.
+  - Animacje tła działają tylko przy otwartym oknie i tylko dla widocznych kart. Na czas otwartego sklepu znikają efekty HUD (napisy „+LP”, banknoty po sprzedaży), żeby nie latały po kartach.
 - **Podziękowanie po zakupie** pokazuje się tylko po potwierdzeniu zakupu przez serwer, więc anulowany albo nieudany zakup nic nie pokazuje.
   - **Gamepass i Starter Pack:** świat ciemnieje, HUD na chwilę znika (jak przy otwieraniu jajka), za grafiką kręcą się złote promienie, wylatuje konfetti, a na złotej wstędze jest „THANK YOU!” z połyskiem. Znika po kliknięciu albo po kilku sekundach.
   - **Boost, Sell Now i premium jajka (po animacji wyklucia):** mała karta wjeżdża u góry ekranu, pod podpowiedzią. Kolejny taki zakup podmienia jej treść, zamiast dokładać nowe okna, a kolejne duże podziękowania czekają w kolejce i trwają krócej.
@@ -354,9 +356,11 @@ Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad 
   - portal,
   - łańcuch,
   - zegarek („Battleship Diepio”),
-  - połysk „Shine”.
+  - połysk „Window Shine 2” (ukośne smugi światła przesuwane po kartach i przyciskach; `ShineWidth` = szerokość obrazka względem wysokości).
 - **Zegarek:** gdyby stał krzywo, popraw `WatchRotation` (obrót obrazka). Gdyby złota obręcz nie pasowała do niebieskiej tarczy, popraw `WatchFace`.
-- **Dźwięki:** `ShopOpen`, `ShopTab`, `Purchase` i `PurchaseSmall`. Na razie to dźwięki już używane w grze: „whoosh”, klik, trąbka i dźwięk sprzedaży.
+- **Dźwięki:** `ShopOpen` („whoosh”), `ShopOpenSfx` (otwarcie sklepu), `ShopBuy` („ka-ching” przy kliknięciu ceny), `ShopTab`, `Purchase` i `PurchaseSmall`.
+- **Muzyka sklepu:** `ShopMusic` (głośność, `FadeIn`, `FadeOut` i `Restart`: po tylu sekundach przerwy gra od początku).
+- **Muzyka gry:** wkładaj ją w Studio do SoundGroup `Music` w SoundService (gdy jej nie ma, gra tworzy ją sama). Wtedy cichnie na czas muzyki sklepu. Jak bardzo i jak szybko, ustawisz w `Music` (`DuckVolume`, `DuckTime`, `RestoreTime`). Muzyka aktywności (odrzutowiec, jacht, wywiad) ma `Music = true`, więc też cichnie.
 
 **Twoje stoiska.**
 
