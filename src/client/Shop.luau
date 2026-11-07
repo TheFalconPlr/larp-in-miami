@@ -1,7 +1,8 @@
 -- Sklep za Robuxy (Etap 10) po stronie gracza:
 --   • po prawej stronie ekranu duży kafelek SHOP (koszyk; przy kliknięciu wylatują z niego małe
 --     koszyki), TELEPORT i Starter Pack z zegarem do końca oferty,
---   • w prawym dolnym rogu aktywne boosty (2x LP, AUTO SELL) z pozostałym czasem: sam napis, bez tła,
+--   • w prawym dolnym rogu małe ikonki aktywnych boostów (2x LP, AUTO SELL), bez tła; po najechaniu
+--     (na telefonie po dotknięciu) nazwa i pozostały czas,
 --   • okno SHOP (ShopWindow.luau) i okno TELEPORT (odblokowane strefy, gamepass Teleport),
 --   • ceny z MarketplaceService:GetProductInfoAsync (ceny regionalne gracza); zanim przyjdą, z Economy,
 --   • po potwierdzonym zakupie podziękowanie (ShopThanks.luau), po końcu boosta komunikat.
@@ -42,9 +43,11 @@ local SIDE = {
 	ShopIcon = 136,
 	TeleportIcon = 92,
 	StarterButton = Vector2.new(176, 64),
-	TimerSize = 31,
-	TimerHeight = 38,
-	TimerSizeTouch = 25, -- napisy boostów obok przycisku skoku na telefonie
+	BoostIcon = 60, -- ikonki aktywnych boostów w prawym dolnym rogu
+	BoostIconTouch = 50, -- …na telefonie (obok przycisku skoku)
+	TipSize = 28, -- napis z nazwą i czasem po najechaniu na ikonkę
+	TipSizeTouch = 24,
+	TipTouchTime = 2.5, -- na telefonie napis po dotknięciu znika po tylu sekundach
 	ShortScreen = 560, -- niższy ekran (telefon poziomo): kolumna po prawej od góry, ciaśniej
 	BurstCount = 14, -- małe koszyki wylatujące dookoła kafelka SHOP
 	IdleEvery = 5,
@@ -265,9 +268,15 @@ local function makeStarterButton(root)
 end
 
 ----------------------------------------------------------------- Boosty w prawym dolnym rogu
--- Sam napis z obrysem (bez tła): nazwa boosta w jego kolorze i czas na złoto. Napisy trzymają się
--- lewej strony, a czas ma miejsce o stałej szerokości (jak dla najszerszych cyfr), więc zmiana cyfr
--- co sekundę niczego nie przesuwa; szerokość zmienia się tylko, gdy zmienia się zapis (np. 1:00:00 → 59:59).
+-- Same małe ikonki aktywnych boostów (2x LP i Auto Sell z zegarkiem, jak na kartach w sklepie), bez tła.
+-- Po najechaniu myszą (na telefonie po dotknięciu) nad ikonką pokazuje się nazwa i pozostały czas: sam
+-- napis z obrysem. Czas ma miejsce o stałej szerokości (cyfry zamienione na najszerszą), więc zmiana cyfr
+-- co sekundę niczego nie przesuwa. Ostatnie 30 s: ikonka pulsuje, a czas jest czerwony.
+local BOOST_ICONS = {
+	LP = { art = "Boost2xLP", text = "BoostLP", colors = "LP" },
+	AutoSell = { art = "BoostAutoSell", text = "BoostAutoSell", colors = "Money" },
+}
+
 local wideDigit = { size = 0, char = "0" }
 local function slotText(text, size)
 	if wideDigit.size ~= size then
@@ -284,70 +293,181 @@ local function slotText(text, size)
 	return (string.gsub(text, "%d", wideDigit.char))
 end
 
-local function timerLine(parent, name, colors, order)
-	local frame = Kit.new("Frame", {
+local function layer(parent, name)
+	return Kit.new("Frame", {
 		Name = name,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+end
+
+local function boostIcon(parent, kind, order)
+	local info = BOOST_ICONS[kind]
+	local holder = Kit.new("Frame", {
+		Name = kind,
 		LayoutOrder = order,
-		Size = UDim2.fromOffset(360, SIDE.TimerHeight),
+		Size = UDim2.fromOffset(SIDE.BoostIcon, SIDE.BoostIcon),
 		BackgroundTransparency = 1,
 		Visible = false,
 		Parent = parent,
 	})
-	-- podskok i wyskoczenie rosną od prawej krawędzi (przy krawędzi ekranu nie wychodzą poza niego)
-	local body = Kit.new("Frame", {
-		Name = "Body",
-		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.fromScale(1, 0.5),
+	-- warstwy z osobnymi UIScale: body (wyskoczenie, podskok), hover (najechanie), warn (pulsowanie)
+	local body = layer(holder, "Body")
+	local hover = layer(body, "Hover")
+	local warn = layer(hover, "Warn")
+	local art = ShopArt.make(info.art, SIDE.BoostIcon, warn, { Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(1, 1) })
+	local hit = Kit.new("TextButton", {
+		Name = "Hit",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
-		Parent = frame,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 8,
+		Parent = holder,
 	})
-	local label = Kit.text(body, {
+	-- napis nad ikonką, przy jej prawym brzegu (rośnie w lewo, więc nie wychodzi za ekran)
+	local tip = Kit.new("Frame", {
+		Name = "Tip",
+		AnchorPoint = Vector2.new(1, 1),
+		Position = UDim2.new(1, 6, 0, -2),
+		Size = UDim2.fromOffset(200, 36),
+		BackgroundTransparency = 1,
+		Visible = false,
+		ZIndex = 9,
+		Parent = holder,
+	})
+	local label = Kit.text(tip, {
 		Name = "Name",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.fromScale(0, 0.5),
-		Size = UDim2.fromOffset(220, SIDE.TimerHeight),
-		Text = TEXT[name == "LP" and "BoostLP" or "BoostAutoSell"],
+		Size = UDim2.fromOffset(120, 36),
+		Text = TEXT[info.text],
 		TextXAlignment = Enum.TextXAlignment.Left,
-	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = colors })
-	local time = Kit.text(body, {
+		ZIndex = 9,
+	}, { maxSize = SIDE.TipSize, stroke = 4, gradient = Theme.Gradients[info.colors] })
+	local time = Kit.text(tip, {
 		Name = "Time",
 		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 230, 0.5, 0),
-		Size = UDim2.fromOffset(120, SIDE.TimerHeight),
+		Position = UDim2.new(0, 130, 0.5, 0),
+		Size = UDim2.fromOffset(100, 36),
 		Text = "",
 		TextXAlignment = Enum.TextXAlignment.Left,
-	}, { maxSize = SIDE.TimerSize, stroke = 4, gradient = Theme.Gradients.Gold })
-	local line = { frame = frame, time = time, label = label, scale = Fx.scaleOf(body), gradient = time:FindFirstChildOfClass("UIGradient"), last = 0, size = SIDE.TimerSize, width = 0, slot = "" }
-	-- rozmiar napisu (mniejszy obok przycisku skoku) i szerokości: nazwa z treści, czas ze wzoru cyfr.
-	-- Zwraca true, gdy zmieniła się szerokość całego napisu.
-	function line.layout(size)
-		local slot = slotText(time.Text, size or line.size)
-		if size == nil and slot == line.slot then
-			return false
+		ZIndex = 9,
+	}, { maxSize = SIDE.TipSize, stroke = 4, gradient = Theme.Gradients.Gold })
+	local icon = {
+		holder = holder,
+		art = art,
+		time = time,
+		tip = tip,
+		scale = Fx.scaleOf(body),
+		hoverScale = Fx.scaleOf(hover),
+		warnScale = Fx.scaleOf(warn),
+		tipScale = Fx.scaleOf(tip),
+		gradient = time:FindFirstChildOfClass("UIGradient"),
+		animBin = Fx.bin(),
+		size = SIDE.TipSize,
+		slot = "",
+		last = 0,
+		on = false,
+		tipOn = false,
+		warnOn = false,
+		touchToken = 0,
+	}
+	-- szerokości napisu: nazwa z treści, czas ze wzoru cyfr (size = nowy rozmiar napisu)
+	function icon.layoutTip(size)
+		local slot = slotText(time.Text, size or icon.size)
+		if size == nil and slot == icon.slot then
+			return
 		end
-		line.size = size or line.size
-		line.slot = slot
-		local h = math.floor(line.size * 1.25)
-		for _, label_ in ipairs({ time, label }) do
-			local limit = label_:FindFirstChildOfClass("UITextSizeConstraint")
+		icon.size = size or icon.size
+		icon.slot = slot
+		local h = math.floor(icon.size * 1.25)
+		for _, text in ipairs({ time, label }) do
+			local limit = text:FindFirstChildOfClass("UITextSizeConstraint")
 			if limit ~= nil then
-				limit.MaxTextSize = line.size
+				limit.MaxTextSize = icon.size
 			end
 		end
-		local lw = Kit.measure(label.Text, line.size).X + 8
-		local gap = math.floor(line.size * 0.35)
-		local tw = Kit.measure(slot, line.size).X + 8
+		local lw = Kit.measure(label.Text, icon.size).X + 8
+		local gap = math.floor(icon.size * 0.35)
+		local tw = Kit.measure(slot, icon.size).X + 8
 		label.Size = UDim2.fromOffset(lw, h)
 		time.Position = UDim2.new(0, lw + gap, 0.5, 0)
 		time.Size = UDim2.fromOffset(tw, h)
-		local width = lw + gap + tw
-		frame.Size = UDim2.fromOffset(width, h)
-		local changed = width ~= line.width
-		line.width = width
-		return changed
+		tip.Size = UDim2.fromOffset(lw + gap + tw, h)
 	end
-	return line
+	-- napis z nazwą i czasem: wyskakuje z ikonki, a ikonka rośnie i rusza się jak na karcie w sklepie
+	function icon.showTip(on)
+		if on == icon.tipOn then
+			return
+		end
+		icon.tipOn = on
+		if on then
+			tip.Visible = true
+			Fx.pop(icon.tipScale, 0.6, 0.2)
+			Fx.tween(icon.hoverScale, 0.18, { Scale = 1.15 }, Style.Back, Dir.Out)
+			art.play(icon.animBin)
+		else
+			icon.animBin.clean()
+			Fx.tween(icon.hoverScale, 0.15, { Scale = 1 }, Style.Quad, Dir.Out)
+			Fx.tween(icon.tipScale, 0.1, { Scale = 0.6 }, Style.Quad, Dir.In)
+			Fx.after(0.1, function()
+				if not icon.tipOn then
+					tip.Visible = false
+				end
+			end)
+		end
+	end
+	-- ostatnie pół minuty: ikonka pulsuje, czas w napisie na czerwono
+	function icon.setWarn(on)
+		if on == icon.warnOn then
+			return
+		end
+		icon.warnOn = on
+		if icon.warnTween ~= nil then
+			icon.warnTween:Cancel()
+			icon.warnTween = nil
+		end
+		icon.warnScale.Scale = 1
+		if on then
+			icon.warnTween = Fx.loop(icon.warnScale, 0.35, { Scale = 1.18 }, Style.Sine)
+		end
+		if icon.gradient ~= nil then
+			local colors = Theme.Gradients.Gold
+			if on then
+				colors = Theme.Gradients.Red
+			end
+			icon.gradient.Color = ColorSequence.new(colors[1], colors[2])
+		end
+	end
+	hit.MouseEnter:Connect(function()
+		icon.showTip(true)
+	end)
+	hit.MouseLeave:Connect(function()
+		icon.showTip(false)
+	end)
+	-- dotyk (bez myszy nie ma najechania): napis na chwilę, drugie dotknięcie go chowa
+	hit.Activated:Connect(function(input)
+		if input ~= nil and input.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		icon.touchToken = icon.touchToken + 1
+		local token = icon.touchToken
+		if icon.tipOn then
+			icon.showTip(false)
+			return
+		end
+		icon.showTip(true)
+		task.delay(SIDE.TipTouchTime, function()
+			if icon.touchToken == token then
+				icon.showTip(false)
+			end
+		end)
+	end)
+	return icon
 end
 
 ----------------------------------------------------------------- Start
@@ -394,48 +514,36 @@ function Shop.start(hud)
 	local tpTile = makeTeleportTile(root)
 	local starterButton = makeStarterButton(root)
 
-	-- boosty: napisy w prawym dolnym rogu (na telefonie nad przyciskiem skoku)
+	-- boosty: ikonki w prawym dolnym rogu (na telefonie na lewo od przycisku skoku), w jednym rzędzie
 	local timers = Kit.new("Frame", {
 		Name = "BoostTimers",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -22, 1, -14),
 		Size = UDim2.fromOffset(0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundTransparency = 1,
+		ZIndex = 6,
 		Parent = hud.gui,
 	})
 	hud.registerScale(timers)
-	local timersList = Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 0),
-		HorizontalAlignment = Enum.HorizontalAlignment.Left,
+	Kit.new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 10),
+		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		VerticalAlignment = Enum.VerticalAlignment.Bottom,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = timers,
 	})
-	local boostLines = {
-		LP = timerLine(timers, "LP", Theme.Gradients.LP, 1),
-		AutoSell = timerLine(timers, "AutoSell", Theme.Gradients.Money, 2),
+	local boostIcons = {
+		LP = boostIcon(timers, "LP", 1),
+		AutoSell = boostIcon(timers, "AutoSell", 2),
 	}
-	-- kontener ma szerokość najszerszego widocznego napisu: prawa krawędź stoi w rogu ekranu,
-	-- a napisy zaczynają się w jednym miejscu po lewej
-	local function fitTimers()
-		local width = 0
-		for _, line in pairs(boostLines) do
-			if line.frame.Visible then
-				width = math.max(width, line.width)
-			end
-		end
-		timers.Size = UDim2.fromOffset(width, 0)
-	end
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
-	-- Na telefonie w prawym dolnym rogu jest przycisk skoku: napisy stoją wtedy tuż na lewo od niego
-	-- (w tym samym rogu, mniejsze), bo nad nim jest kolumna SHOP / TELEPORT / Starter Pack. Tam trzymają
-	-- się prawej, bo krótszy górny napis wyrównany do lewej wchodziłby na pasek Bag (na komputerze
-	-- jest dość miejsca, więc trzymają się lewej). Cyfry niczego nie przesuwają w obu przypadkach.
-	local timerSize = SIDE.TimerSize
+	-- Na telefonie w prawym dolnym rogu jest przycisk skoku: ikonki stoją wtedy tuż na lewo od niego
+	-- (w tym samym rogu, mniejsze), bo nad nim jest kolumna SHOP / TELEPORT / Starter Pack.
+	local iconSize = SIDE.BoostIcon
 	local function placeTimers()
-		local right, bottom, size = 22, 14, SIDE.TimerSize
-		local align = Enum.HorizontalAlignment.Left
+		local right, bottom, size, tipSize = 22, 14, SIDE.BoostIcon, SIDE.TipSize
 		local touchGui = playerGui:FindFirstChild("TouchGui")
 		local jump = touchGui and touchGui:FindFirstChild("JumpButton", true)
 		if touchGui ~= nil and touchGui:IsA("ScreenGui") and touchGui.Enabled and jump ~= nil and jump:IsA("GuiObject") and jump.Visible then
@@ -443,17 +551,16 @@ function Shop.start(hud)
 			local view = (camera and camera.ViewportSize) or Theme.BaseSize
 			right = math.max(right, view.X - jump.AbsolutePosition.X + 10)
 			bottom = 10
-			size = SIDE.TimerSizeTouch
-			align = Enum.HorizontalAlignment.Right
+			size = SIDE.BoostIconTouch
+			tipSize = SIDE.TipSizeTouch
 		end
 		timers.Position = UDim2.new(1, -right, 1, -bottom)
-		timersList.HorizontalAlignment = align
-		if size ~= timerSize then
-			timerSize = size
-			for _, line in pairs(boostLines) do
-				line.layout(size)
+		if size ~= iconSize then
+			iconSize = size
+			for _, icon in pairs(boostIcons) do
+				icon.holder.Size = UDim2.fromOffset(size, size)
+				icon.layoutTip(tipSize)
 			end
-			fitTimers()
 		end
 	end
 
@@ -654,41 +761,41 @@ function Shop.start(hud)
 		local tick = 0
 		while true do
 			local now = os.clock()
-			for kind, line in pairs(boostLines) do
+			for kind, icon in pairs(boostIcons) do
 				local left = boostEnds[kind] - now
 				local on = left > 0
-				if on ~= line.frame.Visible then
-					line.frame.Visible = on
+				if on ~= icon.on then
+					icon.on = on
 					if on then
-						line.time.Text = timeText(left)
-						line.layout()
-						Fx.pop(line.scale, 0, 0.4)
+						icon.holder.Visible = true
+						icon.time.Text = timeText(left)
+						icon.layoutTip()
+						Fx.pop(icon.scale, 0, 0.4)
+					else
+						-- koniec boosta: ikonka maleje i znika
+						icon.showTip(false)
+						icon.setWarn(false)
+						Fx.tween(icon.scale, 0.18, { Scale = 0 }, Style.Quad, Dir.In)
+						Fx.after(0.2, function()
+							if not icon.on then
+								icon.holder.Visible = false
+							end
+						end)
 					end
-					fitTimers()
 				end
 				if on then
 					local text = timeText(left)
-					if text ~= line.time.Text then
-						line.time.Text = text
-						if line.layout() then
-							fitTimers()
-						end
+					if text ~= icon.time.Text then
+						icon.time.Text = text
+						icon.layoutTip()
 					end
-					-- dokupiony czas: podskok; ostatnie pół minuty: czas na czerwono
-					if left > line.last + 5 and line.last > 0 then
-						Fx.bump(line.scale, 1.25, 0.4)
+					-- dokupiony czas: podskok
+					if left > icon.last + 5 and icon.last > 0 then
+						Fx.bump(icon.scale, 1.3, 0.45)
 					end
-					local warn = left < 30
-					if warn ~= line.warn and line.gradient ~= nil then
-						line.warn = warn
-						local colors = Theme.Gradients.Gold
-						if warn then
-							colors = Theme.Gradients.Red
-						end
-						line.gradient.Color = ColorSequence.new(colors[1], colors[2])
-					end
+					icon.setWarn(left < 30)
 				end
-				line.last = math.max(0, left)
+				icon.last = math.max(0, left)
 			end
 			local starterLeft = starterEnds - now
 			if starterLeft > 0 then
