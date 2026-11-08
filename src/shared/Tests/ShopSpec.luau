@@ -68,7 +68,23 @@ return function()
 	end
 	check(order == passCount, "kolejność gamepassów w sklepie ma każdy gamepass")
 	check(products[Economy.Robux.AdReward] ~= nil and products[Economy.Robux.AdReward].Minutes ~= nil, "nagroda za reklamę to zwykły produkt ze sklepu (boost)")
-	check(Robux.passId("TwoXLP") == nil and Robux.productKey(0) == nil, "ID 0 = jeszcze nie ma (nil)")
+	check(Robux.passKey(0) == nil and Robux.productKey(0) == nil, "ID 0 = jeszcze nie ma (nil)")
+	-- Niezależnie od wpisanych liczb: każde ID z Config/RobuxIds jest liczbą całkowitą i wraca do swojego
+	-- klucza, więc paragon albo zakup gamepassa trafia do właściwej rzeczy (powtórzone ID by to psuło).
+	local idsOk = true
+	for key in pairs(Economy.Robux.Gamepasses) do
+		local id = Robux.passId(key)
+		if id ~= nil and (id % 1 ~= 0 or Robux.passKey(id) ~= key) then
+			idsOk = false
+		end
+	end
+	for key in pairs(products) do
+		local id = Robux.productId(key)
+		if id ~= nil and (id % 1 ~= 0 or Robux.productKey(id) ~= key) then
+			idsOk = false
+		end
+	end
+	check(idsOk, "każde ID gamepassa i produktu jest całkowite i prowadzi z powrotem do swojego klucza")
 	-- pety bez losowania: cena według wartości oczekiwanej premium jajka (najwyżej 5% taniej)
 	local rm = Economy.Pets.RarityMultiplier
 	local prem = Loop.premiumInfo(1)

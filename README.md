@@ -249,7 +249,7 @@ Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Ubrania pod
 
   Golden jest złote, a Diamond lodowo-niebieskie i szkliste. Łańcuch leży na grubej koszuli i na futrze (na karku chowa się pod futrem). Zegarek jest na lewym nadgarstku (drugi na prawym), a w okienkach pokazujemy go na nadgarstku tarczą do przodu. Działa na R15 i R6, a dekolt ma kolor Twojej skóry. Włosy z gry chowają Twoje włosy. Cały strój ma najwyżej ok. 260 klocków. Przycisk AVATAR ON/OFF w oknie chowa ubrania z gry (bonus zostaje).
 - **Okno CLOTHES** (nowy kafelek po lewej): po lewej 7 kategorii z tym, co masz na sobie (kliknij kategorię, żeby zobaczyć tylko jej ubrania), po prawej wszystkie ubrania. Kliknij ubranie, żeby je założyć (zastępuje to z tej samej kategorii) albo zdjąć. WEAR BEST zakłada najlepsze. SELL i MERGE działają jak u petów: sprzedaż za 10% ceny boxa (Common–Epic liczą się od Street, Legendary od Designer, Mythic od Iced; Golden ×5, Diamond ×25), łączenie 1–5 identycznych ubrań po 20% szansy z tym samym oknem i animacją. Ubrania kupione za Robuxy (np. zegarek ze Starter Packa) łączą się tylko przy 100%.
-- **Menu po lewej:** kafelki są w siatce 2×2 jak w Pet Simulator 99 (SELL, UPGRADES, a pod nimi PETS, CLOTHES), a przełączniki AUTO CLICK i AUTO SELL obok siebie pod siatką. W jednej kolumnie CLOTHES wchodził na licznik L$. Przełączniki widać zawsze: bez gamepassa są szare z kłódką, a kliknięcie odmawia („Auto Click gamepass is coming soon!”); okno kupna gamepassa dojdzie w Etapie 10. Biały znak „<” (bez tła) na prawo od siatki chowa całe menu za lewą krawędź ekranu (zostaje sam „>”, który je przywraca). Gra pamięta wybór w zapisie. Pety i ubrania z jajek, boxów i łączenia lecą wtedy do „>”.
+- **Menu po lewej:** kafelki są w siatce 2×2 jak w Pet Simulator 99 (SELL, UPGRADES, a pod nimi PETS, CLOTHES), a przełączniki AUTO CLICK i AUTO SELL obok siebie pod siatką. W jednej kolumnie CLOTHES wchodził na licznik L$. Przełączniki widać zawsze: bez gamepassa są szare z kłódką, a kliknięcie otwiera okno zakupu gamepassa (gdyby gamepass nie miał ID w `Config/RobuxIds`, gra odmawia: „Auto Click gamepass is coming soon!”). Biały znak „<” (bez tła) na prawo od siatki chowa całe menu za lewą krawędź ekranu (zostaje sam „>”, który je przywraca). Gra pamięta wybór w zapisie. Pety i ubrania z jajek, boxów i łączenia lecą wtedy do „>”.
 
 **Tymczasowe stoiska.** Dopóki na mapie nie ma stoisk, serwer stawia 3 pudełka na podłodze Mall, po tej samej stronie ścieżki co jajka, dalej w głąb strefy.
 
@@ -337,6 +337,8 @@ Zasady są z dokumentu projektu (etap „Monetyzacja i zgodność”) i z zasad 
 
 **Twoja część w Creator Hub** (Monetization):
 
+**Stan (8.11.2026):** wszystkie 24 ID (11 gamepassów i 13 produktów) są wpisane w `Config/RobuxIds`. Gamepassy sprawdziłem w API Robloxa: nazwy, ceny i właściciel (grupa Larping Studio$) się zgadzają. Zostaje test w Studio, publikacja z jednym prawdziwym zakupem, pokazanie boostów w sklepie Robloxa, ceny regionalne produktów i kwestionariusz. Placement ID reklamy dojdzie, gdy gra spełni wymagania reklam.
+
 1. **Passes:** utwórz 11 gamepassów (nazwy, opisy i ceny jak w sklepie, ikony z `assets/shop-icons/passes`) i wklej ich ID do `src/shared/Config/RobuxIds.luau`.
 2. **Developer Products:** utwórz 13 produktów: `PremiumEgg1`, `PremiumEgg3`, `PremiumEgg10`, `StarterPack`, `Boost2xLP5`, `Boost2xLP15`, `Boost2xLP60`, `BoostAutoSell15`, `BoostAutoSell60`, `SellNow`, `DirectPetEpic`, `DirectPetLegendary` i `DirectPetMythic` (ikony z `assets/shop-icons/products`). Ceny są w komentarzach w tym samym pliku, a ID wklejasz tam też.
 3. **Sklep Robloxa (Monetization → Shop):** Roblox pokazuje gamepassy i produkty oznaczone jako Listed w menu każdej gry i poza grą (strona gry, strona główna, wyszukiwarka, ekran po kupnie Robuxów). Gamepassy są tam zawsze. Produkty ukryj zaraz po utworzeniu (Item catalog → Unlist items → Save), a po teście pokaż tylko 5 boostów: gra przyzna je po wejściu, a ich czas leci tylko w grze. Premium jajek (płatne losowania), `DirectPet…`, `StarterPack` i `SellNow` nigdy tam nie pokazuj, bo potrzebują okna w grze (szanse przed zakupem, `PolicyService`, 72 h, pełny Bag). Gamepass kupiony poza naszym sklepem gra wykrywa najpóźniej po ok. 2 minutach (`GamepassService`).
@@ -349,6 +351,8 @@ Cały poradnik krok po kroku jest w Claude Doc „Larp in Miami — jak podpią�
 **Ikony do Creator Hub:** 24 kolorowe PNG 512×512 w stylu ikon gry: 11 gamepassów w `assets/shop-icons/passes` i 13 produktów w `assets/shop-icons/products`. Nazwa pliku to klucz z `Config/RobuxIds`, a podgląd wszystkich jest w `assets/shop-icons/preview.png`. Ważne rzeczy stoją w środku koła, bo Roblox może uciąć rogi. Rysuje je `python tools/build_shop_icons.py` (wymaga `pip install playwright` i Chrome albo `python -m playwright install chromium`; czcionka FredokaOne jest w `assets/fonts`, licencja SIL OFL w `licenses/`).
 
 **Test bez ID:** w trybie testowym każdy przycisk kupna działa „na niby” (bez Robuxów, z napisem TEST PURCHASE), tak samo karta reklamy (2 s udawanej reklamy). Zwykły gracz zobaczy „Coming soon!”. Z prawdziwymi ID Studio i tak nie pobiera Robuxów (okna zakupu są testowe). Gracza z ograniczeniem udajesz komendą `/policy on` albo emulatorem gracza w Studio (Test → Player Emulator, opcja `ArePaidRandomItemsRestricted`).
+
+**Test z prawdziwymi ID (teraz):** przyciski otwierają prawdziwe okno zakupu Robloxa, w Studio testowe (bez pobierania Robuxów). Najpierw `/pass none`, bo gamepassy z komendy `/pass` pokazują OWNED zamiast ceny. Sprawdź, czy ceny w sklepie zgadzają się z tabelą i czy w oknie zakupu jest nazwa tej samej rzeczy co na karcie (zła cena albo nazwa = pomylone ID). Gamepass kupiony w Studio działa do końca testu; jeśli gamepassy od razu mają OWNED, Roblox dał je twórcy grupy. Karta FREE 2x LP w Studio znika, bo Roblox nie ma tam reklamy. Test `ShopSpec` sprawdza, że każde ID jest całkowite i wraca do swojego klucza (powtórzone ID by to psuło).
 
 **Grafiki i dźwięki sklepu** są w `src/shared/Config/Settings.luau`:
 
@@ -392,7 +396,7 @@ Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, mone
 | 7 | ✓ Gotowe: sprzedaż i łączenie petów, indeks i sekrety. |
 | 8 | ✓ Gotowe: ubrania (opis wyżej). Etap „Pety, ubrania, sekrety” z dokumentu jest kompletny. |
 | 9 | ✓ Gotowe: Rebirth i Aura (opis wyżej). |
-| 10 | ✓ Gotowe: Robux (opis wyżej). ID tworzysz w Creator Hub i wklejasz do `Config/RobuxIds`. |
+| 10 | ✓ Gotowe: Robux (opis wyżej). Wszystkie ID z Creator Hub są w `Config/RobuxIds` (8.11.2026); zostaje test w Studio i po publikacji. |
 | 11 | Nagrody dzienne i zadania (z Aurą), kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuł „Secret Society”, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
 
 Kolejność może się zmienić, jeśli coś będzie pilniejsze.
