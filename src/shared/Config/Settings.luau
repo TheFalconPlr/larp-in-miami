@@ -49,6 +49,7 @@ local Settings = {
 			Shop = 98363337879339, -- „Shop Icon”: kafelek SHOP i tytuł okna sklepu
 			Teleport = 17368164623, -- „Teleport Outline 256”: kafelek TELEPORT, okno teleportu
 			Boost = 79228072544070, -- „2X Speed”: boosty 2x LP (sklep, komunikaty)
+			Friends = 135914806191762, -- dwa żółte ludziki: zaproszenia (przycisk INVITE w pasku Robloxa, komunikaty)
 		},
 		-- Grafiki sklepu za Robuxy (ID Decali z Toolboxa). Z nich ShopArt składa grafiki gamepassów:
 		-- trzy jajka (Triple Open), jajko z błyskawicą (Fast Open), dwa łańcuchy, dwa zegarki itd.
@@ -72,11 +73,11 @@ local Settings = {
 			-- w poziomie, więc rysujemy go węższym: RobuxAspect = szerokość / wysokość (1 = jak w obrazku).
 			Robux = 15568894149,
 			RobuxAspect = 0.885,
-			-- Zakładka FREE na dole sklepu (Etap 11), na razie bez obrazków: klucz przy sekretnych kodach
-			-- jest rysowany z ramek, a grupa i znajomi to emoji. Wpisz ID Decala, gdy znajdziesz lepszy.
+			-- Zakładka FREE na dole sklepu (Etap 11): klucz przy sekretnych kodach jest rysowany z ramek
+			-- (zostaje), grupa to na razie emoji. Wpisz ID Decala, gdy znajdziesz lepszy obrazek.
 			Key = 0, -- klucz (np. fioletowy jak w PS99)
 			Group = 0, -- ludzie / grupa (bonus +5% LP)
-			Friends = 0, -- znajomi (bonus +10% LP za każdego)
+			Friends = 135914806191762, -- dwa żółte ludziki: karta INVITE (bonus +10% LP za każdego znajomego)
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",
