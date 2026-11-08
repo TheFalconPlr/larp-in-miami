@@ -1,7 +1,7 @@
 -- Rdzeń pętli na serwerze: klik z limitem, Auto-Click, Bag, pole Sell, darmowy teleport na Sell,
 -- ulepszenia i strefy za L$, leaderstats i wysyłanie stanu do gracza. Liczby liczy Shared/Logic/Loop,
 -- a to, w której strefie gracz stoi, ZoneService. Serwer sprawdza każde żądanie; klient tylko prosi
--- i pokazuje.
+-- i pokazuje. Postęp zadań dziennych zbiera LoopService.progress (słucha RewardsService).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -30,6 +30,7 @@ LoopService.TestLuckAttribute = "LarpTestLuck" -- /adminluck: mnożnik szczęśc
 local sessions = {} -- [player] = stan sesji (limit kliknięć, Auto-Click, teleport, leaderstats)
 local viewHooks = {}
 local busyChecks = {}
+local progressHandlers = {}
 local pads = {} -- lista pól Sell
 local hookedPads = {}
 
@@ -100,6 +101,25 @@ local function notify(player, payload)
 end
 LoopService.notify = notify
 
+-- Zadania dzienne (Etap 11): fn(player, key, amount) dostaje to, co gracz zrobił sam (key jak
+-- w Economy.Rewards.DailyQuests: Clicks, Sells, CarPhotos…, EggsOpened, Merges). Podpina RewardsService.
+function LoopService.onProgress(fn)
+	table.insert(progressHandlers, fn)
+end
+
+-- Wołają serwisy po akcji gracza. Błąd w zadaniach nie zatrzymuje kliknięcia ani zakupu.
+function LoopService.progress(player, key, amount)
+	if key == nil then
+		return
+	end
+	for _, fn in ipairs(progressHandlers) do
+		local ok, err = pcall(fn, player, key, amount or 1)
+		if not ok then
+			warn("[Zadania] " .. tostring(err))
+		end
+	end
+end
+
 ----------------------------------------------------------------- leaderstats
 local function makeLeaderstats(player)
 	local old = player:FindFirstChild("leaderstats")
@@ -161,21 +181,24 @@ end
 
 ----------------------------------------------------------------- Klik
 -- count kliknięć naraz (paczka od klienta albo Auto-Click). Limit serwera decyduje, ile się liczy.
+-- Zwraca, ile kliknięć coś dało (pełny Bag bez Auto-Sell nic nie daje).
 local function doClicks(player, s, count)
 	local data = DataService.get(player)
 	if data == nil or isBusy(player) then
-		return
+		return 0
 	end
 	local granted = s.limiter:take(os.clock(), count)
 	if granted < 1 then
-		return
+		return 0
 	end
 	local ctx = contextFor(player)
 	local soldTotal = 0
+	local done = 0
 	for _ = 1, granted do
 		local added, sold = Loop.click(data, ctx)
 		if added > 0 or sold > 0 then
 			s.dirty = true
+			done = done + 1
 		end
 		soldTotal = soldTotal + sold
 		if added <= 0 and sold <= 0 then
@@ -185,6 +208,7 @@ local function doClicks(player, s, count)
 	if soldTotal > 0 then
 		notify(player, { Kind = "Sold", Cash = soldTotal, Auto = true })
 	end
+	return done
 end
 
 ----------------------------------------------------------------- Sell
@@ -197,6 +221,8 @@ local function sellFor(player, s)
 	local gained = Loop.sell(data, contextFor(player))
 	s.dirty = true
 	notify(player, { Kind = "Sold", LP = lp, Cash = gained })
+	-- zadanie Sells: sprzedaż na polu Sell (też po darmowym teleporcie), bez Auto-Sell i Sell Now
+	LoopService.progress(player, "Sells", 1)
 	return gained
 end
 
@@ -490,7 +516,11 @@ function LoopService.start()
 		end
 		count = math.min(math.floor(count), Settings.Click.MaxBatch)
 		if count >= 1 then
-			doClicks(player, s, count)
+			-- zadanie Clicks liczy tylko kliknięcia gracza (Auto-Click to gamepass za Robuxy)
+			local done = doClicks(player, s, count)
+			if done > 0 then
+				LoopService.progress(player, "Clicks", done)
+			end
 		end
 	end)
 	Net.event("TeleportToSell").OnServerEvent:Connect(teleportToSell)

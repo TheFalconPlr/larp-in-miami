@@ -5,6 +5,13 @@
 -- (tag LarpDaily nadaje serwer); gdy jej nie ma, serwer stawia tymczasową obok pola Sell.
 -- O północy UTC gracze dostają nowy stan i Notify „DailyReady”.
 --
+-- Zadania dzienne: 3 na dzień UTC (Logic/Rewards, zapis data.Quests). Postęp przychodzi z innych
+-- serwisów przez LoopService.progress (kliki gracza, Sell na polu, aktywności, jajka za L$, łączenie).
+-- Skończone zadanie odbieramy od razu (po QUEST_GRANT_DELAY, żeby najpierw doszła odpowiedź na akcję,
+-- np. animacja kupionego jajka), a bez miejsca w ekwipunku gracz dostaje Notify „QuestReady”
+-- i odbiera nagrodę przyciskiem CLAIM w oknie (ClaimQuest(numer)). Nagroda idzie przez deliver
+-- (Source = "Quest", z Aura i BonusAura), a stan okna w view.Quests.
+--
 -- Kody: pole na kod jest na samym dole sklepu (ShopWindow, zakładka FREE, jak w Pet Simulator 99).
 -- RedeemCode(tekst): kod z Economy.Rewards.Codes, każdy raz na konto (data.Codes). Odpowiedź:
 -- { Ok, Code, Reason, Boosts, Pets, Items }. Jajka i boxy z nagrody klient otwiera tą samą animacją
@@ -40,15 +47,21 @@ local DAY_CHECK = 5 -- co tyle sekund sprawdzamy, czy minęła północ UTC
 local WRONG_LIMIT = 6 -- tyle złych kodów pod rząd…
 local WRONG_PAUSE = 30 -- …i potem tyle sekund przerwy
 local SECRET_EXTRA = 3 -- komunikat o sekrecie z nagrody po animacjach (s)
+local QUEST_GRANT_DELAY = 0.3 -- nagroda za zadanie chwilę po akcji, która je skończyła (s)
 
 local lastTry = {} -- [gracz] = os.clock() ostatniej próby
 local lastClaim = {} -- [gracz] = os.clock() ostatniego odbioru nagrody dziennej
+local lastQuestClaim = {} -- [gracz] = os.clock() ostatniego CLAIM przy zadaniu
 local boards = {}
 local wrong = {} -- [gracz] = { count = złe pod rząd, untilTime = koniec przerwy }
 
 local rng = Random.new()
 local function random01()
 	return rng:NextNumber()
+end
+
+local function limitsFor()
+	return { pets = PetsConfig.MaxInventory, clothes = ClothesConfig.MaxInventory }
 end
 
 ----------------------------------------------------------------- Tablica z nagrodą dzienną
@@ -228,8 +241,7 @@ local function redeemCode(player, text)
 		return { Ok = false, Reason = "Cooldown" }
 	end
 	lastTry[player] = now
-	local limits = { pets = PetsConfig.MaxInventory, clothes = ClothesConfig.MaxInventory }
-	local result, reason = Rewards.redeemCode(data, LoopService.contextFor(player), text, random01, limits, os.time())
+	local result, reason = Rewards.redeemCode(data, LoopService.contextFor(player), text, random01, limitsFor(), os.time())
 	if result == nil then
 		if reason == "Unknown" or reason == "Invalid" then
 			w = wrong[player] or { count = 0 }
@@ -258,8 +270,7 @@ local function claimDaily(player)
 		return { Ok = false, Reason = "Cooldown" }
 	end
 	lastClaim[player] = now
-	local limits = { pets = PetsConfig.MaxInventory, clothes = ClothesConfig.MaxInventory }
-	local result, reason = Rewards.claimDaily(data, LoopService.contextFor(player), random01, limits, os.time())
+	local result, reason = Rewards.claimDaily(data, LoopService.contextFor(player), random01, limitsFor(), os.time())
 	if result == nil then
 		return { Ok = false, Reason = reason }
 	end
@@ -267,7 +278,106 @@ local function claimDaily(player)
 	return { Ok = true, Day = result.Day, Streak = result.Streak, Boosts = result.Boosts, Pets = pets, Items = items }
 end
 
--- O północy UTC: nowy stan dla wszystkich i komunikat dla tych, którzy mogą odebrać nagrodę.
+----------------------------------------------------------------- Zadania dzienne
+-- Nagroda zadania: sama po skończeniu (auto = true) albo z przycisku CLAIM w oknie. Zwraca wynik
+-- jak Rewards.claimQuest (z PetCount i ItemCount) albo nil i powód.
+local function grantQuest(player, data, index, auto)
+	local result, reason = Rewards.claimQuest(data, LoopService.contextFor(player), index, random01, limitsFor(), os.time())
+	if result == nil then
+		if auto then
+			-- bez miejsca w ekwipunku nagroda czeka na CLAIM w oknie nagrody dziennej
+			local quest = data.Quests.List[index]
+			LoopService.notify(player, { Kind = "QuestReady", Index = index, Key = quest and quest.Key, Reason = reason })
+		end
+		LoopService.markDirty(player)
+		return nil, reason
+	end
+	local pets, items = RewardsService.deliver(player, data, result, "Quest", {
+		Index = index,
+		Key = result.Key,
+		Aura = result.Aura,
+		BonusAura = result.BonusAura,
+		AllDone = result.AllDone,
+		Auto = auto,
+	})
+	result.PetCount = pets
+	result.ItemCount = items
+	return result, nil
+end
+
+-- Postęp z LoopService.progress. Skończone zadanie odbieramy chwilę później (najpierw dochodzi
+-- odpowiedź na akcję, np. BuyEgg z animacją, potem nagroda), o ile to dalej to samo zadanie.
+local function onProgress(player, key, amount)
+	local data = DataService.get(player)
+	if data == nil then
+		return
+	end
+	local changed, done = Rewards.questProgress(data, key, amount, random01, os.time())
+	if changed then
+		LoopService.markDirty(player)
+	end
+	if done == nil then
+		return
+	end
+	local day = data.Quests.Day
+	for _, index in ipairs(done) do
+		local questKey = data.Quests.List[index].Key
+		task.delay(QUEST_GRANT_DELAY, function()
+			if player.Parent ~= Players then
+				return
+			end
+			local current = DataService.get(player)
+			local q = current and current.Quests
+			local quest = nil
+			if type(q) == "table" and q.Day == day and type(q.List) == "table" then
+				quest = q.List[index]
+			end
+			if type(quest) ~= "table" or quest.Key ~= questKey or quest.Claimed then
+				return
+			end
+			grantQuest(player, current, index, true)
+		end)
+	end
+end
+
+-- CLAIM w oknie: nagroda zadania, która czekała na miejsce w ekwipunku.
+local function claimQuest(player, index)
+	if type(index) ~= "number" or index ~= index or index % 1 ~= 0 then
+		return { Ok = false, Reason = "BadRequest" }
+	end
+	local data = DataService.get(player)
+	if data == nil then
+		return { Ok = false, Reason = "NotLoaded" }
+	end
+	local now = os.clock()
+	if lastQuestClaim[player] ~= nil and now - lastQuestClaim[player] < CLAIM_GAP then
+		return { Ok = false, Reason = "Cooldown" }
+	end
+	lastQuestClaim[player] = now
+	local result, reason = grantQuest(player, data, index, false)
+	if result == nil then
+		return { Ok = false, Reason = reason }
+	end
+	return {
+		Ok = true,
+		Index = index,
+		Key = result.Key,
+		Boosts = result.Boosts,
+		Pets = result.PetCount,
+		Items = result.ItemCount,
+		Aura = result.Aura,
+		BonusAura = result.BonusAura,
+		AllDone = result.AllDone,
+	}
+end
+
+-- Tryb testowy: postęp zadania (np. /quests done 2 dokłada brakującą resztę). Nagroda jak w grze.
+function RewardsService.progressQuest(player, key, amount)
+	onProgress(player, key, amount)
+end
+
+-- O północy UTC: nowy stan dla wszystkich (nowe zadania losuje hook stanu) i komunikat
+-- (Daily = czy nagroda dzienna czeka, Quests = nowe zadania).
 local function watchMidnight()
 	local lastDay = Rewards.day(os.time())
 	while true do
@@ -280,9 +390,7 @@ local function watchMidnight()
 				local data = DataService.get(player)
 				if data ~= nil then
 					LoopService.markDirty(player)
-					if Rewards.dailyState(data, now).CanClaim then
-						LoopService.notify(player, { Kind = "DailyReady" })
-					end
+					LoopService.notify(player, { Kind = "DailyReady", Daily = Rewards.dailyState(data, now).CanClaim, Quests = true })
 				end
 			end
 		end
@@ -299,10 +407,11 @@ function RewardsService.start()
 		view.GroupId = BonusService.groupId()
 		view.InGroup = BonusService.inGroup(player)
 		view.FriendsHere = BonusService.friends(player)
-		-- nagroda dzienna (okno z 7 dniami)
+		-- nagroda dzienna (okno z 7 dniami) i zadania dzienne (zakładka QUESTS w tym samym oknie)
 		local data = DataService.get(player)
 		if data ~= nil then
-			local state = Rewards.dailyState(data, os.time())
+			local now = os.time()
+			local state = Rewards.dailyState(data, now)
 			view.Daily = {
 				Day = state.Day,
 				CanClaim = state.CanClaim,
@@ -310,15 +419,22 @@ function RewardsService.start()
 				Lost = state.Lost,
 				SecondsLeft = math.floor(state.SecondsLeft),
 			}
+			Rewards.ensureQuests(data, random01, now) -- nowy dzień = nowe zadania
+			local quests = Rewards.questView(data, now)
+			quests.SecondsLeft = math.floor(quests.SecondsLeft)
+			view.Quests = quests
 		end
 	end)
+	LoopService.onProgress(onProgress)
 	Players.PlayerRemoving:Connect(function(player)
 		lastTry[player] = nil
 		wrong[player] = nil
 		lastClaim[player] = nil
+		lastQuestClaim[player] = nil
 	end)
 	Net.func("RedeemCode").OnServerInvoke = redeemCode
 	Net.func("ClaimDaily").OnServerInvoke = claimDaily
+	Net.func("ClaimQuest").OnServerInvoke = claimQuest
 	task.spawn(watchMidnight)
 end
 

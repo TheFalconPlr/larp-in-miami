@@ -57,6 +57,12 @@ return {
 		Streak = 0, -- ile dni pod rząd (po dniu 7 cykl od dnia 1, a seria rośnie dalej)
 		Claimed = 0, -- wszystkie odebrane nagrody dzienne
 	},
+	Quests = { -- zadania dzienne (Etap 11): 3 na dzień UTC z puli 8 (Economy.Rewards.DailyQuests)
+		Day = 0, -- dzień UTC, na który są wylosowane (0 = jeszcze nigdy)
+		List = {}, -- { { Key = "Clicks", Progress = 0, Claimed = false } } na ten dzień
+		Bonus = false, -- komplet (wszystkie 3) dał już +20 Aury
+		Completed = 0, -- wszystkie odebrane zadania
+	},
 	Stats = {
 		LifetimeLP = 0,
 		LifetimeCash = 0,
@@ -77,7 +83,7 @@ return {
 		ClothesSold = 0, -- sprzedane ubrania
 		ClothMerges = 0, -- próby łączenia ubrań
 		ClothMergesFailed = 0, -- nieudane łączenia ubrań
-		AuraEarned = 0, -- cała zdobyta Aura (Rebirthy, pasek, później zadania)
+		AuraEarned = 0, -- cała zdobyta Aura (Rebirthy, pasek, zadania dzienne)
 		PremiumEggs = 0, -- otwarte premium jajka (za Robuxy)
 	},
 	FirstJoin = 0,

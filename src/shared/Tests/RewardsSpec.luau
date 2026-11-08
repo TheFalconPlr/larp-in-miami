@@ -1,6 +1,8 @@
 -- Testy nagród (Etap 11): dane nagród z modelu, kody (raz na konto, wielkość liter, miejsce w ekwipunku,
 -- koniec ważności), jajka i boxy z nagród za darmo, najlepszy box, premium jajko, nagroda dzienna
--- (seria, cykl 7 dni, opuszczony dzień, północ UTC) i bonus za grupę i znajomych. Uruchamia je ConfigCheck w Studio i tools/test_luau.py poza Roblox.
+-- (seria, cykl 7 dni, opuszczony dzień, północ UTC), zadania dzienne (pula według stref, losowanie,
+-- postęp, Aura, komplet, zamiana po Rebirthie) i bonus za grupę i znajomych. Uruchamia je ConfigCheck
+-- w Studio i tools/test_luau.py poza Roblox.
 -- Zwraca funkcję: passed, failed, messages.
 
 local Shared = script.Parent.Parent
@@ -8,6 +10,7 @@ local Economy = require(Shared.Config.Economy)
 local Loop = require(Shared.Logic.Loop)
 local Clothes = require(Shared.Logic.Clothes)
 local Shop = require(Shared.Logic.Shop)
+local Rebirth = require(Shared.Logic.Rebirth)
 local Rewards = require(Shared.Logic.Rewards)
 local Template = require(Shared.Data.Template)
 
@@ -250,6 +253,156 @@ return function()
 	st = Rewards.dailyState(d, 20001 * DAY)
 	check(st.CanClaim and st.Day == 2, "nowy dzień zaczyna się o północy UTC")
 	check(Template.Daily ~= nil and Template.Daily.Day == 0 and Template.Daily.Streak == 0, "nowy gracz: nagroda dzienna od zera")
+
+	------------------------------------------------------------- Zadania dzienne
+	local Q = R.DailyQuests
+	local function poolIndex(key)
+		for i, quest in ipairs(Q) do
+			if quest.Key == key then
+				return i
+			end
+		end
+		return -1
+	end
+	local function keysOf(list)
+		local out = {}
+		for _, quest in ipairs(list) do
+			table.insert(out, quest.Key)
+		end
+		return table.concat(out, ",")
+	end
+	local function poolOf(data)
+		local out = {}
+		for _, quest in ipairs(Q) do
+			if Rewards.questAvailable(data, quest.Key) then
+				table.insert(out, { Key = quest.Key })
+			end
+		end
+		return keysOf(out)
+	end
+	local function setQuests(data, list, day)
+		data.Quests = { Day = Rewards.day(day or T0), List = list, Bonus = false, Completed = 0 }
+	end
+	local mapOk = true
+	for _, kind in ipairs(Loop.ActivityKinds) do
+		mapOk = mapOk and Rewards.questInfo(Rewards.ActivityQuests[kind]) ~= nil
+	end
+	check(mapOk, "każda aktywność ma swoje zadanie (Rewards.ActivityQuests)")
+	check(3 * Economy.Aura.DailyQuestReward + Economy.Aura.DailyAllQuestsBonus == 50, "zadania dają najwyżej 50 Aury dziennie (bez Aura Gain)")
+	check(poolOf(fresh(1)) == "Sells,EggsOpened,Clicks,Merges", "strefa 1: zadania bez aktywności")
+	check(poolOf(fresh(2)) == "CarPhotos,Sells,EggsOpened,Clicks,Merges", "strefa 2: dochodzą sesje zdjęciowe")
+	check(poolOf(fresh(4)) == "CarPhotos,Interviews,YachtSessions,Sells,EggsOpened,Clicks,Merges", "strefa 4: zdjęcia, wywiady i jacht")
+	d = fresh(5)
+	check(not Rewards.questAvailable(d, "JetRentals"), "loty odrzutowcem dopiero po kupnie pierwszego odrzutowca")
+	d.ActivityTiers.Jet = 1
+	check(poolOf(d) == "CarPhotos,Interviews,YachtSessions,JetRentals,Sells,EggsOpened,Clicks,Merges", "strefa 5 z odrzutowcem: cała pula 8")
+
+	-- losowanie: 3 różne z puli gracza, w kolejności puli, z zerowym postępem
+	local seen = {}
+	local pickOk = true
+	for seed = 1, 40 do
+		local dz = fresh(1)
+		local q = Rewards.ensureQuests(dz, lcg(seed), T0)
+		pickOk = pickOk and #q.List == R.QuestsPerDay and q.Day == Rewards.day(T0) and not q.Bonus
+		local used, last = {}, 0
+		for _, quest in ipairs(q.List) do
+			pickOk = pickOk and not used[quest.Key] and Rewards.questAvailable(dz, quest.Key)
+			pickOk = pickOk and quest.Progress == 0 and not quest.Claimed and poolIndex(quest.Key) > last
+			used[quest.Key] = true
+			last = poolIndex(quest.Key)
+			seen[quest.Key] = true
+		end
+	end
+	check(pickOk, "losowanie: 3 różne zadania z puli gracza, w kolejności puli, od zera")
+	check(count(seen) == 4, "w strefie 1 trafiają się wszystkie 4 zadania bez aktywności")
+	d = fresh(5)
+	d.ActivityTiers.Jet = 1
+	local first = keysOf(Rewards.ensureQuests(d, lcg(41), T0).List)
+	Rewards.ensureQuests(d, lcg(99), T0 + 5 * 3600)
+	check(keysOf(d.Quests.List) == first, "przez cały dzień te same zadania")
+	local yesterday = {}
+	for _, quest in ipairs(d.Quests.List) do
+		yesterday[quest.Key] = true
+	end
+	Rewards.ensureQuests(d, lcg(42), T0 + DAY)
+	local newOk = #d.Quests.List == 3
+	for _, quest in ipairs(d.Quests.List) do
+		newOk = newOk and not yesterday[quest.Key]
+	end
+	check(newOk, "następnego dnia inne zadania (przy puli 8 żadne z wczoraj)")
+
+	-- postęp i odbiór (lista ustawiona ręcznie: Sells 10, Clicks 500, Merges 1)
+	d = fresh(1)
+	setQuests(d, {
+		{ Key = "Sells", Progress = 0, Claimed = false },
+		{ Key = "Clicks", Progress = 0, Claimed = false },
+		{ Key = "Merges", Progress = 0, Claimed = false },
+	})
+	local changed, done = Rewards.questProgress(d, "EggsOpened", 5, lcg(50), T0)
+	check(not changed and done == nil, "postęp zadania, którego dziś nie ma: nic")
+	changed, done = Rewards.questProgress(d, "Clicks", 499, lcg(50), T0)
+	check(changed and done == nil and d.Quests.List[2].Progress == 499, "499 z 500 kliknięć: jeszcze nieskończone")
+	result, reason = Rewards.claimQuest(d, ctx, 2, lcg(50), nil, T0)
+	check(result == nil and reason == "NotDone", "nieskończone zadanie: NotDone")
+	changed, done = Rewards.questProgress(d, "Clicks", 10, lcg(50), T0)
+	check(changed and done ~= nil and #done == 1 and done[1] == 2 and d.Quests.List[2].Progress == 500, "500 kliknięć: zadanie 2 skończone, postęp najwyżej do celu")
+	changed, done = Rewards.questProgress(d, "Clicks", 10, lcg(50), T0)
+	check(not changed and done == nil, "skończone zadanie nie liczy dalej i nie kończy się drugi raz")
+	check(not Rewards.questProgress(d, "Sells", 0 / 0, lcg(50), T0) and not Rewards.questProgress(d, "Sells", -3, lcg(50), T0), "zły postęp (NaN, ujemny): nic")
+	result = Rewards.claimQuest(d, ctx, 2, lcg(51), { pets = 50 }, T0)
+	check(result ~= nil and result.Key == "Clicks" and #result.Eggs == 1 and #result.Eggs[1].Pets == 2 and result.Aura == 0 and d.Aura == 0, "Clicks: 2 jajka A, przed Rebirth 1 bez Aury")
+	result, reason = Rewards.claimQuest(d, ctx, 2, lcg(51), { pets = 50 }, T0)
+	check(result == nil and reason == "Claimed" and count(d.Pets) == 2, "drugi raz to samo zadanie: Claimed (bez nagrody)")
+	check(Rewards.claimQuest(d, ctx, 7, lcg(51), nil, T0) == nil and Rewards.claimQuest(d, ctx, "1", lcg(51), nil, T0) == nil, "zły numer zadania: BadRequest")
+	d.RebirthCount = 1
+	d.RebirthLevel = 1
+	d.AuraUpgrades.AuraGain = 3
+	local gain = Rebirth.gain(d)
+	Rewards.questProgress(d, "Sells", 10, lcg(52), T0)
+	result = Rewards.claimQuest(d, ctx, 1, lcg(52), nil, T0)
+	check(result ~= nil and math.abs(result.Aura - 10 * gain) < 1e-9 and result.BonusAura == 0 and not result.AllDone and Shop.boostLeft(d, "LP") == 15 * 60, "Sells: boost 15 min i +10 Aury razy Aura Gain")
+	Rewards.questProgress(d, "Merges", 1, lcg(53), T0)
+	result = Rewards.claimQuest(d, ctx, 3, lcg(53), nil, T0)
+	check(result ~= nil and result.AllDone and math.abs(result.BonusAura - 20 * gain) < 1e-9 and d.Quests.Bonus and d.Quests.Completed == 3, "trzecie zadanie: komplet +20 Aury")
+	check(math.abs(d.Aura - 40 * gain) < 1e-9 and math.abs(d.Stats.AuraEarned - 40 * gain) < 1e-9, "Aura: 0 + 10 + 10 + 20 (pierwsze przed Rebirth 1), też w AuraEarned")
+	local qv = Rewards.questView(d, T0 + 60)
+	check(#qv.List == 3 and qv.List[2].Index == 2 and qv.List[2].Target == 500 and qv.List[2].Claimed and qv.Bonus, "stan zadań dla okna: numer, cel, odebrane, komplet")
+	check(math.abs(qv.Aura - 10 * gain) < 1e-9 and math.abs(qv.BonusAura - 20 * gain) < 1e-9 and qv.SecondsLeft == DAY - 3600 - 60, "okno: Aura za zadanie i komplet, czas do północy UTC")
+	Rewards.ensureQuests(d, lcg(54), T0 + DAY)
+	local resetOk = d.Quests.Day == Rewards.day(T0 + DAY) and not d.Quests.Bonus and #d.Quests.List == 3 and d.Quests.Completed == 3
+	for _, quest in ipairs(d.Quests.List) do
+		resetOk = resetOk and quest.Progress == 0 and not quest.Claimed
+	end
+	check(resetOk, "nowy dzień: nowe zadania od zera, komplet znowu do zdobycia")
+
+	-- pełny ekwipunek: nagroda czeka na CLAIM
+	d = fresh(1)
+	setQuests(d, { { Key = "Clicks", Progress = 500, Claimed = false } })
+	for i = 1, 7 do
+		d.Pets["z" .. i] = { Zone = 1, Rarity = "Common", Level = 0, Egg = "A" }
+	end
+	result, reason = Rewards.claimQuest(d, ctx, 1, lcg(55), { pets = 8 }, T0)
+	check(result == nil and reason == "PetInventory" and not d.Quests.List[1].Claimed and count(d.Pets) == 7, "pełny ekwipunek: nagroda zadania czeka")
+	d.Pets.z1 = nil
+	result = Rewards.claimQuest(d, ctx, 1, lcg(55), { pets = 8 }, T0)
+	check(result ~= nil and d.Quests.List[1].Claimed and count(d.Pets) == 8, "po zrobieniu miejsca CLAIM działa")
+
+	-- po Rebirthie (strefa 1) nieskończone zadanie z aktywnością zamienia się na inne
+	d = fresh(5)
+	d.ActivityTiers.Jet = 1
+	setQuests(d, {
+		{ Key = "CarPhotos", Progress = 3, Claimed = false },
+		{ Key = "JetRentals", Progress = 3, Claimed = false },
+		{ Key = "Sells", Progress = 2, Claimed = false },
+	})
+	d.ZonesUnlocked = 1
+	d.ActivityTiers = { Car = 1, Yacht = 1, Jet = 0 }
+	Rewards.ensureQuests(d, lcg(56), T0 + 60)
+	local list = d.Quests.List
+	local swapOk = #list == 3 and list[1].Key == "JetRentals" and list[1].Progress == 3 and list[2].Key == "Sells" and list[2].Progress == 2
+	swapOk = swapOk and list[3] ~= nil and poolIndex(list[3].Key) > poolIndex("Sells") and list[3].Progress == 0
+	check(swapOk, "po Rebirthie: zdjęcia zamienione na zadanie ze strefy 1, skończone i Sells zostają")
+	check(Template.Quests ~= nil and Template.Quests.Day == 0 and #Template.Quests.List == 0 and Template.Quests.Bonus == false, "nowy gracz: zadania jeszcze niewylosowane")
 
 	------------------------------------------------------------- Bonus za grupę i znajomych
 	local B = Economy.Bonuses

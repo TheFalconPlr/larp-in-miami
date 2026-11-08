@@ -27,6 +27,14 @@ function State.onNotify(fn)
 	table.insert(notifyListeners, fn)
 end
 
+-- Komunikat od innego modułu klienta, tak jak z serwera (np. „+10 AURA” przy liczniku dopiero po
+-- animacji nagrody za zadanie). Niczego nie zmienia na serwerze.
+function State.emit(payload)
+	for _, fn in ipairs(notifyListeners) do
+		task.spawn(fn, payload)
+	end
+end
+
 function State.start()
 	Net.event("Sync").OnClientEvent:Connect(function(view)
 		local old = State.view

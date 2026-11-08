@@ -1,10 +1,13 @@
--- Nagroda dzienna po stronie gracza (Etap 11, część 2):
---   • okno „Daily Rewards”: 7 dni z Economy.Rewards.DailyStreak (dzień, grafika, co daje), odebrane
---     z zielonym znaczkiem, dzisiejsza złota i pulsuje, dzień 7 fioletowy; seria nad dniami, a pod
---     nimi CLAIM albo czas do następnej nagrody,
+-- Nagroda dzienna i zadania dzienne po stronie gracza (Etap 11, części 2 i 3):
+--   • okno z dwiema zakładkami: REWARDS i QUESTS (treść zadań: Quests.luau); czerwona kropka „!” na
+--     zakładce, gdy jest co odebrać,
+--   • REWARDS: 7 dni z Economy.Rewards.DailyStreak (dzień, grafika, co daje), odebrane z zielonym
+--     znaczkiem, dzisiejsza złota i pulsuje, dzień 7 fioletowy; seria nad dniami, a pod nimi CLAIM
+--     albo czas do następnej nagrody,
 --   • okno wyskakuje samo raz po wejściu, gdy jest co odebrać (gdy gracz niczego nie robi),
---   • tablica z nagrodą dzienną w Downtown (DailyBoard, tag LarpDaily): napis i duże E otwierają okno,
---   • o północy UTC komunikat „Your daily reward is ready!” (Notify DailyReady).
+--   • tablica z nagrodą dzienną w Downtown (DailyBoard, tag LarpDaily): napis i duże E otwierają okno
+--     (na REWARDS, gdy nagroda czeka, inaczej na QUESTS),
+--   • o północy UTC komunikat o nagrodzie i nowych zadaniach (Notify DailyReady).
 -- Odbiera serwer (RewardsService, Logic/Rewards); jajka i boxy z nagrody otwierają Eggs.luau
 -- i Boxes.luau (Notify Reward), a komunikat o nagrodzie jest jeden, na dole ekranu.
 
@@ -27,6 +30,7 @@ local ShopArt = require(script.Parent.Ui.ShopArt)
 local Fx = require(script.Parent.Ui.Fx)
 local StandAnchor = require(script.Parent.StandAnchor)
 local Codes = require(script.Parent.Codes)
+local Quests = require(script.Parent.Quests)
 
 local Daily = {}
 
@@ -41,7 +45,8 @@ local LABEL_DESIGN = Vector2.new(460, 56)
 local LABEL_PIXELS_PER_STUD = 30
 local LABEL_DISTANCE = 80
 
--- Okno (piksele bazowe 1280×720): seria, rząd 7 dni, przycisk i podpowiedź.
+-- Okno (piksele bazowe 1280×720): zakładki, a pod nimi strona REWARDS (seria, rząd 7 dni, przycisk
+-- i podpowiedź) albo QUESTS (Quests.luau) tej samej wielkości.
 local L = {
 	Tile = Vector2.new(112, 176),
 	TileGap = 12,
@@ -51,6 +56,9 @@ local L = {
 	Bottom = 16,
 	HeaderH = 40,
 	Button = Vector2.new(340, 62),
+	Tab = Vector2.new(214, 52),
+	TabGap = 18,
+	PageGap = 12,
 }
 local DAYS = #Economy.Rewards.DailyStreak
 L.RowW = DAYS * L.Tile.X + (DAYS - 1) * L.TileGap
@@ -58,10 +66,14 @@ L.RowY = L.HeaderH + 10
 L.ButtonY = L.RowY + L.Tile.Y + 18
 L.NoteY = L.ButtonY + L.Button.Y + 5 + 8
 L.ContentH = L.NoteY + 26
-L.Window = Vector2.new(L.RowW + 2 * L.Padding, L.Top + L.ContentH + L.Bottom)
+L.PageTop = L.Tab.Y + 6 + L.PageGap -- 6 = krawędź przycisku Kit
+L.Window = Vector2.new(L.RowW + 2 * L.Padding, L.Top + L.PageTop + L.ContentH + L.Bottom)
 
 local TEXT = {
 	Title = "Daily Rewards",
+	QuestsTitle = "Daily Quests",
+	TabRewards = "REWARDS",
+	TabQuests = "QUESTS",
 	Label = "DAILY REWARDS",
 	Day = "DAY %d",
 	Claim = "CLAIM DAY %d!",
@@ -73,7 +85,8 @@ local TEXT = {
 	StreakNew = "Come back every day for better rewards!",
 	StreakLost = "Streak lost! Starting over",
 	Note = "Miss a day and your streak starts over",
-	Ready = "Your daily reward is ready!",
+	Ready = "Your daily reward and new quests are ready!",
+	ReadyQuests = "New daily quests are ready!",
 	ClaimedToast = "Day %d claimed!",
 	Claimed = "Already claimed today",
 	PetInventory = "No room for pets: sell or merge some first",
@@ -202,7 +215,22 @@ function Daily.start(hud)
 	hud.registerScale(window.holder)
 	hud.addWindow(window)
 
-	local header = Kit.line(window.content, {
+	-- strony pod zakładkami: REWARDS (7 dni) i QUESTS (Quests.luau)
+	local function page(name)
+		return Kit.new("Frame", {
+			Name = name,
+			Position = UDim2.fromOffset(0, L.PageTop),
+			Size = UDim2.new(1, 0, 0, L.ContentH),
+			BackgroundTransparency = 1,
+			ZIndex = 4,
+			Parent = window.content,
+		})
+	end
+	local rewardsPage = page("RewardsPage")
+	local questsPage = page("QuestsPage")
+	questsPage.Visible = false
+
+	local header = Kit.line(rewardsPage, {
 		name = "Streak",
 		anchor = Vector2.new(0.5, 0.5),
 		position = UDim2.new(0.5, 0, 0, L.HeaderH / 2),
@@ -219,7 +247,7 @@ function Daily.start(hud)
 			Size = UDim2.fromOffset(L.Tile.X, L.Tile.Y),
 			BackgroundTransparency = 1,
 			ZIndex = 4,
-			Parent = window.content,
+			Parent = rewardsPage,
 		})
 		local inner = Kit.new("Frame", {
 			Name = "Inner",
@@ -306,7 +334,7 @@ function Daily.start(hud)
 		}
 	end
 
-	local claimButton = Kit.button(window.content, {
+	local claimButton = Kit.button(rewardsPage, {
 		name = "Claim",
 		size = L.Button,
 		text = "",
@@ -316,7 +344,7 @@ function Daily.start(hud)
 		textSize = 30,
 	})
 	claimButton.holder.ZIndex = 4
-	Kit.text(window.content, {
+	Kit.text(rewardsPage, {
 		Name = "Note",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, L.NoteY),
@@ -326,7 +354,55 @@ function Daily.start(hud)
 		ZIndex = 4,
 	}, { maxSize = 19, stroke = 0 })
 
+	------------------------------------------------------------- Zakładki REWARDS i QUESTS
+	-- Jak zakładki sklepu: aktywna w swoim kolorze, druga biała; kropka „!”, gdy jest co odebrać.
+	local TABS = {
+		{ key = "Rewards", text = TEXT.TabRewards, icon = "Gift", colors = Theme.Gradients.Gold, title = TEXT.Title, page = rewardsPage },
+		{ key = "Quests", text = TEXT.TabQuests, icon = "Quest", colors = Theme.Gradients.Cyan, title = TEXT.QuestsTitle, page = questsPage },
+	}
+	for i, tab in ipairs(TABS) do
+		local offset = (i - (#TABS + 1) / 2) * (L.Tab.X + L.TabGap)
+		tab.button = Kit.button(window.content, {
+			name = "Tab" .. tab.key,
+			size = L.Tab,
+			colors = Theme.Gradients.Tab,
+			radius = 20,
+			edge = 6,
+			anchor = Vector2.new(0.5, 0),
+			position = UDim2.new(0.5, offset, 0, 0),
+		})
+		tab.button.holder.ZIndex = 5
+		Icons.make(tab.icon, {
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.new(0, 34, 0.5, 0),
+			Size = UDim2.fromOffset(40, 40),
+			ZIndex = 5,
+			Parent = tab.button.face,
+		})
+		Kit.text(tab.button.face, {
+			Name = "Label",
+			AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 62, 0.5, 1),
+			Size = UDim2.new(1, -74, 0, 32),
+			Text = tab.text,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 6,
+		}, { maxSize = 26, stroke = 3.5 })
+		tab.badge = Kit.badge(tab.button.body, { Position = UDim2.new(1, -6, 0, 4) })
+	end
+
+	-- treść zakładki QUESTS (karty zadań, komplet, czas do nowych zadań)
+	local quests = Quests.create(hud, questsPage, {
+		width = L.RowW,
+		artFor = artFor,
+		itemText = itemText,
+		close = function()
+			window.hide()
+		end,
+	})
+
 	------------------------------------------------------------- Stan i rysowanie
+	local activeTab = "Rewards"
 	local secondsLeft, receivedAt = 0, os.clock()
 	local pulse = nil
 	local pulseDay = nil
@@ -410,7 +486,7 @@ function Daily.start(hud)
 			end
 			setTile(tile, kind)
 		end
-		if daily.CanClaim and window.isOpen() then
+		if daily.CanClaim and window.isOpen() and activeTab == "Rewards" then
 			setPulse(day)
 		else
 			setPulse(nil)
@@ -427,14 +503,50 @@ function Daily.start(hud)
 		end
 	end
 
-	-- animacje grafik i pulsowanie dzisiejszego dnia tylko przy otwartym oknie (sprząta Heartbeat)
+	-- kropki „!” na zakładkach: nagroda dzienna do odebrania i zadania czekające na CLAIM
+	local function updateBadges()
+		local view = State.view or {}
+		local daily = view.Daily
+		TABS[1].badge.set((daily ~= nil and daily.CanClaim and "!") or nil)
+		TABS[2].badge.set((Quests.claimable(view) > 0 and "!") or nil)
+	end
+
+	local function setTab(key)
+		activeTab = key
+		for _, tab in ipairs(TABS) do
+			local on = tab.key == key
+			tab.page.Visible = on
+			if on then
+				tab.button.setColors(tab.colors)
+				window.title.Text = tab.title
+			else
+				tab.button.setColors(Theme.Gradients.Tab)
+			end
+		end
+		render(true)
+		quests.setActive(key == "Quests" and window.isOpen())
+		updateBadges()
+	end
+	for _, tab in ipairs(TABS) do
+		tab.button.Activated:Connect(function()
+			if activeTab ~= tab.key then
+				setTab(tab.key)
+			end
+		end)
+	end
+
+	-- animacje grafik i pulsowanie dzisiejszego dnia tylko przy otwartym oknie (sprząta Heartbeat).
+	-- tab = "Rewards" albo "Quests"; bez niego REWARDS, gdy nagroda czeka, inaczej QUESTS.
 	local bin = nil
-	local function openWindow()
+	local function openWindow(tab)
 		if State.busy then
 			return
 		end
+		if tab == nil then
+			local daily = (State.view or {}).Daily
+			tab = (daily ~= nil and daily.CanClaim and "Rewards") or "Quests"
+		end
 		hud.openWindow(window)
-		render(true)
 		if bin ~= nil then
 			bin.clean()
 		end
@@ -442,6 +554,8 @@ function Daily.start(hud)
 		for _, tile in ipairs(tiles) do
 			tile.art.play(bin)
 		end
+		quests.play(bin)
+		setTab(tab)
 	end
 	Daily.open = openWindow
 
@@ -668,14 +782,21 @@ function Daily.start(hud)
 	RunService.Heartbeat:Connect(function(dt)
 		timer = timer + dt
 		buttonTimer = buttonTimer + dt
-		if window.isOpen() and buttonTimer >= 0.5 and not claiming and not waitView then
+		if window.isOpen() and buttonTimer >= 0.5 then
 			buttonTimer = 0
-			updateButton((State.view or {}).Daily)
+			if not claiming and not waitView then
+				updateButton((State.view or {}).Daily)
+			end
+			if activeTab == "Quests" then
+				quests.tick()
+			end
 		end
 		if not window.isOpen() and bin ~= nil then
 			bin.clean()
 			bin = nil
 			setPulse(nil)
+			quests.play(nil)
+			quests.setActive(false)
 		end
 		if timer < 0.1 then
 			return
@@ -732,6 +853,10 @@ function Daily.start(hud)
 		if window.isOpen() and not claiming and not waitView then
 			render(false)
 		end
+		if window.isOpen() then
+			quests.render(false)
+		end
+		updateBadges()
 		-- raz po wejściu: okno samo, gdy jest co odebrać i gracz niczego nie robi
 		if not autoShown and daily ~= nil then
 			autoShown = true
@@ -754,8 +879,15 @@ function Daily.start(hud)
 
 	State.onNotify(function(payload)
 		if payload.Kind == "DailyReady" then
+			-- Daily = false: nagroda dzienna już odebrana dziś (np. tuż przed północą), są tylko nowe zadania
 			Sounds.play("Unlock", { volume = 0.5 })
-			hud.toast({ { icon = "Gift", size = 40 }, { text = TEXT.Ready, size = 26, colors = Theme.Gradients.Gold } }, "DailyReady")
+			local text = TEXT.Ready
+			local icon = "Gift"
+			if payload.Daily == false then
+				text = TEXT.ReadyQuests
+				icon = "Quest"
+			end
+			hud.toast({ { icon = icon, size = 40 }, { text = text, size = 26, colors = Theme.Gradients.Gold } }, "DailyReady")
 		end
 	end)
 

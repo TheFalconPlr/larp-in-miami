@@ -53,6 +53,10 @@ local EMOJI = {
 	Heart = "❤️", -- „Thanks for the support” na dole sklepu
 	Group = "👥", -- bonus za grupę
 	Friends = "🤝", -- bonus za znajomych na serwerze
+	Quest = "📜", -- zadania dzienne (zakładka QUESTS w oknie nagrody dziennej)
+	Interview = "🎤", -- zadanie: wywiady
+	Yacht = "🛥️", -- zadanie: imprezy na jachcie
+	Jet = "✈️", -- zadanie: loty odrzutowcem
 	-- Znaki Roblox (prywatne kody Unicode): ikona Robux (U+E002) i znaczek Verified (U+E000).
 	-- Zapisane bajtami UTF-8, bo tak rozumie je też Lua 5.1 w testach.
 	Robux = "\238\128\130",

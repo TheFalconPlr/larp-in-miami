@@ -751,6 +751,63 @@ command("daily", "/daily [reset|next|day 1-7]", "nagroda dzienna: reset = od zer
 	)
 end)
 
+command("quests", "/quests [reset|done 1-3|done all]", "zadania dzienne: postęp; reset = nowe losowanie na dziś; done 2 = kończy zadanie 2 (nagroda jak w grze)", function(player, data, args)
+	local what = string.lower(args[1] or "")
+	local now = os.time()
+	if what == "reset" then
+		if type(data.Quests) == "table" then
+			data.Quests.Day = 0
+		end
+		Rewards.ensureQuests(data, nil, now)
+	elseif what == "done" then
+		local q = Rewards.ensureQuests(data, nil, now)
+		local which = string.lower(args[2] or "all")
+		local list = {}
+		if which == "all" then
+			for i = 1, #q.List do
+				table.insert(list, i)
+			end
+		else
+			local index = needLevel(which, #q.List)
+			if index < 1 then
+				error("numer zadania od 1 do " .. #q.List, 0)
+			end
+			table.insert(list, index)
+		end
+		for _, index in ipairs(list) do
+			local quest = q.List[index]
+			local info = Rewards.questInfo(quest.Key)
+			if info ~= nil and quest.Progress < info.Target then
+				RewardsService.progressQuest(player, quest.Key, info.Target - quest.Progress)
+			end
+		end
+	elseif what ~= "" then
+		error("reset albo done 1-3 / done all", 0)
+	end
+	local q = Rewards.ensureQuests(data, nil, now)
+	local parts = {}
+	for i, quest in ipairs(q.List) do
+		local info = Rewards.questInfo(quest.Key)
+		local mark = ""
+		if quest.Claimed then
+			mark = " ✓"
+		elseif info ~= nil and quest.Progress >= info.Target then
+			mark = " (nagroda za chwilę albo czeka na miejsce)"
+		end
+		table.insert(parts, string.format("%d. %s %d/%d%s", i, quest.Key, quest.Progress, (info and info.Target) or 0, mark))
+	end
+	local view = Rewards.questView(data, now)
+	return string.format(
+		"Zadania na dziś: %s · komplet: %s · Aura za zadanie %s, za komplet %s · nowe za %s · odebrane razem %d",
+		table.concat(parts, " · "),
+		q.Bonus and "TAK" or "nie",
+		Format.small(view.Aura),
+		Format.small(view.BonusAura),
+		Format.duration(view.SecondsLeft),
+		q.Completed or 0
+	)
+end)
+
 command("bonus", "/bonus [group on|off|auto] [friends 0-3|auto]", "udawaj bonus za grupę (+5% LP) albo znajomych na serwerze (+10% każdy)", function(player, _, args)
 	local what = string.lower(args[1] or "")
 	local value = string.lower(args[2] or "")

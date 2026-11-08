@@ -433,6 +433,8 @@ local function buyEgg(player, zone, egg, count)
 	end
 	lastOpen[player] = now
 	LoopService.markDirty(player)
+	-- zadanie EggsOpened: jajka za L$ (premium jajka i jajka z nagród się nie liczą)
+	LoopService.progress(player, "EggsOpened", #list)
 	local seconds = openTime(player)
 	local pets = {}
 	for _, entry in ipairs(list) do
@@ -552,6 +554,7 @@ local function mergePets(player, ids)
 		return { Ok = false, Reason = reason }
 	end
 	LoopService.markDirty(player)
+	LoopService.progress(player, "Merges", 1) -- zadanie Merges: każda próba (też nieudana)
 	local reply = {
 		Ok = true,
 		Success = result.Success,

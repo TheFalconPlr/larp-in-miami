@@ -26,6 +26,7 @@ local Workspace = game:GetService("Workspace")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Economy = require(Shared.Config.Economy)
 local Loop = require(Shared.Logic.Loop)
+local Rewards = require(Shared.Logic.Rewards)
 local Net = require(Shared.Net)
 local Stand = require(Shared.Stand)
 
@@ -674,6 +675,8 @@ local function finish(player, kind, grade)
 	if aura ~= nil and aura > 0 then
 		LoopService.notify(player, { Kind = "Aura", Amount = aura, Source = "Bar" })
 	end
+	-- zadania dzienne: CarPhotos, Interviews, YachtSessions, JetRentals
+	LoopService.progress(player, Rewards.ActivityQuests[kind], 1)
 end
 
 local function start(player, kind)

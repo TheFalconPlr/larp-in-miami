@@ -433,6 +433,7 @@ local function mergeClothes(player, ids)
 		return { Ok = false, Reason = reason }
 	end
 	LoopService.markDirty(player)
+	LoopService.progress(player, "Merges", 1) -- zadanie Merges: łączenie ubrań też się liczy
 	local reply = {
 		Ok = true,
 		Success = result.Success,
