@@ -1,7 +1,7 @@
 -- Larp in Miami — start klienta (gracza): HUD, klikanie, strefy, aktywności, pety, jajka, ubrania
 -- i mystery boxy, sklep za Robuxy, komunikaty o sekretach, Rebirth, sklep Aury, tytuły nad głową,
--- kody i bonus za grupę i znajomych (w sklepie), przycisk INVITE w pasku Robloxa, nagroda dzienna
--- i tryb testowy.
+-- kody i bonus za grupę i znajomych (w sklepie), przycisk INVITE w pasku Robloxa, nagroda dzienna,
+-- zadania dzienne (okno i lista po prawej) i tryb testowy.
 -- Najpierw moduły rejestrują, czego słuchają, a na końcu State podłącza zdarzenia z serwera.
 
 local Players = game:GetService("Players")
@@ -26,6 +26,7 @@ local RebirthUi = require(script.Parent.RebirthUi)
 local AuraShop = require(script.Parent.AuraShop)
 local Codes = require(script.Parent.Codes)
 local Daily = require(script.Parent.Daily)
+local QuestTracker = require(script.Parent.QuestTracker)
 local Topbar = require(script.Parent.Topbar)
 local Nametags = require(script.Parent.Nametags)
 local Sounds = require(script.Parent.Ui.Sounds)
@@ -45,6 +46,7 @@ RebirthUi.start(hud)
 AuraShop.start(hud)
 Codes.start(hud)
 Daily.start(hud)
+QuestTracker.start(hud) -- po Shop (kolumna po prawej) i Daily (okno)
 Topbar.start()
 Nametags.start(hud)
 Admin.start()

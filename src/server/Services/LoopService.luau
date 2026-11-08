@@ -171,6 +171,7 @@ local function flush(player, s)
 		AutoSell = data.Settings.AutoSell ~= false,
 		ShowClothes = data.Settings.ShowClothes ~= false,
 		HideMenu = data.Settings.HideMenu == true,
+		HideQuests = data.Settings.HideQuests == true,
 	}
 	for _, hook in ipairs(viewHooks) do
 		hook(player, view)
@@ -428,7 +429,7 @@ local function buyZone(player, id)
 	return { Ok = true, Zone = id }
 end
 
-local SETTINGS = { AutoClick = true, AutoSell = true, ShowClothes = true, HideMenu = true }
+local SETTINGS = { AutoClick = true, AutoSell = true, ShowClothes = true, HideMenu = true, HideQuests = true }
 
 local function setSetting(player, key, value)
 	if type(key) ~= "string" or not SETTINGS[key] or type(value) ~= "boolean" then

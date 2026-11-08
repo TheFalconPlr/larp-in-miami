@@ -36,6 +36,7 @@ return {
 		AutoSell = true, -- działa tylko z gamepassem Auto-Sell
 		ShowClothes = true, -- ubrania z gry widać na awatarze (false = własny wygląd, bonus zostaje)
 		HideMenu = false, -- menu po lewej schowane przyciskiem „<” (więcej widać ekranu)
+		HideQuests = false, -- lista zadań dziennych po prawej schowana przyciskiem „>”
 	},
 	TestPasses = {}, -- tryb testowy: gamepassy z /pass ([klucz] = true/false); działają tylko u adminów
 	Robux = { -- zakupy za Robuxy (Etap 10)

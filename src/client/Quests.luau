@@ -64,16 +64,16 @@ local TEXT = {
 }
 
 -- Wygląd i napisy zadań (klucze jak w Economy.Rewards.DailyQuests). goal = cel (%s = liczba),
--- one = cel 1 (np. Merges).
+-- one = cel 1 (np. Merges); short i shortOne = krótsze napisy do listy na ekranie (QuestTracker).
 local QUESTS = {
-	CarPhotos = { icon = "Camera", title = "CAR PHOTOS", goal = "Do %s car photoshoots", one = "Do a car photoshoot" },
-	Interviews = { icon = "Interview", title = "INTERVIEWS", goal = "Give %s live interviews", one = "Give a live interview" },
-	YachtSessions = { icon = "Yacht", title = "YACHT PARTIES", goal = "Throw %s yacht parties", one = "Throw a yacht party" },
-	JetRentals = { icon = "Jet", title = "JET FLIGHTS", goal = "Take %s private jet flights", one = "Take a private jet flight" },
-	Sells = { icon = "Sell", title = "SELL", goal = "Sell your Bag %s times on the Sell pad", one = "Sell your Bag on the Sell pad" },
-	EggsOpened = { icon = "Egg", title = "EGGS", goal = "Open %s eggs", one = "Open an egg" },
-	Clicks = { icon = "Click", title = "CLICKS", goal = "Click %s times", one = "Click once" },
-	Merges = { icon = "Merge", title = "MERGE", goal = "Merge pets or clothes %s times", one = "Merge pets or clothes once" },
+	CarPhotos = { icon = "Camera", title = "CAR PHOTOS", goal = "Do %s car photoshoots", one = "Do a car photoshoot", short = "Do %s photoshoots", shortOne = "Do a photoshoot" },
+	Interviews = { icon = "Interview", title = "INTERVIEWS", goal = "Give %s live interviews", one = "Give a live interview", short = "Give %s interviews", shortOne = "Give an interview" },
+	YachtSessions = { icon = "Yacht", title = "YACHT PARTIES", goal = "Throw %s yacht parties", one = "Throw a yacht party", short = "Throw %s yacht parties", shortOne = "Throw a yacht party" },
+	JetRentals = { icon = "Jet", title = "JET FLIGHTS", goal = "Take %s private jet flights", one = "Take a private jet flight", short = "Take %s jet flights", shortOne = "Take a jet flight" },
+	Sells = { icon = "Sell", title = "SELL", goal = "Sell your Bag %s times on the Sell pad", one = "Sell your Bag on the Sell pad", short = "Sell your Bag %s times", shortOne = "Sell your Bag" },
+	EggsOpened = { icon = "Egg", title = "EGGS", goal = "Open %s eggs", one = "Open an egg", short = "Open %s eggs", shortOne = "Open an egg" },
+	Clicks = { icon = "Click", title = "CLICKS", goal = "Click %s times", one = "Click once", short = "Click %s times", shortOne = "Click once" },
+	Merges = { icon = "Merge", title = "MERGE", goal = "Merge pets or clothes %s times", one = "Merge pets or clothes once", short = "Merge %s times", shortOne = "Merge pets or clothes" },
 }
 Quests.Info = QUESTS
 
@@ -98,16 +98,23 @@ local function questInfo(key)
 	return nil
 end
 
-local function goalText(key, target)
+-- Cel zadania jako napis; short = krótsza wersja do listy na ekranie.
+local function goalText(key, target, short)
 	local look = QUESTS[key]
 	if look == nil then
 		return key
 	end
-	if target == 1 and look.one ~= nil then
-		return look.one
+	local one, many = look.one, look.goal
+	if short then
+		one, many = look.shortOne or one, look.short or many
 	end
-	return string.format(look.goal, Format.number(target))
+	if target == 1 and one ~= nil then
+		return one
+	end
+	return string.format(many, Format.number(target))
 end
+Quests.goalText = goalText
+Quests.questInfo = questInfo
 
 local function clock(seconds)
 	seconds = math.max(0, math.floor(seconds))

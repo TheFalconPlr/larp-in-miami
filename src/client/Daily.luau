@@ -134,6 +134,8 @@ local function artFor(item)
 	return "Starter", "Gift"
 end
 
+Daily.artFor = artFor -- też lista zadań na ekranie (QuestTracker)
+
 local function itemText(item)
 	local count = item.Count or 1
 	if item.Kind == "Boost" then
@@ -558,6 +560,14 @@ function Daily.start(hud)
 		setTab(tab)
 	end
 	Daily.open = openWindow
+	-- Przycisk REWARDS i nagłówek listy zadań na ekranie (QuestTracker): otwiera albo zamyka okno.
+	function Daily.toggle(tab)
+		if window.isOpen() then
+			window.hide()
+		else
+			openWindow(tab)
+		end
+	end
 
 	-- odbiór: znaczek „wbija się” w kafelek, a komunikat o nagrodzie jest jeden, na dole ekranu
 	local function stamp(day)

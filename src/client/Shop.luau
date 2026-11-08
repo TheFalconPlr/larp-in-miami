@@ -49,9 +49,16 @@ local SIDE = {
 	TipSizeTouch = 24,
 	TipTouchTime = 2.5, -- na telefonie napis po dotknięciu znika po tylu sekundach
 	ShortScreen = 560, -- niższy ekran (telefon poziomo): kolumna po prawej od góry, ciaśniej
+	ColumnGap = 22, -- odstęp kafelków w kolumnie (napisy SHOP i TELEPORT wystają ok. 13 px w dół)
+	-- Góra kolumny: nad nią lista zadań dziennych (QuestTracker: 10 + 236) i koszyk, który wystaje
+	-- nad kafelek SHOP (24 px, a przy unoszeniu 30). Gdy kolumna się nie mieści (np. z przyciskiem
+	-- Starter Pack na niskim ekranie), stoi tuż nad rzędem boostów, a lista zadań jest trochę mniejsza.
+	ColumnTop = 282,
+	ColumnAboveBoosts = 78, -- najniżej: dół kolumny tyle nad dolną krawędzią rzędu boostów (ikonka 60 + miejsce)
 	BurstCount = 14, -- małe koszyki wylatujące dookoła kafelka SHOP
 	IdleEvery = 5,
 }
+Shop.ShortScreen = SIDE.ShortScreen -- QuestTracker: na niskim ekranie lista stoi na lewo od kolumny
 
 ----------------------------------------------------------------- Ceny
 local prices = {} -- ["Pass:TwoXLP"] = cena z GetProductInfoAsync
@@ -486,13 +493,16 @@ function Shop.start(hud)
 		Parent = hud.gui,
 	})
 	hud.registerScale(root)
+	hud.shopColumn = root -- lista zadań na ekranie (QuestTracker) stoi nad kolumną
 	local rootList = Kit.new("UIListLayout", {
-		Padding = UDim.new(0, 30),
+		Padding = UDim.new(0, SIDE.ColumnGap),
 		HorizontalAlignment = Enum.HorizontalAlignment.Right,
 		SortOrder = Enum.SortOrder.LayoutOrder,
 		Parent = root,
 	})
-	-- Niski ekran (telefon poziomo): kolumna od góry i ciaśniej, żeby nie wchodziła na przycisk skoku.
+	-- Kolumna stoi niżej niż kiedyś, bo nad nią są zadania dzienne (QuestTracker): góra na ColumnTop,
+	-- ale najniżej tuż nad prawym dolnym rogiem (rząd ikonek boostów, a na ekranie dotykowym przycisk
+	-- skoku). Niski ekran (telefon poziomo): kolumna od góry i ciaśniej, a zadania na lewo od niej.
 	local function placeColumn()
 		local camera = Workspace.CurrentCamera
 		local viewY = (camera and camera.ViewportSize.Y) or Theme.BaseSize.Y
@@ -500,16 +510,35 @@ function Shop.start(hud)
 			root.AnchorPoint = Vector2.new(1, 0)
 			root.Position = UDim2.new(1, -18, 0, 4)
 			rootList.Padding = UDim.new(0, 14)
+			return
+		end
+		rootList.Padding = UDim.new(0, SIDE.ColumnGap)
+		local k = hudScale()
+		local height = hud.gui.AbsoluteSize.Y
+		local bottom = 14 + SIDE.ColumnAboveBoosts * k -- rząd boostów: 14 px od dołu, ikonki w skali UI
+		local playerGui = Players.LocalPlayer:FindFirstChild("PlayerGui")
+		local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
+		local jump = touchGui and touchGui:FindFirstChild("JumpButton", true)
+		if touchGui ~= nil and touchGui:IsA("ScreenGui") and touchGui.Enabled and jump ~= nil and jump:IsA("GuiObject") and jump.Visible and height > 0 then
+			bottom = math.max(bottom, height - jump.AbsolutePosition.Y + 12 * k)
+		end
+		local top = SIDE.ColumnTop * k
+		if height > 0 and top + root.AbsoluteSize.Y > height - bottom then
+			root.AnchorPoint = Vector2.new(1, 1)
+			root.Position = UDim2.new(1, -24, 1, -math.floor(bottom + 0.5))
 		else
-			root.AnchorPoint = Vector2.new(1, 0.5)
-			root.Position = UDim2.new(1, -24, 0.46, 0)
-			rootList.Padding = UDim.new(0, 30)
+			root.AnchorPoint = Vector2.new(1, 0)
+			root.Position = UDim2.new(1, -24, 0, math.floor(top + 0.5))
 		end
 	end
+	Shop.placeColumn = placeColumn
 	placeColumn()
 	if Workspace.CurrentCamera ~= nil then
 		Workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(placeColumn)
 	end
+	hud.gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeColumn)
+	-- przycisk Starter Pack znika po 72 h: kolumna jest niższa
+	root:GetPropertyChangedSignal("AbsoluteSize"):Connect(placeColumn)
 	local shopTile = makeShopTile(root)
 	local tpTile = makeTeleportTile(root)
 	local starterButton = makeStarterButton(root)
@@ -808,6 +837,7 @@ function Shop.start(hud)
 			tick = tick + 1
 			if tick % 8 == 1 then
 				placeTimers()
+				placeColumn() -- przycisk skoku pojawia się dopiero z postacią
 			end
 			-- kafelek SHOP: co kilka sekund połysk i podskok koszyka, Starter Pack: połysk
 			if tick % (SIDE.IdleEvery * 4) == 0 and not shopWindow.isOpen() then
