@@ -10,6 +10,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Settings = require(ReplicatedStorage:WaitForChild("Shared").Config.Settings)
+local Economy = require(ReplicatedStorage:WaitForChild("Shared").Config.Economy)
 local Theme = require(script.Parent.Theme)
 local Icons = require(script.Parent.Icons)
 local Kit = require(script.Parent.Kit)
@@ -444,6 +445,80 @@ function BUILD.Starter(root, anim)
 	pulse(anim, gift, 0.06, 1)
 end
 
+----------------------------------------------------------------- Zakładka FREE (Etap 11)
+local function percent(x)
+	return string.format("+%d%%", math.floor(x * 100 + 0.5))
+end
+
+-- Klucz przy sekretnych kodach (jak w PS99): obrazek ART.Key, a bez niego klucz z ramek: fioletowe
+-- ucho z jasnym oczkiem, trzon i dwa ząbki, z obrysem i połyskiem, przechylony.
+function BUILD.Code(root, anim, px)
+	Fx.glow(root, UDim2.fromScale(0.5, 0.5), 0, Color3.fromRGB(205, 140, 255), 0.65, 1).Size = UDim2.fromScale(1, 1)
+	local key
+	if Fx.image(ART.Key) ~= nil then
+		key = pic(root, "Key", "Key", 0.92, Vector2.new(0.5, 0.5), -12, 3)
+	else
+		key = frame(root, "Key", Vector2.new(1, 1), Vector2.new(0.5, 0.5), 3)
+		key.Rotation = -35
+		local stroke = math.max(3, math.floor((px or 120) / 34))
+		local purple = { Color3.fromRGB(222, 160, 255), Color3.fromRGB(122, 48, 236) }
+		local function part(name, size, pos, radius, z, colors)
+			local f = new("Frame", {
+				Name = name,
+				AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromScale(pos.X, pos.Y),
+				Size = UDim2.fromScale(size.X, size.Y),
+				BackgroundColor3 = Theme.White,
+				BorderSizePixel = 0,
+				ZIndex = z,
+				Parent = key,
+			})
+			new("UICorner", { CornerRadius = radius, Parent = f })
+			Kit.stroke(f, stroke, Enum.ApplyStrokeMode.Border)
+			Kit.gradient(f, colors or purple, 90)
+			return f
+		end
+		-- ząbki pod trzonem (trzon zakrywa ich górę), trzon pod uchem
+		part("Tooth", Vector2.new(0.08, 0.17), Vector2.new(0.74, 0.6), UDim.new(0.3, 0), 3)
+		part("Tooth", Vector2.new(0.08, 0.12), Vector2.new(0.87, 0.58), UDim.new(0.3, 0), 3)
+		part("Shaft", Vector2.new(0.58, 0.13), Vector2.new(0.65, 0.5), UDim.new(0.5, 0), 4)
+		part("Bow", Vector2.new(0.42, 0.42), Vector2.new(0.27, 0.5), UDim.new(0.5, 0), 5)
+		part("Hole", Vector2.new(0.17, 0.17), Vector2.new(0.27, 0.5), UDim.new(0.5, 0), 6, { Color3.fromRGB(255, 246, 255), Color3.fromRGB(226, 196, 255) })
+		local shine = new("Frame", {
+			Name = "Shine",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.19, 0.37),
+			Size = UDim2.fromScale(0.1, 0.05),
+			Rotation = -42,
+			BackgroundColor3 = Theme.White,
+			BackgroundTransparency = 0.2,
+			BorderSizePixel = 0,
+			ZIndex = 7,
+			Parent = key,
+		})
+		new("UICorner", { CornerRadius = UDim.new(0.5, 0), Parent = shine })
+	end
+	rock(anim, key, 7, 2.4)
+	pulse(anim, key, 0.05, 1.2)
+end
+
+function BUILD.Group(root, anim)
+	Fx.glow(root, UDim2.fromScale(0.5, 0.5), 0, Color3.fromRGB(150, 220, 255), 0.6, 1).Size = UDim2.fromScale(0.95, 0.95)
+	local people = pic(root, "Group", "Group", 0.78, Vector2.new(0.45, 0.55), -6, 3)
+	bob(anim, people, 0.04, 1.3)
+	rock(anim, people, 4, 2.6)
+	local b = badge(root, percent(Economy.Bonuses.Group), Vector2.new(0.6, 0.32), Vector2.new(0.76, 0.18), 10, 6)
+	pulse(anim, b, 0.12, 0.8)
+end
+
+function BUILD.Friends(root, anim)
+	Fx.glow(root, UDim2.fromScale(0.5, 0.5), 0, Color3.fromRGB(255, 170, 220), 0.6, 1).Size = UDim2.fromScale(0.95, 0.95)
+	local hands = pic(root, "Friends", "Friends", 0.78, Vector2.new(0.45, 0.55), -6, 3)
+	rock(anim, hands, 7, 1.6)
+	local b = badge(root, percent(Economy.Bonuses.FriendEach), Vector2.new(0.62, 0.32), Vector2.new(0.75, 0.18), 10, 6)
+	pulse(anim, b, 0.12, 0.8)
+end
+
 -- Grafika produktu. size = rozmiar w pikselach bazowych; parent i props opcjonalnie (Position…).
 function ShopArt.make(kind, size, parent, props)
 	local root = new("Frame", {
@@ -495,6 +570,9 @@ local MINI = {
 	Starter = { nil, "Gift" },
 	Ad = { nil, "Sparkles" },
 	Shop = { nil, "Shop" },
+	Code = { "Key", "Key" },
+	Group = { "Group", "Group" },
+	Friends = { "Friends", "Friends" },
 }
 function ShopArt.mini(kind)
 	local entry = MINI[kind] or { nil, "Sparkles" }

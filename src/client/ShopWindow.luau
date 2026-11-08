@@ -3,7 +3,9 @@
 --     podąża za przewijaniem),
 --   • OFFERS: duża karta Starter Packa (zegar, cztery rzeczy, BEST VALUE) i darmowy boost za reklamę,
 --   • PASSES: dwa wyróżnione gamepassy na szerokich kartach i 9 kart w siatce 3×3,
---   • BOOSTS: 2x LP i Auto Sell z kilkoma czasami do wyboru (BEST DEAL liczy się z cen) i Sell Now.
+--   • BOOSTS: 2x LP i Auto Sell z kilkoma czasami do wyboru (BEST DEAL liczy się z cen) i Sell Now,
+--   • FREE (Etap 11): bonus za grupę (JOIN GROUP) i znajomych (INVITE), a na samym dole sekretne
+--     kody (pole i REDEEM, jak w PS99) i podziękowanie. Akcje i komunikaty robi Codes.luau.
 -- Każda karta ma grafikę z ShopArt (animacja „w spoczynku”), promienie, spadające małe ikony w tle,
 -- połysk i reakcję na mysz. Otwarcie: przyciemnienie i rozmycie świata, okno wyskakuje, karty
 -- wjeżdżają po kolei. Animacje tła działają tylko przy otwartym oknie i tylko dla widocznych kart.
@@ -16,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Robux = require(Shared.Robux)
+local Economy = require(Shared.Config.Economy)
 local Theme = require(script.Parent.Ui.Theme)
 local Kit = require(script.Parent.Ui.Kit)
 local Icons = require(script.Parent.Ui.Icons)
@@ -25,6 +28,7 @@ local Fx = require(script.Parent.Ui.Fx)
 local ShopArt = require(script.Parent.Ui.ShopArt)
 local Catalog = require(script.Parent.ShopCatalog)
 local State = require(script.Parent.State)
+local Codes = require(script.Parent.Codes)
 
 local ShopWindow = {}
 
@@ -56,6 +60,9 @@ local L = {
 	RowH = 226,
 	Edge = 6,
 	CardRadius = 24,
+	BonusH = 200, -- karty JOIN GROUP i INVITE (FREE)
+	CodesH = 226, -- karta sekretnych kodów na samym dole
+	ThanksH = 50,
 }
 
 -- Kliknięcie w cenę: złote Robuxy wylatują z przycisku dookoła (jak koszyki z kafelka SHOP).
@@ -83,6 +90,7 @@ local TABS = {
 	{ key = "Offers", text = TEXT.Offers, icon = "Gift", colors = Theme.Gradients.Starter },
 	{ key = "Passes", text = TEXT.Passes, icon = "Crown", colors = Theme.Gradients.Premium },
 	{ key = "Boosts", text = TEXT.Boosts, icon = "Boost", colors = Theme.Gradients.LP },
+	{ key = "Free", text = TEXT.FreeTab, icon = "Code", colors = Theme.Gradients.Green },
 }
 
 ----------------------------------------------------------------- Klocki kart
@@ -647,6 +655,124 @@ local function sellNowCard(win, parent, width, order)
 	return card
 end
 
+----------------------------------------------------------------- FREE (Etap 11)
+-- Karta bonusu (połowa szerokości): grafika z promieniami po lewej, nazwa, opis i przycisk.
+local function bonusCard(win, parent, kind, order)
+	local info = Catalog.BONUS[kind]
+	local size = Vector2.new((L.ContentW - L.Gap) / 2, L.BonusH)
+	local card = makeCard(win, parent, size, info.colors, { name = "Bonus" .. kind, order = order, kind = info.art, shineWidth = 120, hoverScale = 1.02 })
+	local h = size.Y - L.Edge
+	local artX = 82
+	cardRays(card, UDim2.fromOffset(artX, h / 2), 150, false)
+	cardArt(card, info.art, 128, UDim2.fromOffset(artX, h / 2))
+	cardText(card.body, {
+		Name = "Title",
+		Position = UDim2.fromOffset(158, 12),
+		Size = UDim2.fromOffset(size.X - 172, 42),
+		Text = info.name,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, 34, 4)
+	card.desc = cardText(card.body, {
+		Name = "Desc",
+		Position = UDim2.fromOffset(160, 56),
+		Size = UDim2.fromOffset(size.X - 176, 58),
+		Text = "",
+		TextWrapped = true,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+	}, 20, 3)
+	card.button = priceButton(card.body, Vector2.new(size.X - 176, 52), { name = kind, anchor = Vector2.new(0, 1), position = UDim2.fromOffset(158, h - 12), colors = info.buttonColors, textSize = 28 })
+	card.button.setText(info.button)
+	return card
+end
+
+-- Sekretne kody (jak w PS99): duży klucz po lewej, „Got a secret code?”, pole na kod i REDEEM.
+local function codesCard(win, parent, order)
+	local info = Catalog.CODES
+	local size = Vector2.new(L.ContentW, L.CodesH)
+	local card = makeCard(win, parent, size, info.colors, { name = "Codes", order = order, kind = info.art, weight = 2, shineWidth = 150, hoverScale = 1.01, gradientRotation = 0 })
+	local h = size.Y - L.Edge
+	local artX = 124
+	cardRays(card, UDim2.fromOffset(artX, h / 2), 230, true)
+	cardArt(card, info.art, 196, UDim2.fromOffset(artX, h / 2))
+	local x = 254
+	cardText(card.body, {
+		Name = "Title",
+		Position = UDim2.fromOffset(x, 12),
+		Size = UDim2.fromOffset(size.X - x - 24, 54),
+		Text = TEXT.CodesTitle,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, 48, 4.5)
+	cardText(card.body, {
+		Name = "Desc",
+		Position = UDim2.fromOffset(x + 2, 66),
+		Size = UDim2.fromOffset(size.X - x - 26, 38),
+		Text = TEXT.CodesDesc,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, 32, 4, Theme.Gradients.Money)
+	local entryY = 114
+	local buttonW = 190
+	local entry = new("Frame", {
+		Name = "Entry",
+		Position = UDim2.fromOffset(x, entryY),
+		Size = UDim2.fromOffset(size.X - x - 24 - buttonW - 14, 62),
+		BackgroundColor3 = Theme.White,
+		BorderSizePixel = 0,
+		ZIndex = 8,
+		Parent = card.body,
+	})
+	Kit.corner(entry, 31)
+	Kit.stroke(entry, 4, Enum.ApplyStrokeMode.Border)
+	Kit.gradient(entry, { Color3.fromRGB(246, 247, 252), Color3.fromRGB(222, 226, 238) }, 90)
+	card.box = new("TextBox", {
+		Name = "Code",
+		Position = UDim2.fromOffset(24, 6),
+		Size = UDim2.new(1, -48, 1, -12),
+		BackgroundTransparency = 1,
+		ClearTextOnFocus = false,
+		Font = Theme.Font,
+		PlaceholderText = TEXT.CodesPlaceholder,
+		PlaceholderColor3 = Theme.Muted,
+		Text = "",
+		TextColor3 = Theme.Dark,
+		TextSize = 32,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 9,
+		Parent = entry,
+	})
+	card.button = priceButton(card.body, Vector2.new(buttonW, 58), { name = "Redeem", anchor = Vector2.new(1, 0.5), position = UDim2.new(1, -24, 0, entryY + 31), textSize = 32 })
+	card.button.setText(TEXT.Redeem)
+	cardText(card.body, {
+		Name = "Note",
+		Position = UDim2.fromOffset(x + 2, entryY + 72),
+		Size = UDim2.fromOffset(size.X - x - 26, 26),
+		Text = TEXT.CodesNote,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, 21, 3)
+	return card
+end
+
+-- „Thanks for the support” z sercem: ostatnia linijka sklepu.
+local function thanksLine(parent, order)
+	local holder = new("Frame", {
+		Name = "Thanks",
+		LayoutOrder = order,
+		Size = UDim2.fromOffset(L.ContentW, L.ThanksH),
+		BackgroundTransparency = 1,
+		Parent = parent,
+	})
+	Kit.line(holder, {
+		anchor = Vector2.new(0.5, 0.5),
+		position = UDim2.fromScale(0.5, 0.5),
+		height = L.ThanksH,
+		items = {
+			{ text = TEXT.ThanksSupport, size = 32 },
+			{ icon = "Heart", size = 38 },
+		},
+	})
+	return holder
+end
+
 ----------------------------------------------------------------- Zakładki
 local function makeTabs(win, parent)
 	win.tabs = {}
@@ -907,10 +1033,27 @@ function ShopWindow.create(hud, shop)
 	local sellW = 268
 	boostCard(win, row, groups[2], L.ContentW - sellW - L.Gap, 1)
 	sellNowCard(win, row, sellW, 2)
+	-- FREE: bonus za grupę i znajomych, a na samym dole sekretne kody i podziękowanie (jak w PS99)
+	sectionHeader(win, scroll, "Free", TEXT.FreeHeader, "Code", 40)
+	local bonusRow = new("Frame", {
+		Name = "BonusRow",
+		LayoutOrder = 41,
+		Size = UDim2.fromOffset(L.ContentW, L.BonusH),
+		BackgroundTransparency = 1,
+		Parent = scroll,
+	})
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, L.Gap), SortOrder = Enum.SortOrder.LayoutOrder, Parent = bonusRow })
+	win.bonus = {
+		Group = bonusCard(win, bonusRow, "Group", 1),
+		Friends = bonusCard(win, bonusRow, "Friends", 2),
+	}
+	sectionHeader(win, scroll, "Codes", TEXT.CodesHeader, "Key", 42)
+	win.codes = codesCard(win, scroll, 43)
+	thanksLine(scroll, 44)
 	makeTabs(win, railLayer)
 
 	------------------------------------------------------------- Zakładki i przewijanie
-	local order = { "Offers", "Passes", "Boosts" }
+	local order = { "Offers", "Passes", "Boosts", "Free" }
 	-- Położenia z Absolute* są w pikselach ekranu, a CanvasPosition w pikselach płótna (bez UIScale okna).
 	local function unit()
 		local k = fit.Scale * pop.Scale
@@ -1271,6 +1414,101 @@ function ShopWindow.create(hud, shop)
 	close.Activated:Connect(api.hide)
 	-- klik w przyciemnione tło obok okna też zamyka
 	backdrop.Activated:Connect(api.hide)
+
+	------------------------------------------------------------- FREE: bonusy i kody (Etap 11)
+	local codes = win.codes
+	local function redeem()
+		if codes.busy then
+			return
+		end
+		codes.busy = true
+		codes.button.setText("...")
+		local result = Codes.redeem(codes.box.Text)
+		codes.busy = false
+		codes.button.setText(TEXT.Redeem)
+		if result ~= nil and result.Ok then
+			codes.box.Text = ""
+			Fx.bump(codes.scale, 1.04, 0.35)
+			for i = 1, 6 do
+				Fx.sparkle(codes.body, UDim2.fromScale(0.35 + math.random() * 0.55, 0.2 + math.random() * 0.6), math.random(20, 32), Theme.White, i * 0.05, 20)
+			end
+			if (result.Pets or 0) > 0 or (result.Items or 0) > 0 then
+				-- jajka i boxy otwierają się na całym ekranie (Eggs.luau, Boxes.luau), więc sklep się zamyka
+				api.hide()
+			end
+		elseif result ~= nil then
+			Kit.shake(codes.button.body)
+		end
+	end
+	codes.button.Activated:Connect(function()
+		Sounds.play("Button")
+		redeem()
+	end)
+	codes.box.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			redeem()
+		end
+	end)
+	-- kody są krótkie (Logic/Rewards.CodeMaxLength), więc dłuższego tekstu nie da się wpisać
+	codes.box:GetPropertyChangedSignal("Text"):Connect(function()
+		if #codes.box.Text > 30 then
+			codes.box.Text = string.sub(codes.box.Text, 1, 30)
+		end
+	end)
+	win.bonus.Group.button.Activated:Connect(function()
+		if (State.view or {}).InGroup then
+			Sounds.play("NotEnough")
+			Kit.shake(win.bonus.Group.button.body)
+			return
+		end
+		Sounds.play("Button")
+		Codes.joinGroup()
+	end)
+	win.bonus.Friends.button.Activated:Connect(function()
+		Sounds.play("Button")
+		Codes.invite()
+	end)
+	local bonusKey = nil
+	local function pct(x)
+		return math.floor(x * 100 + 0.5)
+	end
+	local function renderBonus()
+		local view = State.view or {}
+		local B = Economy.Bonuses
+		local groupId = view.GroupId or 0
+		local name = win.groupName or TEXT.GroupDefault
+		local here = math.min(view.FriendsHere or 0, B.FriendMax)
+		-- stan przychodzi często (np. z Auto-Click), a karty zmieniają się rzadko
+		local key = table.concat({ tostring(groupId), tostring(view.InGroup), tostring(here), name }, "|")
+		if key == bonusKey then
+			return
+		end
+		bonusKey = key
+		local group = win.bonus.Group
+		if view.InGroup then
+			group.desc.Text = string.format(TEXT.GroupActive, name, pct(B.Group))
+			setOwnedButton(group.button, true)
+			group.button.setText(TEXT.Active)
+		elseif groupId <= 0 then
+			group.desc.Text = TEXT.GroupNone
+			setOwnedButton(group.button, false, Theme.Gradients.Gray)
+			group.button.setText(TEXT.Join)
+		else
+			group.desc.Text = string.format(TEXT.GroupDesc, pct(B.Group), name)
+			setOwnedButton(group.button, false, Theme.Gradients.Green)
+			group.button.setText(TEXT.Join)
+		end
+		win.bonus.Friends.desc.Text = string.format(TEXT.FriendsDesc, pct(B.FriendEach), B.FriendMax, here)
+		if groupId > 0 and not win.groupAsked then
+			win.groupAsked = true
+			Codes.groupName(groupId, function(groupName)
+				win.groupName = groupName
+				renderBonus()
+			end)
+		end
+	end
+	State.onChange(renderBonus)
+	renderBonus()
 
 	------------------------------------------------------------- Stan z Shop.luau
 	-- Która część jest pierwsza (OFFERS bywa pusta, gdy nie ma oferty ani reklamy).

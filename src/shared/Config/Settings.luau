@@ -72,6 +72,11 @@ local Settings = {
 			-- w poziomie, więc rysujemy go węższym: RobuxAspect = szerokość / wysokość (1 = jak w obrazku).
 			Robux = 15568894149,
 			RobuxAspect = 0.885,
+			-- Zakładka FREE na dole sklepu (Etap 11), na razie bez obrazków: klucz przy sekretnych kodach
+			-- jest rysowany z ramek, a grupa i znajomi to emoji. Wpisz ID Decala, gdy znajdziesz lepszy.
+			Key = 0, -- klucz (np. fioletowy jak w PS99)
+			Group = 0, -- ludzie / grupa (bonus +5% LP)
+			Friends = 0, -- znajomi (bonus +10% LP za każdego)
 		},
 		-- Wzór w tle okien (ikony „inwestowania”). Pusty = rysowany z kształtów; ID obrazka = kafelek z obrazka.
 		Pattern = "",

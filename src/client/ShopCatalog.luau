@@ -67,6 +67,26 @@ Catalog.TEXT = {
 		Error = "Something went wrong, try again",
 	},
 	TestBuy = "TEST PURCHASE",
+	-- zakładka FREE na dole sklepu (Etap 11): bonus za grupę i znajomych, sekretne kody
+	FreeTab = "FREE",
+	FreeHeader = "Free Bonuses",
+	GroupName = "Join the Group",
+	GroupDesc = "+%d%% LP forever for members of %s",
+	GroupActive = "You're in %s: +%d%% LP is on!",
+	GroupNone = "No group for this game yet",
+	GroupDefault = "our group",
+	Join = "JOIN GROUP",
+	Active = "ACTIVE",
+	FriendsName = "Play with Friends",
+	FriendsDesc = "+%d%% LP for each friend on your server (up to %d). Here now: %d",
+	Invite = "INVITE",
+	CodesHeader = "Secret Codes!",
+	CodesTitle = "Got a secret code?",
+	CodesDesc = "Enter it to unlock a reward!",
+	CodesPlaceholder = "Enter code",
+	Redeem = "REDEEM",
+	CodesNote = "Each code works once per account!",
+	ThanksSupport = "Thanks for the support",
 	BoostDaily = "Verified bonus: 2x LP %d min!",
 	BoostAd = "Thanks for watching! 2x LP +%d min",
 	BoostEnded = "%s boost ended",
@@ -117,6 +137,13 @@ Catalog.BOOST_GROUPS = {
 	},
 }
 Catalog.SELL_NOW = { key = "SellNow", name = "Sell Now", desc = "Sell your Bag from anywhere", art = "SellNow", colors = Theme.Gradients.Gold }
+
+-- Zakładka FREE (Etap 11): karty bonusów (grafika ShopArt, kolory, przycisk) i karta kodów.
+Catalog.BONUS = {
+	Group = { name = Catalog.TEXT.GroupName, art = "Group", colors = Theme.Gradients.CardBlue, button = Catalog.TEXT.Join, buttonColors = Theme.Gradients.Green },
+	Friends = { name = Catalog.TEXT.FriendsName, art = "Friends", colors = Theme.Gradients.CardPink, button = Catalog.TEXT.Invite, buttonColors = Theme.Gradients.Gold },
+}
+Catalog.CODES = { art = "Code", colors = Theme.Gradients.Premium }
 
 -- Starter Pack: cztery rzeczy w środku (grafika ShopArt i podpis).
 Catalog.STARTER_ITEMS = {
