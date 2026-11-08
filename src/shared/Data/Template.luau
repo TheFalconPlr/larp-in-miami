@@ -52,6 +52,11 @@ return {
 		AutoSell = 0, -- Auto-Sell bez gamepassa
 	},
 	Codes = {}, -- [kod] = true: wpisane kody (Etap 11; każdy kod raz na konto)
+	Daily = { -- nagroda dzienna (Etap 11)
+		Day = 0, -- dzień UTC (os.time() // 86400) ostatniego odbioru; 0 = jeszcze nigdy
+		Streak = 0, -- ile dni pod rząd (po dniu 7 cykl od dnia 1, a seria rośnie dalej)
+		Claimed = 0, -- wszystkie odebrane nagrody dzienne
+	},
 	Stats = {
 		LifetimeLP = 0,
 		LifetimeCash = 0,

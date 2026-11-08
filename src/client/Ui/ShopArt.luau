@@ -519,6 +519,32 @@ function BUILD.Friends(root, anim)
 	pulse(anim, b, 0.12, 0.8)
 end
 
+----------------------------------------------------------------- Nagroda dzienna (Etap 11)
+-- Jajko z nagrody: białe (A) albo złote (B), kolory jak w animacji otwierania (PetModels).
+local function rewardEgg(root, anim, tint, glow)
+	Fx.glow(root, UDim2.fromScale(0.5, 0.5), 0, glow, 0.6, 1).Size = UDim2.fromScale(0.95, 0.95)
+	local egg = pic(root, "Egg", "Egg", 0.8, Vector2.new(0.5, 0.52), -6, 3)
+	if egg:IsA("ImageLabel") then
+		egg.ImageColor3 = tint
+	end
+	rock(anim, egg, 6, 1.4)
+end
+
+function BUILD.RewardEggA(root, anim)
+	rewardEgg(root, anim, Color3.fromRGB(255, 255, 255), Theme.White)
+end
+
+function BUILD.RewardEggB(root, anim)
+	rewardEgg(root, anim, Color3.fromRGB(255, 208, 90), Theme.GoldText)
+end
+
+function BUILD.RewardBox(root, anim)
+	Fx.glow(root, UDim2.fromScale(0.5, 0.5), 0, Color3.fromRGB(255, 170, 90), 0.6, 1).Size = UDim2.fromScale(0.95, 0.95)
+	local box = pic(root, nil, "Clothes", 0.78, Vector2.new(0.5, 0.52), -6, 3)
+	rock(anim, box, 5, 1.8)
+	pulse(anim, box, 0.05, 1.1)
+end
+
 -- Grafika produktu. size = rozmiar w pikselach bazowych; parent i props opcjonalnie (Position…).
 function ShopArt.make(kind, size, parent, props)
 	local root = new("Frame", {
@@ -571,6 +597,9 @@ local MINI = {
 	Ad = { nil, "Sparkles" },
 	Shop = { nil, "Shop" },
 	Code = { "Key", "Key" },
+	RewardEggA = { "Egg", "Egg" },
+	RewardEggB = { "Egg", "Egg" },
+	RewardBox = { nil, "Clothes" },
 	Group = { "Group", "Group" },
 	Friends = { "Friends", "Friends" },
 }

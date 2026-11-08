@@ -14,9 +14,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Config/RobuxIds` (ID gamepassów i produktów z Creator Hub, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Shop` (zakupy za Robuxy: premium jajka, boosty, Starter Pack, reklamy, numery zakupów), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/Rewards` (nagrody: kody, darmowe jajka i boxy, później nagroda dzienna i zadania), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Robux` (ID i ceny gamepassów i produktów), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), ShopService (zakupy za Robuxy, reklamy, teleport), BonusService (bonus za grupę i znajomych), RewardsService (kody i nagrody), AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Codes` (kody i bonus za grupę i znajomych: akcje i komunikaty, wygląd jest w sklepie), `Shop` (kafelki SHOP i TELEPORT, Starter Pack, boosty w rogu, ceny i zakup), `ShopWindow` (okno sklepu, na dole zakładka FREE z kodami), `ShopThanks` (podziękowanie po zakupie), `ShopCatalog` (nazwy, opisy i grafiki produktów), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `Ui/Fx` (animacje i efekty: połysk, promienie, iskry, konfetti), `Ui/ShopArt` (grafiki gamepassów z obrazków), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Config/RobuxIds` (ID gamepassów i produktów z Creator Hub, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Shop` (zakupy za Robuxy: premium jajka, boosty, Starter Pack, reklamy, numery zakupów), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/Rewards` (nagrody: kody, nagroda dzienna, darmowe jajka i boxy, później zadania), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Robux` (ID i ceny gamepassów i produktów), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), ShopService (zakupy za Robuxy, reklamy, teleport), BonusService (bonus za grupę i znajomych), RewardsService (kody, nagroda dzienna i tablica z nią), AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Codes` (kody i bonus za grupę i znajomych: akcje i komunikaty, wygląd jest w sklepie), `Daily` (nagroda dzienna: okno i tablica), `Shop` (kafelki SHOP i TELEPORT, Starter Pack, boosty w rogu, ceny i zakup), `ShopWindow` (okno sklepu, na dole zakładka FREE z kodami), `ShopThanks` (podziękowanie po zakupie), `ShopCatalog` (nazwy, opisy i grafiki produktów), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `Ui/Fx` (animacje i efekty: połysk, promienie, iskry, konfetti), `Ui/ShopArt` (grafiki gamepassów z obrazków), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -392,9 +392,9 @@ Etap jest gotowy, gdy nagrody się zapisują i nie da się ich odebrać dwa razy
 
 | Część | Co | Stan |
 | --- | --- | --- |
-| 1 | Kody i bonus za grupę i znajomych | ✓ do testu |
-| 2 | Nagroda dzienna (7 dni z modelu ekonomii) | następna |
-| 3 | Zadania dzienne (3 z 8, z Aurą) | |
+| 1 | Kody i bonus za grupę i znajomych (na dole sklepu, zakładka FREE) | ✓ do testu |
+| 2 | Nagroda dzienna (7 dni z modelu ekonomii) | ✓ do testu |
+| 3 | Zadania dzienne (3 z 8, z Aurą) | następna |
 | 4 | Rankingi na ekranach LED przy spawnie i tytuł „Secret Society” | |
 | 5 | Polecenia (zaproszenia znajomych z nagrodą) | |
 | 6 | Zdjęcia z sesji (CaptureService) | |
@@ -423,7 +423,30 @@ Gdy pety albo ubrania się nie zmieszczą, kod nie przepada: gracz robi miejsce 
 
 **Grafiki (opcjonalnie):** klucz przy kodach jest rysowany z ramek, a grupa i znajomi to emoji. Lepsze obrazki wpiszesz w `Settings.Ui.ShopArt` jako ID Decala z Toolboxa: `Key` (klucz, np. fioletowy jak w PS99), `Group` (ludzie) i `Friends` (znajomi).
 
+**Nagroda dzienna.** 7 dni z modelu ekonomii:
+
+| Dzień | Nagroda |
+| --- | --- |
+| 1 | 2x LP 10 min |
+| 2 | 3 jajka A |
+| 3 | 2 najlepsze boxy |
+| 4 | 2x LP 30 min |
+| 5 | 3 złote jajka (B) |
+| 6 | 2 najlepsze boxy + Auto Sell 15 min |
+| 7 | premium jajko + 2x LP 30 min |
+
+- Okno „Daily Rewards” samo wyskakuje raz po wejściu, gdy jest co odebrać (czeka, aż gracz nie będzie w aktywności ani w innym oknie). Drugi raz otwiera je tablica z nagrodą dzienną w Downtown (napis „DAILY REWARDS” i duże E).
+- W oknie jest 7 dni: odebrane mają zielony znaczek, dzisiejszy jest złoty i pulsuje, a dzień 7 jest fioletowy. Nad dniami jest seria, a pod nimi CLAIM albo czas do następnej nagrody.
+- Dzień zmienia się o północy UTC (w Polsce o 1:00, latem o 2:00). Wtedy gracze w grze dostają komunikat „Your daily reward is ready!”.
+- Opuszczony dzień: seria od nowa (dzień 1). Po dniu 7 znowu dzień 1, a licznik serii rośnie dalej.
+- Odbiór działa z każdego miejsca (serwer nie sprawdza odległości od tablicy). Gdy jajka albo boxy się nie mieszczą, nagroda czeka do zrobienia miejsca i seria się nie zrywa tego dnia.
+- Zapis: `data.Daily` (`Day` = dzień UTC ostatniego odbioru, `Streak`, `Claimed`).
+
+**Twoja tablica:** model albo część `DailyBoard` w Downtown (gra nadaje tag `LarpDaily`, a napis i E stawia nad nią klient). Dopóki jej nie ma, serwer stawia tymczasową po drugiej stronie pola Sell niż sklep Aury: dwa słupki, biała tablica w złotej ramce i czerwony prezent na górze.
+
 Do testu:
+- Po wejściu okno nagrody dziennej powinno wyskoczyć samo. CLAIM DAY 1 daje 2x LP 10 min. Potem przycisk pokazuje czas do północy UTC.
+- `/daily next` udaje nowy dzień (seria trwa), a `/daily day 7` ustawia, że następna będzie z dnia 7 (premium jajko z animacją). `/daily reset` zaczyna od zera, a samo `/daily` pokazuje stan. Tablicę otwierasz klawiszem E.
 - SHOP → FREE (albo przewiń na sam dół), wpisz `larpinmiami`: jeden komunikat na dole i boost w prawym dolnym rogu. Drugi raz: „You already used this code”. `/codes` pokazuje, które kody już wpisałeś, a `/codes reset` pozwala wpisać je znowu.
 - `securethebag`: sklep się zamyka i lecą 3 jajka z animacją.
 - `/bonus group on` i `/bonus friends 3`: LP za klik rośnie (bez gamepassów 2x LP i Verified o 5% i o 30%, bo bonusy się dodają); `/bonus` pokazuje stan, a `auto` wraca do prawdziwego.
@@ -440,7 +463,7 @@ Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, mone
 | 8 | ✓ Gotowe: ubrania (opis wyżej). Etap „Pety, ubrania, sekrety” z dokumentu jest kompletny. |
 | 9 | ✓ Gotowe: Rebirth i Aura (opis wyżej). |
 | 10 | ✓ Gotowe: Robux (opis wyżej). Wszystkie ID z Creator Hub są w `Config/RobuxIds` (8.11.2026); zostaje test w Studio i po publikacji. |
-| 11 | W trakcie (opis wyżej). Część 1 gotowa do testu: kody i bonus za grupę i znajomych. Dalej nagroda dzienna, zadania dzienne (z Aurą), rankingi (LP, Rebirthy, jajka, Aura Level, sekrety) i tytuł „Secret Society”, polecenia, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
+| 11 | W trakcie (opis wyżej). Gotowe do testu: kody i bonus za grupę i znajomych (na dole sklepu) oraz nagroda dzienna. Dalej zadania dzienne (z Aurą), rankingi (LP, Rebirthy, jajka, Aura Level, sekrety) i tytuł „Secret Society”, polecenia, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
 | 12 | Testy i balans: zdarzenia w AnalyticsService (lejek nowego gracza, L$ i Aura), test zapisu (wyjście, szybki powrót, zmiana serwera, wyłączenie serwera), próby oszukiwania, zamknięty test z 10–20 osobami, słaby telefon. |
 | 13 | Premiera: `AllowInLive = false`, wyczyszczone testowe zapisy, checklista z dokumentu projektu, ikona i miniatury, pierwsze TikToki i kody na start. |
 
@@ -490,6 +513,7 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/ads` | znów 5 reklam za nagrodę na dziś |
 | `/starter` | Starter Pack znów do kupienia (72 h od teraz) |
 | `/codes` | lista kodów (✓ = już wpisany); `/codes reset` = wszystkie znowu do wpisania |
+| `/daily` | stan nagrody dziennej; `/daily next` = jak nowy dzień (seria trwa), `/daily day 5` = następna z dnia 5, `/daily reset` = od zera |
 | `/bonus group on` | udaje bonus za grupę (`off`, `auto` = naprawdę); `/bonus friends 3` udaje 3 znajomych na serwerze (`auto` = naprawdę); samo `/bonus` pokazuje stan |
 | `/stats` | pokazuje zapis |
 | `/reset` | czyści zapis, jak u nowego gracza |

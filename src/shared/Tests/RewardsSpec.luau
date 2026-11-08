@@ -1,6 +1,6 @@
 -- Testy nagród (Etap 11): dane nagród z modelu, kody (raz na konto, wielkość liter, miejsce w ekwipunku,
--- koniec ważności), jajka i boxy z nagród za darmo, najlepszy box, premium jajko i bonus za grupę
--- i znajomych. Uruchamia je ConfigCheck w Studio i tools/test_luau.py poza Roblox.
+-- koniec ważności), jajka i boxy z nagród za darmo, najlepszy box, premium jajko, nagroda dzienna
+-- (seria, cykl 7 dni, opuszczony dzień, północ UTC) i bonus za grupę i znajomych. Uruchamia je ConfigCheck w Studio i tools/test_luau.py poza Roblox.
 -- Zwraca funkcję: passed, failed, messages.
 
 local Shared = script.Parent.Parent
@@ -212,6 +212,44 @@ return function()
 	result = Rewards.redeemCode(d, ctx, "spectestcode", lcg(8), nil, NOW - 1)
 	check(result ~= nil and Shop.boostLeft(d, "LP") == 5 * 60, "kod przed końcem ważności działa")
 	R.Codes.SPECTESTCODE = nil
+
+	------------------------------------------------------------- Nagroda dzienna
+	local DAY = 86400
+	local T0 = 20000 * DAY + 3600 -- 1:00 UTC
+	d = fresh(3)
+	local st = Rewards.dailyState(d, T0)
+	check(st.CanClaim and st.Day == 1 and st.Streak == 0 and not st.Lost, "nowy gracz: dzień 1 do odebrania")
+	result = Rewards.claimDaily(d, ctx, lcg(9), nil, T0)
+	check(result ~= nil and result.Day == 1 and result.Streak == 1 and #result.Boosts == 1 and Shop.boostLeft(d, "LP") == 10 * 60, "dzień 1: boost 2x LP 10 minut")
+	result, reason = Rewards.claimDaily(d, ctx, lcg(9), nil, T0 + 3600)
+	check(result == nil and reason == "Claimed" and Shop.boostLeft(d, "LP") == 10 * 60, "drugi raz tego samego dnia: Claimed (bez nagrody)")
+	st = Rewards.dailyState(d, T0 + 3600)
+	check(not st.CanClaim and st.Day == 1 and st.SecondsLeft == DAY - 2 * 3600, "po odbiorze: następna o północy UTC")
+	result = Rewards.claimDaily(d, ctx, lcg(9), { pets = 50 }, T0 + DAY)
+	check(result ~= nil and result.Day == 2 and result.Streak == 2 and #result.Eggs == 1 and #result.Eggs[1].Pets == 3, "następny dzień: dzień 2 (3 jajka A)")
+	st = Rewards.dailyState(d, T0 + 3 * DAY)
+	check(st.CanClaim and st.Day == 1 and st.Lost and st.Streak == 0, "opuszczony dzień: od dnia 1, seria zerwana")
+	result = Rewards.claimDaily(d, ctx, lcg(9), nil, T0 + 3 * DAY)
+	check(result ~= nil and result.Day == 1 and result.Streak == 1 and d.Daily.Claimed == 3, "po zerwanej serii: dzień 1 i seria 1")
+	d = fresh(5)
+	local days = {}
+	for i = 0, 7 do
+		local r = Rewards.claimDaily(d, ctx, lcg(10 + i), { pets = 500, clothes = 500 }, T0 + i * DAY)
+		table.insert(days, (r and r.Day) or -1)
+	end
+	check(table.concat(days, ",") == "1,2,3,4,5,6,7,1" and d.Daily.Streak == 8 and d.Daily.Claimed == 8, "7 dni pod rząd, potem znowu dzień 1 (seria 8)")
+	d = fresh(1)
+	Rewards.claimDaily(d, ctx, lcg(11), nil, T0)
+	for i = 1, 8 do
+		d.Pets["y" .. i] = { Zone = 1, Rarity = "Common", Level = 0, Egg = "A" }
+	end
+	result, reason = Rewards.claimDaily(d, ctx, lcg(11), { pets = 8 }, T0 + DAY)
+	check(result == nil and reason == "PetInventory" and d.Daily.Streak == 1 and Rewards.dailyState(d, T0 + DAY).CanClaim, "pełny ekwipunek: dzień 2 czeka, seria bez zmian")
+	d = fresh(1)
+	Rewards.claimDaily(d, ctx, lcg(12), nil, 20000 * DAY + DAY - 1)
+	st = Rewards.dailyState(d, 20001 * DAY)
+	check(st.CanClaim and st.Day == 2, "nowy dzień zaczyna się o północy UTC")
+	check(Template.Daily ~= nil and Template.Daily.Day == 0 and Template.Daily.Streak == 0, "nowy gracz: nagroda dzienna od zera")
 
 	------------------------------------------------------------- Bonus za grupę i znajomych
 	local B = Economy.Bonuses

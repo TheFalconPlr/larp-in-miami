@@ -1,4 +1,4 @@
--- Nagrody (Etap 11): kody, a w kolejnych częściach nagroda dzienna i zadania dzienne. Czysta logika na
+-- Nagrody (Etap 11): kody, nagroda dzienna, a w kolejnej części zadania dzienne. Czysta logika na
 -- zapisie gracza (bez Roblox API), więc działa na serwerze (RewardsService) i w testach (RewardsSpec).
 --
 -- Nagroda z Economy.Rewards to { Label, Items }. Label to opis z dokumentu projektu, a Items to lista
@@ -187,6 +187,81 @@ function Rewards.redeemCode(data, ctx, text, random01, limits, now)
 	local result = Rewards.grant(data, ctx, info.Items, random01)
 	result.Code = code
 	result.Label = info.Label
+	return result
+end
+
+----------------------------------------------------------------- Nagroda dzienna
+-- 7 dni z Economy.Rewards.DailyStreak. Dzień zmienia się o północy UTC (jak Verified i reklamy).
+-- Odbiór dzień po dniu podnosi serię, a po dniu 7 cykl zaczyna się od dnia 1 (seria rośnie dalej).
+-- Opuszczony dzień: seria od nowa (dzień 1). Zapis: data.Daily = { Day, Streak, Claimed }.
+function Rewards.day(now)
+	return Shop.day(now)
+end
+
+local function dailyOf(data)
+	if type(data.Daily) ~= "table" then
+		data.Daily = {}
+	end
+	local d = data.Daily
+	d.Day = d.Day or 0 -- dzień UTC ostatniego odbioru (0 = nigdy)
+	d.Streak = d.Streak or 0 -- ile dni pod rząd (rośnie też po dniu 7)
+	d.Claimed = d.Claimed or 0 -- wszystkie odebrane nagrody dzienne
+	return d
+end
+
+-- Stan nagrody dziennej w chwili now (sekundy UTC):
+--   Day          dzień w cyklu (1–7): do odebrania albo odebrany dziś
+--   CanClaim     czy można dziś odebrać
+--   Streak       seria (przy zerwanej 0)
+--   Lost         seria właśnie się zerwała (opuszczony dzień)
+--   SecondsLeft  do następnej nagrody (0, gdy można odebrać)
+--   Reward       nagroda dnia Day (z Economy.Rewards.DailyStreak)
+function Rewards.dailyState(data, now)
+	local d = dailyOf(data)
+	local today = Rewards.day(now)
+	local days = #Economy.Rewards.DailyStreak
+	local state = { Streak = d.Streak, SecondsLeft = 0, Lost = false }
+	if d.Day == today and d.Streak > 0 then
+		state.CanClaim = false
+		state.Day = ((d.Streak - 1) % days) + 1
+		state.SecondsLeft = (today + 1) * Shop.DaySeconds - now
+	elseif d.Day == today - 1 and d.Streak > 0 then
+		state.CanClaim = true
+		state.Day = (d.Streak % days) + 1
+		state.Continues = true
+	else
+		state.CanClaim = true
+		state.Day = 1
+		state.Lost = d.Streak > 0
+		state.Streak = 0
+	end
+	state.Reward = Economy.Rewards.DailyStreak[state.Day]
+	return state
+end
+
+-- Odbiera dzisiejszą nagrodę. limits jak w Rewards.fits. Zwraca wynik jak Rewards.grant (z polami
+-- Day i Streak) albo nil i powód: Claimed (już dziś), PetInventory, ClothInventory. Bez miejsca
+-- nagroda czeka (można ją odebrać po zrobieniu miejsca, tego samego dnia).
+function Rewards.claimDaily(data, ctx, random01, limits, now)
+	local state = Rewards.dailyState(data, now)
+	if not state.CanClaim then
+		return nil, "Claimed"
+	end
+	local ok, reason = Rewards.fits(data, state.Reward.Items, limits)
+	if not ok then
+		return nil, reason
+	end
+	local d = dailyOf(data)
+	if state.Continues then
+		d.Streak = d.Streak + 1
+	else
+		d.Streak = 1
+	end
+	d.Day = Rewards.day(now)
+	d.Claimed = d.Claimed + 1
+	local result = Rewards.grant(data, ctx, state.Reward.Items, random01)
+	result.Day = state.Day
+	result.Streak = d.Streak
 	return result
 end
 

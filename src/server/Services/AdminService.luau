@@ -713,6 +713,44 @@ command("codes", "/codes [reset]", "lista kodów (✓ = już wpisany); reset = w
 	return "Kody: " .. table.concat(parts, " · ")
 end)
 
+command("daily", "/daily [reset|next|day 1-7]", "nagroda dzienna: reset = od zera, next = jak nowy dzień (seria trwa), day 5 = następna będzie z dnia 5", function(player, data, args)
+	local today = Rewards.day(os.time())
+	local what = string.lower(args[1] or "")
+	if type(data.Daily) ~= "table" then
+		data.Daily = { Day = 0, Streak = 0, Claimed = 0 }
+	end
+	if what == "reset" then
+		data.Daily.Day = 0
+		data.Daily.Streak = 0
+	elseif what == "next" then
+		if data.Daily.Streak <= 0 then
+			data.Daily.Streak = 1
+		end
+		data.Daily.Day = today - 1
+	elseif what == "day" then
+		local day = needLevel(args[2], #Economy.Rewards.DailyStreak)
+		if day < 1 then
+			error("dzień od 1 do " .. #Economy.Rewards.DailyStreak, 0)
+		end
+		data.Daily.Streak = day - 1
+		data.Daily.Day = today - 1
+		if day == 1 then
+			data.Daily.Day = 0
+		end
+	elseif what ~= "" then
+		error("reset, next albo day 1-7", 0)
+	end
+	local state = Rewards.dailyState(data, os.time())
+	return string.format(
+		"Nagroda dzienna: dzień %d (%s), seria %d, odebrane razem %d%s",
+		state.Day,
+		state.CanClaim and "do odebrania" or ("następna za " .. Format.duration(state.SecondsLeft)),
+		state.Streak,
+		data.Daily.Claimed or 0,
+		state.Lost and " · seria zerwana" or ""
+	)
+end)
+
 command("bonus", "/bonus [group on|off|auto] [friends 0-3|auto]", "udawaj bonus za grupę (+5% LP) albo znajomych na serwerze (+10% każdy)", function(player, _, args)
 	local what = string.lower(args[1] or "")
 	local value = string.lower(args[2] or "")

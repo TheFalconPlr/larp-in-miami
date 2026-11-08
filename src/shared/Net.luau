@@ -13,7 +13,7 @@ local EVENTS = { "Click", "TeleportToSell", "SetSetting", "Admin", "GroupJoined"
 -- klient → serwer z odpowiedzią: BuyUpgrade, BuyZone, StartActivity, BuyActivityTier, BuyEgg,
 -- EquipPet, EquipBest, SellPets, MergePets, BuyBox, WearCloth, WearBest, SellClothes, MergeClothes,
 -- Rebirth, BuyAuraUpgrade, Buy (Robux: okno zakupu), WatchAd (reklama za nagrodę), TeleportToZone,
--- RedeemCode (kod z budki z kodami)
+-- RedeemCode (kod z sekretnych kodów w sklepie), ClaimDaily (nagroda dzienna)
 local FUNCTIONS = {
 	"BuyUpgrade",
 	"BuyZone",
@@ -35,6 +35,7 @@ local FUNCTIONS = {
 	"WatchAd",
 	"TeleportToZone",
 	"RedeemCode",
+	"ClaimDaily",
 }
 
 local FOLDER_NAME = "Remotes"
