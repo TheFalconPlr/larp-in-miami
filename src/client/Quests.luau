@@ -74,6 +74,15 @@ local QUESTS = {
 	EggsOpened = { icon = "Egg", title = "EGGS", goal = "Open %s eggs", one = "Open an egg", short = "Open %s eggs", shortOne = "Open an egg" },
 	Clicks = { icon = "Click", title = "CLICKS", goal = "Click %s times", one = "Click once", short = "Click %s times", shortOne = "Click once" },
 	Merges = { icon = "Merge", title = "MERGE", goal = "Merge pets or clothes %s times", one = "Merge pets or clothes once", short = "Merge %s times", shortOne = "Merge pets or clothes" },
+	PlayMinutes = { icon = "Clock", title = "PLAY TIME", goal = "Play for %s minutes", one = "Play for a minute", short = "Play %s minutes", shortOne = "Play a minute" },
+	BoxesOpened = { icon = "Clothes", title = "BOXES", goal = "Open %s mystery boxes", one = "Open a mystery box", short = "Open %s boxes", shortOne = "Open a box" },
+	Upgrades = { icon = "Upgrades", title = "UPGRADES", goal = "Buy %s upgrades (Click or Bag)", one = "Buy an upgrade", short = "Buy %s upgrades", shortOne = "Buy an upgrade" },
+	SellPets = { icon = "Pets", title = "SELL PETS", goal = "Sell %s pets", one = "Sell a pet", short = "Sell %s pets", shortOne = "Sell a pet" },
+	Activities = { icon = "Trophy", title = "ACTIVITIES", goal = "Do %s activities of any kind", one = "Do an activity", short = "Do %s activities", shortOne = "Do an activity" },
+	ViralInterviews = { icon = "Interview", title = "GO VIRAL", goal = "Go viral in %s interviews", one = "Go viral in an interview", short = "Go viral %s times", shortOne = "Go viral once" },
+	GoldenEggs = { icon = "Egg", title = "GOLDEN EGGS", goal = "Open %s golden eggs", one = "Open a golden egg", short = "Open %s golden eggs", shortOne = "Open a golden egg" },
+	AuraBar = { icon = "Aura", title = "AURA BAR", goal = "Fill the Aura bar %s times", one = "Fill the Aura bar", short = "Fill the Aura bar %s times", shortOne = "Fill the Aura bar" },
+	MergeWins = { icon = "Merge", title = "LUCKY MERGE", goal = "Win %s merges", one = "Merge into Golden or Diamond", short = "Win %s merges", shortOne = "Win a merge" },
 }
 Quests.Info = QUESTS
 

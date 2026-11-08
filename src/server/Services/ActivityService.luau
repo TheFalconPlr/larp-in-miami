@@ -675,8 +675,16 @@ local function finish(player, kind, grade)
 	if aura ~= nil and aura > 0 then
 		LoopService.notify(player, { Kind = "Aura", Amount = aura, Source = "Bar" })
 	end
-	-- zadania dzienne: CarPhotos, Interviews, YachtSessions, JetRentals
+	-- zadania dzienne: CarPhotos, Interviews, YachtSessions, JetRentals, każda aktywność (Activities),
+	-- wywiad z oceną Viral albo lepszą (ViralInterviews) i pełny pasek Aury (AuraBar)
 	LoopService.progress(player, Rewards.ActivityQuests[kind], 1)
+	LoopService.progress(player, "Activities", 1)
+	if kind == "Interview" and type(grade) == "number" and grade >= Rewards.ViralGrade then
+		LoopService.progress(player, "ViralInterviews", 1)
+	end
+	if aura ~= nil and aura > 0 then
+		LoopService.progress(player, "AuraBar", 1)
+	end
 end
 
 local function start(player, kind)

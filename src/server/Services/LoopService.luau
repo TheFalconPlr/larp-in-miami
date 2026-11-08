@@ -405,6 +405,7 @@ local function buyUpgrade(player, kind, mode)
 		return { Ok = false, Reason = "NotEnough" }
 	end
 	LoopService.markDirty(player)
+	LoopService.progress(player, "Upgrades", bought) -- zadanie Upgrades: każdy kupiony poziom
 	local level = data.ClickLevel
 	if kind == "Bag" then
 		level = data.BagLevel
@@ -454,8 +455,14 @@ local function onHeartbeat(dt)
 			s.playTimer = s.playTimer + dt
 			if s.playTimer >= 1 then
 				local whole = math.floor(s.playTimer)
+				local minutesBefore = math.floor(data.Stats.PlaySeconds / 60)
 				data.Stats.PlaySeconds = data.Stats.PlaySeconds + whole
 				s.playTimer = s.playTimer - whole
+				-- zadanie PlayMinutes: każda pełna minuta w grze
+				local minutes = math.floor(data.Stats.PlaySeconds / 60) - minutesBefore
+				if minutes > 0 then
+					LoopService.progress(player, "PlayMinutes", minutes)
+				end
 			end
 			if GamepassService.owns(player, "AutoClick") and data.Settings.AutoClick ~= false then
 				s.autoTimer = s.autoTimer + dt * autoRate

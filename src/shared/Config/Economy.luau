@@ -810,6 +810,9 @@ local Economy = {
 						},
 					},
 				},
+				Requires = {
+					Activity = "Car",
+				},
 			},
 			{
 				Key = "Interviews",
@@ -823,6 +826,9 @@ local Economy = {
 							Count = 1,
 						},
 					},
+				},
+				Requires = {
+					Activity = "Interview",
 				},
 			},
 			{
@@ -838,6 +844,9 @@ local Economy = {
 						},
 					},
 				},
+				Requires = {
+					Activity = "Yacht",
+				},
 			},
 			{
 				Key = "JetRentals",
@@ -851,6 +860,9 @@ local Economy = {
 							Count = 1,
 						},
 					},
+				},
+				Requires = {
+					Activity = "Jet",
 				},
 			},
 			{
@@ -905,6 +917,147 @@ local Economy = {
 							Kind = "Boost",
 							Boost = "LP",
 							Minutes = 15,
+						},
+					},
+				},
+			},
+			{
+				Key = "PlayMinutes",
+				Target = 20,
+				Reward = {
+					Label = "Boost Auto-Sell 15 min",
+					Items = {
+						{
+							Kind = "Boost",
+							Boost = "AutoSell",
+							Minutes = 15,
+						},
+					},
+				},
+			},
+			{
+				Key = "BoxesOpened",
+				Target = 3,
+				Reward = {
+					Label = "2x jajko A",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "A",
+							Count = 2,
+						},
+					},
+				},
+				Requires = {
+					Zone = 3,
+				},
+			},
+			{
+				Key = "Upgrades",
+				Target = 5,
+				Reward = {
+					Label = "2x jajko A",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "A",
+							Count = 2,
+						},
+					},
+				},
+				Requires = {
+					Upgrade = true,
+				},
+			},
+			{
+				Key = "SellPets",
+				Target = 5,
+				Reward = {
+					Label = "Boost 2x LP 15 min",
+					Items = {
+						{
+							Kind = "Boost",
+							Boost = "LP",
+							Minutes = 15,
+						},
+					},
+				},
+			},
+			{
+				Key = "Activities",
+				Target = 10,
+				Reward = {
+					Label = "1x box",
+					Items = {
+						{
+							Kind = "Box",
+							Box = "Best",
+							Count = 1,
+						},
+					},
+				},
+				Requires = {
+					Activity = "Car",
+				},
+			},
+			{
+				Key = "ViralInterviews",
+				Target = 2,
+				Reward = {
+					Label = "2x jajko B",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "B",
+							Count = 2,
+						},
+					},
+				},
+				Requires = {
+					Activity = "Interview",
+				},
+			},
+			{
+				Key = "GoldenEggs",
+				Target = 3,
+				Reward = {
+					Label = "1x box",
+					Items = {
+						{
+							Kind = "Box",
+							Box = "Best",
+							Count = 1,
+						},
+					},
+				},
+			},
+			{
+				Key = "AuraBar",
+				Target = 1,
+				Reward = {
+					Label = "2x jajko B",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "B",
+							Count = 2,
+						},
+					},
+				},
+				Requires = {
+					Rebirth = 1,
+				},
+			},
+			{
+				Key = "MergeWins",
+				Target = 1,
+				Reward = {
+					Label = "1x box",
+					Items = {
+						{
+							Kind = "Box",
+							Box = "Best",
+							Count = 1,
 						},
 					},
 				},

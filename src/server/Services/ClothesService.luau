@@ -324,6 +324,7 @@ local function buyBox(player, box, count)
 	forcedNext[player] = nil
 	lastOpen[player] = now
 	LoopService.markDirty(player)
+	LoopService.progress(player, "BoxesOpened", #list) -- zadanie BoxesOpened: boxy za L$
 	local seconds = openTime(player)
 	local items = {}
 	for _, entry in ipairs(list) do
@@ -434,6 +435,9 @@ local function mergeClothes(player, ids)
 	end
 	LoopService.markDirty(player)
 	LoopService.progress(player, "Merges", 1) -- zadanie Merges: łączenie ubrań też się liczy
+	if result.Success then
+		LoopService.progress(player, "MergeWins", 1)
+	end
 	local reply = {
 		Ok = true,
 		Success = result.Success,

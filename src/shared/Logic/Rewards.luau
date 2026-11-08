@@ -267,22 +267,28 @@ function Rewards.claimDaily(data, ctx, random01, limits, now)
 end
 
 ----------------------------------------------------------------- Zadania dzienne
--- 3 zadania na dzień UTC (Economy.Rewards.QuestsPerDay) z puli 8 (Economy.Rewards.DailyQuests).
+-- 3 zadania na dzień UTC (Economy.Rewards.QuestsPerDay) z puli 17 (Economy.Rewards.DailyQuests).
 -- Losuje je serwer przy pierwszym stanie danego dnia (Rewards.ensureQuests), tylko spośród tych, które
--- gracz może już zrobić: aktywność wymaga swojej strefy i tieru (odrzutowiec trzeba najpierw kupić),
--- reszta działa od początku. Najpierw idą zadania, których nie było poprzednio, żeby dni się różniły.
+-- gracz może już zrobić (Requires: aktywność ze swoją strefą i tierem, strefa, Rebirth, ulepszenie nie
+-- na maksa). Najpierw idą zadania, których nie było poprzednio, żeby dni się różniły.
 -- Postęp (Rewards.questProgress) liczy to, co gracz robi sam: kliki bez Auto-Click, Sell na polu Sell,
--- skończone aktywności, jajka za L$ i łączenie petów albo ubrań. Auto-Click, Auto-Sell, Sell Now
--- i premium jajka się nie liczą, bo za Robuxy nigdy nie ma Aury. Skończone zadanie serwer od razu
+-- skończone aktywności (i oceny Viral w wywiadzie, pełny pasek Aury), jajka i boxy za L$, łączenie
+-- petów albo ubrań (próby i udane), sprzedaż petów, ulepszenia za L$ i minuty w grze. Auto-Click,
+-- Auto-Sell, Sell Now i premium jajka się nie liczą, bo za Robuxy nigdy nie ma Aury. Skończone zadanie serwer od razu
 -- odbiera (Rewards.claimQuest); bez miejsca w ekwipunku nagroda czeka na CLAIM w oknie (do północy).
 -- Za każde zadanie +10 Aury, a za komplet +20 (Economy.Aura, razy Aura Gain, od Rebirth 1).
 -- Zapis: data.Quests = { Day, List = { { Key, Progress, Claimed } }, Bonus, Completed }.
 
--- Zadanie za skończoną aktywność (rodzaje z Loop.ActivityKinds).
+-- Zadanie za skończoną aktywność (rodzaje z Loop.ActivityKinds); każda aktywność liczy się też
+-- do zadania Activities.
 Rewards.ActivityQuests = { Car = "CarPhotos", Interview = "Interviews", Yacht = "YachtSessions", Jet = "JetRentals" }
-local QUEST_ACTIVITY = {}
-for kind, key in pairs(Rewards.ActivityQuests) do
-	QUEST_ACTIVITY[key] = kind
+
+-- Najniższa ocena wywiadu, która liczy się do zadania ViralInterviews (Viral; Mega viral też).
+Rewards.ViralGrade = math.huge
+for i, grade in ipairs((Economy.Activities.Interview or {}).Grades or {}) do
+	if grade.Name == "Viral" then
+		Rewards.ViralGrade = i
+	end
 end
 
 -- Zadanie z puli po kluczu: { Key, Target, Reward } albo nil.
@@ -295,17 +301,35 @@ function Rewards.questInfo(key)
 	return nil
 end
 
--- Czy gracz może już zrobić zadanie key (aktywność: jej strefa i tier, np. kupiony odrzutowiec).
+-- Czy gracz może już zrobić zadanie key. Requires z Economy.Rewards.DailyQuests: Activity =
+-- aktywność ze swoją strefą i tierem (np. kupiony odrzutowiec), Zone = najniższa strefa, Rebirth =
+-- najmniej Rebirthów, Upgrade = Click Multiplier albo Bag jeszcze nie na maksa. Bez Requires: zawsze.
 function Rewards.questAvailable(data, key)
-	if Rewards.questInfo(key) == nil then
+	local info = Rewards.questInfo(key)
+	if info == nil then
 		return false
 	end
-	local kind = QUEST_ACTIVITY[key]
-	if kind == nil then
+	local needs = info.Requires
+	if needs == nil then
 		return true
 	end
-	local activity = Economy.Activities[kind]
-	return activity ~= nil and (data.ZonesUnlocked or 1) >= activity.Zone and Loop.activityTier(data, kind) >= 1
+	local zones = data.ZonesUnlocked or 1
+	if needs.Activity ~= nil then
+		local activity = Economy.Activities[needs.Activity]
+		if activity == nil or zones < activity.Zone or Loop.activityTier(data, needs.Activity) < 1 then
+			return false
+		end
+	end
+	if needs.Zone ~= nil and zones < needs.Zone then
+		return false
+	end
+	if needs.Rebirth ~= nil and (data.RebirthCount or 0) < needs.Rebirth then
+		return false
+	end
+	if needs.Upgrade and Loop.nextCost(data, "Click") == nil and Loop.nextCost(data, "Bag") == nil then
+		return false
+	end
+	return true
 end
 
 local function questsOf(data)

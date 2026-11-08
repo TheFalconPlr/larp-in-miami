@@ -139,6 +139,8 @@ local Settings = {
 		MergeFail = { Id = 116298781032555, Volume = 0.6, MinGap = 0.5 },
 		SecretReveal = { Id = 140367458608473, Volume = 0.8, MinGap = 0.5 },
 		SecretAnnounce = { Id = 76104215304832, Volume = 0.5, MinGap = 1 },
+		-- Rebirth: animacja po Rebirthie (RebirthUi), od 8.11.2026 zamiast „vine boom” i oklasków
+		Rebirth = { Id = 6809101819, Volume = 0.8, MinGap = 1 },
 
 		-- Sklep za Robuxy: otwarcie okna (ShopOpenSfx razem z „whoosh” ShopOpen, ten sam plik co
 		-- ClipPosted), „ka-ching” przy kliknięciu przycisku z ceną (zanim wyskoczy okno zakupu), zmiana

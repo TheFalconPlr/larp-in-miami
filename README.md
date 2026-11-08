@@ -217,7 +217,7 @@ Zasady są z dokumentu projektu (etap „Pety, ubrania, sekrety”). Okno PETS m
 - **Sekrety:** wypadają tylko ze złotego jajka (1 na 25 000). Mają specjalną animację: fioletowo-złote promienie, fioletowy błysk, „vine boom”, mocniejsze drżenie, napis SECRET PET! z „1 in 25,000” i dłuższy pokaz. Chwilę później u wszystkich graczy na wszystkich serwerach wjeżdża u góry pasek z głową awatara, np. „Nasdaq hatched a SECRET Iced Flamingo, 1 in 25,000” (u Ciebie „You hatched…”). Działa przez MessagingService. W Studio bez dostępu do API komunikat widać tylko na tym serwerze, a w Output jest wtedy ostrzeżenie.
 - **Golden i Diamond** mają złoty i diamentowy kolor (kulka albo Twój model), na karcie wstążkę GOLDEN albo DIAMOND, a w nazwie słowo z przodu, np. „Golden Pigeon”. Pety za graczem też są złote i diamentowe. Żeby nie było „Golden Golden Doge”, zmieniłem 4 robocze nazwy: Golden Doge → Crypto Doge, Diamond Flamingo → Iced Flamingo, Golden Whale → Mega Whale, Diamond Griffin → Jetset Griffin. Jeśli masz już modele petów pod starymi nazwami, zmień im nazwy. We własnym modelu części, które mają zostać w swoim kolorze (np. oczy), oznacz atrybutem `KeepColor` (true).
 
-Dźwięki w `Settings.Sounds`: `MergeFail` (nieudane łączenie, smutna trąbka), `SecretReveal` (sekret z jajka, „vine boom”) i `SecretAnnounce` (komunikat o sekrecie, gong z kabiny samolotu). Podmień je, jeśli znajdziesz lepsze.
+Dźwięki w `Settings.Sounds`: `MergeFail` (nieudane łączenie, smutna trąbka), `SecretReveal` (sekret z jajka, „vine boom”) i `SecretAnnounce` (komunikat o sekrecie, gong z kabiny samolotu). Podmień je, jeśli znajdziesz lepsze. Po Rebirthie gra `Rebirth` (6809101819, od 8.11.2026).
 
 Do testu: `/pet Rare 1 5` daje 5 Rare do łączenia, `/pet Epic 2 1 gold` daje Golden Epic, `/secret 3` daje sekreta ze strefy 3 i ogłasza go, `/mergeluck 5` ustawia Merge Luck, a `/clearindex` czyści indeks (znów są napisy NEW!).
 
@@ -445,7 +445,7 @@ Gdy pety albo ubrania się nie zmieszczą, kod nie przepada: gracz robi miejsce 
 
 **Twoja tablica:** model albo część `DailyBoard` w Downtown (gra nadaje tag `LarpDaily`, a napis i E stawia nad nią klient). Dopóki jej nie ma, serwer stawia tymczasową po drugiej stronie pola Sell niż sklep Aury: dwa słupki, biała tablica w złotej ramce i czerwony prezent na górze. To ta sama tablica dla nagrody dziennej i zadań (jak na kanwie mapy).
 
-**Zadania dzienne.** Każdego dnia (od północy UTC) gracz ma 3 zadania z puli 8:
+**Zadania dzienne.** Każdego dnia (od północy UTC) gracz ma 3 zadania z puli 17 (8 z dokumentu projektu i 9 dodanych 8.11.2026):
 
 | Zadanie | Cel | Nagroda | Od kiedy |
 | --- | --- | --- | --- |
@@ -457,10 +457,20 @@ Gdy pety albo ubrania się nie zmieszczą, kod nie przepada: gracz robi miejsce 
 | EggsOpened | 10 jajek | 1 najlepszy box | od początku |
 | Clicks | 500 kliknięć | 2 jajka A | od początku |
 | Merges | 1 łączenie petów albo ubrań | 2x LP 15 min | od początku |
+| PlayMinutes | 20 minut w grze | Auto Sell 15 min | od początku |
+| BoxesOpened | 3 boxy z ubraniami za L$ | 2 jajka A | strefa 3 (boxy) |
+| Upgrades | 5 poziomów Click Multiplier albo Bag (BUY MAX liczy każdy poziom) | 2 jajka A | dopóki coś nie jest na maksa |
+| SellPets | 5 sprzedanych petów | 2x LP 15 min | od początku |
+| Activities | 10 dowolnych aktywności | 1 najlepszy box | strefa 2 |
+| ViralInterviews | 2 wywiady z oceną Viral albo Mega viral (40% szans na wywiad) | 2 złote jajka (B) | strefa 3 |
+| GoldenEggs | 3 złote jajka (B) za L$ | 1 najlepszy box | od początku |
+| AuraBar | 1 pełny pasek Aury (10 minut aktywności, wywiad 2×) | 2 złote jajka (B) | Rebirth 1 |
+| MergeWins | 1 udane łączenie (Golden albo Diamond) | 1 najlepszy box | od początku |
 
 - Do tego +10 Aury za każde zadanie i +20 za wszystkie 3 (najwyżej 50 Aury dziennie, razy Aura Gain). Aura liczy się od Rebirth 1, a wcześniej zadania dają tylko nagrody.
-- Losuje serwer, tylko z zadań, które gracz już może zrobić (aktywność wymaga swojej strefy, a loty kupionego odrzutowca). Najpierw idą zadania, których nie było poprzednio, więc przy pełnej puli każdy dzień ma 3 nowe. Po Rebirthie (strefy od 1) nieskończone zadanie z aktywnością zamienia się na inne, od zera.
-- Liczy się to, co gracz robi sam: kliknięcia (bez Auto-Click), sprzedaż na polu Sell (też po darmowym teleporcie na Sell, ale bez Auto-Sell i Sell Now), skończone sesje, jajka za L$ (Triple Open liczy 3) i każda próba łączenia, też nieudana. Premium jajka i jajka z nagród się nie liczą. Powód: Aury nigdy nie ma za Robuxy, a zadania mają nagradzać grę.
+- Losuje serwer, tylko z zadań, które gracz już może zrobić (kolumna „Od kiedy”: aktywność wymaga swojej strefy, a loty kupionego odrzutowca). Na starcie (strefa 1) pula ma 9 zadań, a w strefie 5 po Rebirthie wszystkie 17. Najpierw idą zadania, których nie było poprzednio, więc przy pełnej puli każdy dzień ma 3 nowe. Po Rebirthie (strefy od 1) nieskończone zadanie z aktywnością zamienia się na inne, od zera.
+- Liczy się to, co gracz robi sam: kliknięcia (bez Auto-Click), sprzedaż na polu Sell (też po darmowym teleporcie na Sell, ale bez Auto-Sell i Sell Now), skończone sesje, jajka i boxy za L$ (Triple Open liczy 3), każda próba łączenia (też nieudana; MergeWins tylko udane), sprzedane pety, ulepszenia za L$ i minuty w grze. Premium jajka oraz jajka i boxy z nagród się nie liczą.
+- **Nowe zadanie** dopisujesz w `tools/gen_config.py` (`quest('Klucz', cel, nagroda, …)` z warunkami `activity`, `zone`, `rebirth`, `upgrade`), napisy w `src/client/Quests.luau` (tabela `QUESTS`), a postęp liczy serwer w miejscu, gdzie gracz to robi (`LoopService.progress(gracz, "Klucz", ile)`). Albo napisz mi pomysł, a ja to dopiszę. Powód: Aury nigdy nie ma za Robuxy, a zadania mają nagradzać grę.
 - Skończone zadanie odbiera się samo: jajka i boxy lecą z animacją, a po niej komunikat „Quest complete!” z nagrodą i „+10 AURA” przy liczniku Aury. Gdy pety albo ubrania się nie mieszczą, zadanie czeka w zakładce QUESTS ze złotym przyciskiem CLAIM (do północy UTC), a komunikat mówi, gdzie je odebrać.
 - Zakładka QUESTS: 3 karty z celem, nagrodą (i Aurą od Rebirth 1) oraz paskiem postępu; odebrane są zielone z napisem COMPLETED!, a czekające złote z CLAIM. Nad kartami jest komplet (+20 Aury), pod nimi czas do nowych zadań.
 - **Lista na ekranie** (jak w Pet Simulator 99, ale po swojemu): po prawej u góry, bez tła, wyrównana do prawej. Nagłówek „Daily Quests 1/3” z cienką złotą kreską, pod nim 3 zadania: cel białym napisem, a pod nim postęp (np. 12/25), ikona Aury (od Rebirth 1) i ikona nagrody (jajko, box albo boost). Gotowe do odebrania: złote CLAIM! i zadanie pulsuje; odebrane: szary cel i zielone DONE!. Po odebraniu wszystkich lista zwija się do „All done! New in …”.

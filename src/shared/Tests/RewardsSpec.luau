@@ -101,14 +101,39 @@ return function()
 		allValid = allValid and validReward(reward)
 	end
 	check(allValid, "nagroda dzienna: 7 dni, każdy z poprawną listą rzeczy")
-	local questsValid = #R.DailyQuests == 8 and R.QuestsPerDay >= 1 and R.QuestsPerDay <= #R.DailyQuests
+	local questsValid = #R.DailyQuests >= 15 and R.QuestsPerDay >= 1 and R.QuestsPerDay <= #R.DailyQuests
+	-- Requires: tylko znane warunki (Activity = rodzaj aktywności, Zone, Rebirth, Upgrade)
+	local function validNeeds(needs)
+		if needs == nil then
+			return true
+		end
+		for field, value in pairs(needs) do
+			if field == "Activity" then
+				if Economy.Activities[value] == nil then
+					return false
+				end
+			elseif field == "Zone" or field == "Rebirth" then
+				if type(value) ~= "number" or value < 1 then
+					return false
+				end
+			elseif field == "Upgrade" then
+				if value ~= true then
+					return false
+				end
+			else
+				return false
+			end
+		end
+		return true
+	end
 	local questKeys = {}
 	for _, quest in ipairs(R.DailyQuests) do
 		questsValid = questsValid and type(quest.Key) == "string" and not questKeys[quest.Key]
 		questsValid = questsValid and type(quest.Target) == "number" and quest.Target >= 1 and validReward(quest.Reward)
+		questsValid = questsValid and validNeeds(quest.Requires)
 		questKeys[quest.Key] = true
 	end
-	check(questsValid, "zadania dzienne: 8 różnych, cel ≥ 1, nagroda z poprawną listą rzeczy, 3 dziennie")
+	check(questsValid, "zadania dzienne: co najmniej 15 różnych, cel ≥ 1, poprawna nagroda i warunki, 3 dziennie")
 	local codesValid = count(R.Codes) >= 3
 	for code, reward in pairs(R.Codes) do
 		-- kod z małymi literami albo spacją byłby nie do wpisania (porównujemy po normalizeCode)
@@ -289,13 +314,21 @@ return function()
 	end
 	check(mapOk, "każda aktywność ma swoje zadanie (Rewards.ActivityQuests)")
 	check(3 * Economy.Aura.DailyQuestReward + Economy.Aura.DailyAllQuestsBonus == 50, "zadania dają najwyżej 50 Aury dziennie (bez Aura Gain)")
-	check(poolOf(fresh(1)) == "Sells,EggsOpened,Clicks,Merges", "strefa 1: zadania bez aktywności")
-	check(poolOf(fresh(2)) == "CarPhotos,Sells,EggsOpened,Clicks,Merges", "strefa 2: dochodzą sesje zdjęciowe")
-	check(poolOf(fresh(4)) == "CarPhotos,Interviews,YachtSessions,Sells,EggsOpened,Clicks,Merges", "strefa 4: zdjęcia, wywiady i jacht")
+	check(poolOf(fresh(1)) == "Sells,EggsOpened,Clicks,Merges,PlayMinutes,Upgrades,SellPets,GoldenEggs,MergeWins", "strefa 1: zadania bez aktywności, boxów i Aury (9)")
+	check(poolOf(fresh(2)) == "CarPhotos,Sells,EggsOpened,Clicks,Merges,PlayMinutes,Upgrades,SellPets,Activities,GoldenEggs,MergeWins", "strefa 2: dochodzą sesje zdjęciowe i dowolne aktywności")
+	check(poolOf(fresh(4)) == "CarPhotos,Interviews,YachtSessions,Sells,EggsOpened,Clicks,Merges,PlayMinutes,BoxesOpened,Upgrades,SellPets,Activities,ViralInterviews,GoldenEggs,MergeWins", "strefa 4: wywiady, jacht i boxy (od strefy 3)")
+	check(not Rewards.questAvailable(fresh(2), "BoxesOpened") and Rewards.questAvailable(fresh(3), "BoxesOpened"), "boxy od strefy 3")
 	d = fresh(5)
 	check(not Rewards.questAvailable(d, "JetRentals"), "loty odrzutowcem dopiero po kupnie pierwszego odrzutowca")
 	d.ActivityTiers.Jet = 1
-	check(poolOf(d) == "CarPhotos,Interviews,YachtSessions,JetRentals,Sells,EggsOpened,Clicks,Merges", "strefa 5 z odrzutowcem: cała pula 8")
+	check(not Rewards.questAvailable(d, "AuraBar"), "pasek Aury dopiero od Rebirth 1")
+	d.RebirthCount = 1
+	check(Rewards.questAvailable(d, "AuraBar") and #poolOf(d) > 0 and select(2, string.gsub(poolOf(d), ",", "")) + 1 == #R.DailyQuests, "strefa 5, odrzutowiec i Rebirth 1: cała pula")
+	d.ClickLevel = Loop.MaxLevel.Click
+	check(Rewards.questAvailable(d, "Upgrades"), "Upgrades: dopóki Bag nie jest na maksa")
+	d.BagLevel = Loop.MaxLevel.Bag
+	check(not Rewards.questAvailable(d, "Upgrades"), "Upgrades: nie, gdy Click i Bag są na maksa")
+	check(Rewards.ViralGrade == 3 and Economy.Activities.Interview.Grades[Rewards.ViralGrade].Name == "Viral", "wywiad Viral i lepszy liczy się do ViralInterviews")
 
 	-- losowanie: 3 różne z puli gracza, w kolejności puli, z zerowym postępem
 	local seen = {}
@@ -314,7 +347,7 @@ return function()
 		end
 	end
 	check(pickOk, "losowanie: 3 różne zadania z puli gracza, w kolejności puli, od zera")
-	check(count(seen) == 4, "w strefie 1 trafiają się wszystkie 4 zadania bez aktywności")
+	check(count(seen) == 9, "w strefie 1 trafia się każde z 9 zadań")
 	d = fresh(5)
 	d.ActivityTiers.Jet = 1
 	local first = keysOf(Rewards.ensureQuests(d, lcg(41), T0).List)
@@ -329,7 +362,7 @@ return function()
 	for _, quest in ipairs(d.Quests.List) do
 		newOk = newOk and not yesterday[quest.Key]
 	end
-	check(newOk, "następnego dnia inne zadania (przy puli 8 żadne z wczoraj)")
+	check(newOk, "następnego dnia inne zadania (przy dużej puli żadne z wczoraj)")
 
 	-- postęp i odbiór (lista ustawiona ręcznie: Sells 10, Clicks 500, Merges 1)
 	d = fresh(1)

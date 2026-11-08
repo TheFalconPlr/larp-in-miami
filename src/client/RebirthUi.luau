@@ -578,10 +578,7 @@ function RebirthUi.start(hud)
 				bar.Rotation = bar.Rotation + dt * 24
 			end
 		end)
-		Sounds.play("SecretReveal")
-		task.delay(0.3, function()
-			Sounds.play("Reward")
-		end)
+		Sounds.play("Rebirth")
 		popIn(bigLine, 0.05)
 		popIn(levelLine, 0.35)
 		popIn(multiplierLine, 0.6)

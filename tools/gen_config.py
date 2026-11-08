@@ -261,6 +261,26 @@ def build():
             r['Ends'] = calendar.timegm(day.timetuple())
         return r
 
+    # Zadanie dzienne: klucz (postęp liczy serwer, napisy w src/client/Quests.luau), cel, nagroda
+    # i Requires = kiedy gracz może je dostać: activity = aktywność ze swoją strefą i kupionym tierem,
+    # zone = najniższa strefa, rebirth = najmniej Rebirthów, upgrade = Click albo Bag jeszcze nie na maksa.
+    def quest(key, target, rew, activity=None, zone=None, rebirth=None, upgrade=False):
+        q = {'Key': key, 'Target': target, 'Reward': rew}
+        needs = {}
+        if activity is not None:
+            needs['Activity'] = activity
+        if zone is not None:
+            needs['Zone'] = zone
+        if rebirth is not None:
+            needs['Rebirth'] = rebirth
+        if upgrade:
+            needs['Upgrade'] = True
+        if needs:
+            q['Requires'] = needs
+        return q
+
+    box_zone = min(b['RequiresZone'] for b in clothes['Boxes'].values())  # od tej strefy kupuje się boxy
+
     rewards = {
         'DailyStreak': [
             reward('Boost 2x LP 10 min', boost(10)),
@@ -271,15 +291,35 @@ def build():
             reward('2x najlepszy box + Auto-Sell 15 min', boxes(2), boost(15, 'AutoSell')),
             reward('1x premium jajko + boost 2x LP 30 min', premium(1), boost(30)),
         ],
+        # 8 zadań z dokumentu projektu i 9 kolejnych (8.11.2026: większa pula, żeby dni się nie
+        # powtarzały). Dziennie 3 (QuestsPerDay), więc Aury z zadań jest tyle samo co przy 8.
         'DailyQuests': [
-            {'Key': 'CarPhotos', 'Target': 25, 'Reward': reward('2x jajko A', eggs('A', 2))},
-            {'Key': 'Interviews', 'Target': 5, 'Reward': reward('1x box', boxes(1))},
-            {'Key': 'YachtSessions', 'Target': 5, 'Reward': reward('2x jajko B', eggs('B', 2))},
-            {'Key': 'JetRentals', 'Target': 3, 'Reward': reward('1x box', boxes(1))},
-            {'Key': 'Sells', 'Target': 10, 'Reward': reward('Boost 2x LP 15 min', boost(15))},
-            {'Key': 'EggsOpened', 'Target': 10, 'Reward': reward('1x box', boxes(1))},
-            {'Key': 'Clicks', 'Target': 500, 'Reward': reward('2x jajko A', eggs('A', 2))},
-            {'Key': 'Merges', 'Target': 1, 'Reward': reward('Boost 2x LP 15 min', boost(15))},
+            quest('CarPhotos', 25, reward('2x jajko A', eggs('A', 2)), activity='Car'),
+            quest('Interviews', 5, reward('1x box', boxes(1)), activity='Interview'),
+            quest('YachtSessions', 5, reward('2x jajko B', eggs('B', 2)), activity='Yacht'),
+            quest('JetRentals', 3, reward('1x box', boxes(1)), activity='Jet'),
+            quest('Sells', 10, reward('Boost 2x LP 15 min', boost(15))),
+            quest('EggsOpened', 10, reward('1x box', boxes(1))),
+            quest('Clicks', 500, reward('2x jajko A', eggs('A', 2))),
+            quest('Merges', 1, reward('Boost 2x LP 15 min', boost(15))),
+            # minuty w grze (też bez ruchu)
+            quest('PlayMinutes', 20, reward('Boost Auto-Sell 15 min', boost(15, 'AutoSell'))),
+            # boxy z ubraniami za L$ (od strefy z boxami)
+            quest('BoxesOpened', 3, reward('2x jajko A', eggs('A', 2)), zone=box_zone),
+            # poziomy Click Multiplier albo Bag (BUY MAX liczy każdy poziom)
+            quest('Upgrades', 5, reward('2x jajko A', eggs('A', 2)), upgrade=True),
+            # sprzedane pety (okno PETS, tryb SELL)
+            quest('SellPets', 5, reward('Boost 2x LP 15 min', boost(15))),
+            # dowolne aktywności (auto, wywiad, jacht, odrzutowiec)
+            quest('Activities', 10, reward('1x box', boxes(1)), activity='Car'),
+            # wywiad z oceną Viral albo Mega viral (40% szans na wywiad)
+            quest('ViralInterviews', 2, reward('2x jajko B', eggs('B', 2)), activity='Interview'),
+            # jajka B za L$
+            quest('GoldenEggs', 3, reward('1x box', boxes(1))),
+            # pełny pasek Aury (10 minut aktywności, wywiad 2×), więc od Rebirth 1
+            quest('AuraBar', 1, reward('2x jajko B', eggs('B', 2)), rebirth=1),
+            # udane łączenie petów albo ubrań (wersja Golden albo Diamond)
+            quest('MergeWins', 1, reward('1x box', boxes(1))),
         ],
         'QuestsPerDay': 3,
         # Kody wpisuje się w budce z kodami (każdy raz na konto). Nagrody za progi polubień też są
