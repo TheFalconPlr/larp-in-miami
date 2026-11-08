@@ -6,12 +6,14 @@ local RunService = game:GetService("RunService")
 
 local Net = {}
 
--- klient → serwer: Click, TeleportToSell, SetSetting, Admin
+-- klient → serwer: Click, TeleportToSell, SetSetting, Admin, GroupJoined (gracz dołączył do grupy
+-- przyciskiem JOIN GROUP: serwer sprawdza to sam)
 -- serwer → klient: Sync (stan gracza), Notify (komunikaty)
-local EVENTS = { "Click", "TeleportToSell", "SetSetting", "Admin", "Sync", "Notify" }
+local EVENTS = { "Click", "TeleportToSell", "SetSetting", "Admin", "GroupJoined", "Sync", "Notify" }
 -- klient → serwer z odpowiedzią: BuyUpgrade, BuyZone, StartActivity, BuyActivityTier, BuyEgg,
 -- EquipPet, EquipBest, SellPets, MergePets, BuyBox, WearCloth, WearBest, SellClothes, MergeClothes,
--- Rebirth, BuyAuraUpgrade, Buy (Robux: okno zakupu), WatchAd (reklama za nagrodę), TeleportToZone
+-- Rebirth, BuyAuraUpgrade, Buy (Robux: okno zakupu), WatchAd (reklama za nagrodę), TeleportToZone,
+-- RedeemCode (kod z budki z kodami)
 local FUNCTIONS = {
 	"BuyUpgrade",
 	"BuyZone",
@@ -32,6 +34,7 @@ local FUNCTIONS = {
 	"Buy",
 	"WatchAd",
 	"TeleportToZone",
+	"RedeemCode",
 }
 
 local FOLDER_NAME = "Remotes"

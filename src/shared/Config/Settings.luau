@@ -158,6 +158,11 @@ local Settings = {
 		DuckTime = 0.6,
 		RestoreTime = 1.2,
 	},
+	-- Bonus za grupę (+5% LP, Economy.Bonuses). Id = 0: grupa, do której należy gra (Larping Studio$).
+	-- Wpisz ID innej grupy tylko wtedy, gdy bonus ma być za inną grupę niż właściciel gry.
+	Group = {
+		Id = 0,
+	},
 	Admin = {
 		-- Komendy testowe (/cmds) w Studio.
 		AllowInStudio = true,

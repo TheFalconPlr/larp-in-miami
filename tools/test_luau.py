@@ -3,7 +3,8 @@
 Sprawdza:
   1. czy wszystkie pliki .luau się kompilują (nasz kod piszemy w podzbiorze zgodnym z Lua 5.1,
      więc to też poprawny Luau; biblioteki z folderów Vendor pomijamy, bo używają pełnego Luau),
-  2. ConfigSpec, LoopSpec, ClothesSpec, InterviewSpec, RebirthSpec i ShopSpec (te same testy, które w Studio uruchamia ConfigCheck),
+  2. ConfigSpec, LoopSpec, ClothesSpec, InterviewSpec, RebirthSpec, ShopSpec i RewardsSpec (te same testy, które w Studio
+     uruchamia ConfigCheck),
   3. zgodność wzorów i pętli z modelem ekonomii w Pythonie (koszty, LP za klik, Bag, szanse, ceny,
      warstwy petów i ubrań),
   4. losowanie ze szczęściem (Monte Carlo) względem wzoru na szanse.
@@ -123,6 +124,7 @@ run_spec('ClothesSpec', req(Shared.Tests.ClothesSpec)())
 run_spec('InterviewSpec', req(Shared.Tests.InterviewSpec)())
 run_spec('RebirthSpec', req(Shared.Tests.RebirthSpec)())
 run_spec('ShopSpec', req(Shared.Tests.ShopSpec)())
+run_spec('RewardsSpec', req(Shared.Tests.RewardsSpec)())
 
 # ---------------------------------------------------------------- 3. zgodność z modelem w Pythonie
 cfg = final_cfg2()

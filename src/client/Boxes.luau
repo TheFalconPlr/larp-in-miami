@@ -1412,6 +1412,27 @@ function Boxes.start(hud)
 		end
 	end)
 
+	-- ubrania z nagród (kody, nagroda dzienna, zadania) w Notify „Reward” (Boxes = { { Box, Items } }):
+	-- ta sama animacja co po kupnie. Jajka z tej samej nagrody (Eggs.luau) zaczynają od razu, więc boxy
+	-- chwilę czekają i otwierają się po nich.
+	State.onNotify(function(payload)
+		if payload.Kind ~= "Reward" or type(payload.Boxes) ~= "table" or #payload.Boxes == 0 then
+			return
+		end
+		task.spawn(function()
+			task.wait(0.5)
+			for _, group in ipairs(payload.Boxes) do
+				if type(group.Items) == "table" and #group.Items > 0 then
+					while opening or State.busy do
+						task.wait(0.2)
+					end
+					dialog.hide()
+					open(group.Box, group.Items, payload.OpenTime or Economy.OpenTimeSeconds)
+				end
+			end
+		end)
+	end)
+
 	for _, stand in ipairs(CollectionService:GetTagged(BOX_TAG)) do
 		onStandAdded(stand)
 	end

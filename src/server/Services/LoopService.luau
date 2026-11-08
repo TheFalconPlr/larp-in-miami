@@ -22,6 +22,7 @@ local Net = require(Shared.Net)
 local DataService = require(script.Parent.DataService)
 local GamepassService = require(script.Parent.GamepassService)
 local ZoneService = require(script.Parent.ZoneService)
+local BonusService = require(script.Parent.BonusService)
 
 local LoopService = {}
 LoopService.TestLuckAttribute = "LarpTestLuck" -- /adminluck: mnożnik szczęścia (atrybut gracza)
@@ -33,7 +34,7 @@ local pads = {} -- lista pól Sell
 local hookedPads = {}
 
 ----------------------------------------------------------------- Pomocnicze
--- Kontekst do obliczeń z Shared/Logic/Loop. Kolejne etapy dopiszą tu bonusy i boosty.
+-- Kontekst do obliczeń z Shared/Logic/Loop: strefa, gamepassy, bonus za grupę i znajomych, boosty i warstwy.
 local function contextFor(player)
 	local zone = 1
 	local data = DataService.get(player)
@@ -44,8 +45,8 @@ local function contextFor(player)
 	local ctx = {
 		zone = zone,
 		passes = GamepassService.passes(player),
-		inGroup = false, -- Etap 11: bonus za grupę
-		friends = 0, -- Etap 11: bonus za znajomych
+		inGroup = BonusService.inGroup(player), -- +5% LP za grupę gry (Etap 11)
+		friends = BonusService.friends(player), -- +10% LP za każdego znajomego na serwerze (najwyżej 3)
 		boost = false, -- boost 2x LP (produkt, Starter Pack, reklama, Verified)
 		autoSellBoost = false, -- boost Auto-Sell (produkt, Starter Pack)
 		petLayer = 1,
@@ -472,6 +473,10 @@ function LoopService.start()
 	end)
 	-- inna strefa = inny mnożnik LP, więc HUD dostaje nowy stan
 	ZoneService.onChanged(function(player)
+		LoopService.markDirty(player)
+	end)
+	-- bonus za grupę i znajomych (Etap 11) zmienia LP za klik
+	BonusService.onChanged(function(player)
 		LoopService.markDirty(player)
 	end)
 

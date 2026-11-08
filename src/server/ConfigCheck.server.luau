@@ -1,8 +1,8 @@
 -- Testy: uruchamiają się tylko w Studio (Play). Sprawdzają liczby z arkusza (ConfigSpec), zasady
 -- pętli (LoopSpec), ubrania (ClothesSpec), treść wywiadu (InterviewSpec) oraz Rebirth i Aurę
--- (RebirthSpec) oraz zakupy za Robuxy (ShopSpec). Wynik w oknie Output: „ConfigCheck: OK”,
--- „LoopCheck: OK”, „ClothesCheck: OK”, „InterviewCheck: OK”, „RebirthCheck: OK” i „ShopCheck: OK”
--- albo lista błędów.
+-- (RebirthSpec), zakupy za Robuxy (ShopSpec) i nagrody (RewardsSpec). Wynik w oknie Output:
+-- „ConfigCheck: OK”, „LoopCheck: OK”, „ClothesCheck: OK”, „InterviewCheck: OK”, „RebirthCheck: OK”,
+-- „ShopCheck: OK” i „RewardsCheck: OK” albo lista błędów.
 
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,6 +21,7 @@ local clothesSpec = require(Shared.Tests.ClothesSpec)
 local interviewSpec = require(Shared.Tests.InterviewSpec)
 local rebirthSpec = require(Shared.Tests.RebirthSpec)
 local shopSpec = require(Shared.Tests.ShopSpec)
+local rewardsSpec = require(Shared.Tests.RewardsSpec)
 
 local function report(name, what, passed, failed, messages)
 	if failed == 0 then
@@ -39,3 +40,4 @@ report("ClothesCheck", "ubrań: boxy, sloty, warstwa LP, sprzedaż, łączenie",
 report("InterviewCheck", "wywiadu: pytania, odpowiedzi, losowanie", interviewSpec())
 report("RebirthCheck", "Rebirth i Aury: reset, poziomy, pasek, sklep, poświata", rebirthSpec())
 report("ShopCheck", "zakupów za Robuxy: paragony, boosty, Starter Pack, premium jajka", shopSpec())
+report("RewardsCheck", "nagród: kody, darmowe jajka i boxy, bonus za grupę i znajomych", rewardsSpec())

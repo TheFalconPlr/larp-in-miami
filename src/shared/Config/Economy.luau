@@ -715,54 +715,233 @@ local Economy = {
 		Note = "Ceny w UI zawsze z MarketplaceService:GetProductInfoAsync. ID są w Config/RobuxIds.",
 	},
 	Rewards = {
-		DailyStreak = { "Boost 2x LP 10 min", "3x jajko A", "2x najlepszy box", "Boost 2x LP 30 min", "3x jajko B", "2x najlepszy box + Auto-Sell 15 min", "1x premium jajko + boost 2x LP 30 min" },
+		DailyStreak = {
+			{
+				Label = "Boost 2x LP 10 min",
+				Items = {
+					{
+						Kind = "Boost",
+						Boost = "LP",
+						Minutes = 10,
+					},
+				},
+			},
+			{
+				Label = "3x jajko A",
+				Items = {
+					{
+						Kind = "Egg",
+						Egg = "A",
+						Count = 3,
+					},
+				},
+			},
+			{
+				Label = "2x najlepszy box",
+				Items = {
+					{
+						Kind = "Box",
+						Box = "Best",
+						Count = 2,
+					},
+				},
+			},
+			{
+				Label = "Boost 2x LP 30 min",
+				Items = {
+					{
+						Kind = "Boost",
+						Boost = "LP",
+						Minutes = 30,
+					},
+				},
+			},
+			{
+				Label = "3x jajko B",
+				Items = {
+					{
+						Kind = "Egg",
+						Egg = "B",
+						Count = 3,
+					},
+				},
+			},
+			{
+				Label = "2x najlepszy box + Auto-Sell 15 min",
+				Items = {
+					{
+						Kind = "Box",
+						Box = "Best",
+						Count = 2,
+					},
+					{
+						Kind = "Boost",
+						Boost = "AutoSell",
+						Minutes = 15,
+					},
+				},
+			},
+			{
+				Label = "1x premium jajko + boost 2x LP 30 min",
+				Items = {
+					{
+						Kind = "PremiumEgg",
+						Count = 1,
+					},
+					{
+						Kind = "Boost",
+						Boost = "LP",
+						Minutes = 30,
+					},
+				},
+			},
+		},
 		DailyQuests = {
 			{
 				Key = "CarPhotos",
 				Target = 25,
-				Reward = "2x jajko A",
+				Reward = {
+					Label = "2x jajko A",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "A",
+							Count = 2,
+						},
+					},
+				},
 			},
 			{
 				Key = "Interviews",
 				Target = 5,
-				Reward = "1x box",
+				Reward = {
+					Label = "1x box",
+					Items = {
+						{
+							Kind = "Box",
+							Box = "Best",
+							Count = 1,
+						},
+					},
+				},
 			},
 			{
 				Key = "YachtSessions",
 				Target = 5,
-				Reward = "2x jajko B",
+				Reward = {
+					Label = "2x jajko B",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "B",
+							Count = 2,
+						},
+					},
+				},
 			},
 			{
 				Key = "JetRentals",
 				Target = 3,
-				Reward = "1x box",
+				Reward = {
+					Label = "1x box",
+					Items = {
+						{
+							Kind = "Box",
+							Box = "Best",
+							Count = 1,
+						},
+					},
+				},
 			},
 			{
 				Key = "Sells",
 				Target = 10,
-				Reward = "Boost 2x LP 15 min",
+				Reward = {
+					Label = "Boost 2x LP 15 min",
+					Items = {
+						{
+							Kind = "Boost",
+							Boost = "LP",
+							Minutes = 15,
+						},
+					},
+				},
 			},
 			{
 				Key = "EggsOpened",
 				Target = 10,
-				Reward = "1x box",
+				Reward = {
+					Label = "1x box",
+					Items = {
+						{
+							Kind = "Box",
+							Box = "Best",
+							Count = 1,
+						},
+					},
+				},
 			},
 			{
 				Key = "Clicks",
 				Target = 500,
-				Reward = "2x jajko A",
+				Reward = {
+					Label = "2x jajko A",
+					Items = {
+						{
+							Kind = "Egg",
+							Egg = "A",
+							Count = 2,
+						},
+					},
+				},
 			},
 			{
 				Key = "Merges",
 				Target = 1,
-				Reward = "Boost 2x LP 15 min",
+				Reward = {
+					Label = "Boost 2x LP 15 min",
+					Items = {
+						{
+							Kind = "Boost",
+							Boost = "LP",
+							Minutes = 15,
+						},
+					},
+				},
 			},
 		},
 		QuestsPerDay = 3,
 		Codes = {
-			LARPINMIAMI = "Boost 2x LP 15 min",
-			SECURETHEBAG = "3x jajko A",
-			LIKES1K = "Boost 2x LP 30 min",
+			LARPINMIAMI = {
+				Label = "Boost 2x LP 15 min",
+				Items = {
+					{
+						Kind = "Boost",
+						Boost = "LP",
+						Minutes = 15,
+					},
+				},
+			},
+			SECURETHEBAG = {
+				Label = "3x jajko A",
+				Items = {
+					{
+						Kind = "Egg",
+						Egg = "A",
+						Count = 3,
+					},
+				},
+			},
+			LIKES1K = {
+				Label = "Boost 2x LP 30 min",
+				Items = {
+					{
+						Kind = "Boost",
+						Boost = "LP",
+						Minutes = 30,
+					},
+				},
+			},
 		},
 	},
 	Bonuses = {

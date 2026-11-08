@@ -3,6 +3,8 @@
 Uruchom z głównego folderu projektu:  python tools/gen_config.py
 Nie edytuj Economy.luau ręcznie — zmień liczby tutaj albo w modelu i wygeneruj plik od nowa.
 """
+import calendar
+import datetime
 import math
 import os
 import re
@@ -236,21 +238,58 @@ def build():
         'Note': 'Ceny w UI zawsze z MarketplaceService:GetProductInfoAsync. ID są w Config/RobuxIds.',
     }
 
+    # Nagrody (Etap 11): Label to opis z dokumentu projektu, a Items to to, co gra naprawdę daje
+    # (Shared/Logic/Rewards). Strefę dobiera gra: jajko A albo B z najwyższej odblokowanej strefy,
+    # box „Best” = najlepszy odblokowany (przed strefą 3 Street), premium jajko z najwyższej strefy.
+    def boost(minutes, kind='LP'):
+        return {'Kind': 'Boost', 'Boost': kind, 'Minutes': minutes}
+
+    def eggs(egg, count):
+        return {'Kind': 'Egg', 'Egg': egg, 'Count': count}
+
+    def boxes(count):
+        return {'Kind': 'Box', 'Box': 'Best', 'Count': count}
+
+    def premium(count):
+        return {'Kind': 'PremiumEgg', 'Count': count}
+
+    def reward(label, *items, ends=None):
+        r = {'Label': label, 'Items': list(items)}
+        if ends is not None:
+            # ends = ostatni dzień kodu ('2026-12-31'): działa do północy UTC po tym dniu
+            day = datetime.date.fromisoformat(ends) + datetime.timedelta(days=1)
+            r['Ends'] = calendar.timegm(day.timetuple())
+        return r
+
     rewards = {
-        'DailyStreak': ['Boost 2x LP 10 min', '3x jajko A', '2x najlepszy box', 'Boost 2x LP 30 min', '3x jajko B',
-                        '2x najlepszy box + Auto-Sell 15 min', '1x premium jajko + boost 2x LP 30 min'],
+        'DailyStreak': [
+            reward('Boost 2x LP 10 min', boost(10)),
+            reward('3x jajko A', eggs('A', 3)),
+            reward('2x najlepszy box', boxes(2)),
+            reward('Boost 2x LP 30 min', boost(30)),
+            reward('3x jajko B', eggs('B', 3)),
+            reward('2x najlepszy box + Auto-Sell 15 min', boxes(2), boost(15, 'AutoSell')),
+            reward('1x premium jajko + boost 2x LP 30 min', premium(1), boost(30)),
+        ],
         'DailyQuests': [
-            {'Key': 'CarPhotos', 'Target': 25, 'Reward': '2x jajko A'},
-            {'Key': 'Interviews', 'Target': 5, 'Reward': '1x box'},
-            {'Key': 'YachtSessions', 'Target': 5, 'Reward': '2x jajko B'},
-            {'Key': 'JetRentals', 'Target': 3, 'Reward': '1x box'},
-            {'Key': 'Sells', 'Target': 10, 'Reward': 'Boost 2x LP 15 min'},
-            {'Key': 'EggsOpened', 'Target': 10, 'Reward': '1x box'},
-            {'Key': 'Clicks', 'Target': 500, 'Reward': '2x jajko A'},
-            {'Key': 'Merges', 'Target': 1, 'Reward': 'Boost 2x LP 15 min'},
+            {'Key': 'CarPhotos', 'Target': 25, 'Reward': reward('2x jajko A', eggs('A', 2))},
+            {'Key': 'Interviews', 'Target': 5, 'Reward': reward('1x box', boxes(1))},
+            {'Key': 'YachtSessions', 'Target': 5, 'Reward': reward('2x jajko B', eggs('B', 2))},
+            {'Key': 'JetRentals', 'Target': 3, 'Reward': reward('1x box', boxes(1))},
+            {'Key': 'Sells', 'Target': 10, 'Reward': reward('Boost 2x LP 15 min', boost(15))},
+            {'Key': 'EggsOpened', 'Target': 10, 'Reward': reward('1x box', boxes(1))},
+            {'Key': 'Clicks', 'Target': 500, 'Reward': reward('2x jajko A', eggs('A', 2))},
+            {'Key': 'Merges', 'Target': 1, 'Reward': reward('Boost 2x LP 15 min', boost(15))},
         ],
         'QuestsPerDay': 3,
-        'Codes': {'LARPINMIAMI': 'Boost 2x LP 15 min', 'SECURETHEBAG': '3x jajko A', 'LIKES1K': 'Boost 2x LP 30 min'},
+        # Kody wpisuje się w budce z kodami (każdy raz na konto). Nagrody za progi polubień też są
+        # kodami (LIKES1K…): dostaje je każdy, kto wpisze kod, a nie tylko ci, którzy polubili grę.
+        # Kod z końcem ważności: reward('…', boost(30), ends='2026-12-31'). Nazwa: wielkie litery i cyfry.
+        'Codes': {
+            'LARPINMIAMI': reward('Boost 2x LP 15 min', boost(15)),
+            'SECURETHEBAG': reward('3x jajko A', eggs('A', 3)),
+            'LIKES1K': reward('Boost 2x LP 30 min', boost(30)),
+        },
     }
 
     bonuses = {'Group': 0.05, 'FriendEach': 0.10, 'FriendMax': 3, 'RewardedVideoDailyMax': 5, 'BoostX': 2}

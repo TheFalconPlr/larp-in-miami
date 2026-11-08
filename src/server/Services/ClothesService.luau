@@ -259,6 +259,8 @@ local function itemForClient(data, id, item)
 	}
 end
 
+ClothesService.itemForClient = itemForClient -- ubrania z nagród (RewardsService) w tym samym formacie
+
 local function syncClothes(player)
 	local data = DataService.get(player)
 	if data == nil then

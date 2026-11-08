@@ -27,8 +27,11 @@ local ClothesService = require(script.Parent.ClothesService)
 local RebirthService = require(script.Parent.RebirthService)
 local ZoneService = require(script.Parent.ZoneService)
 local ShopService = require(script.Parent.ShopService)
+local BonusService = require(script.Parent.BonusService)
+local RewardsService = require(script.Parent.RewardsService)
 local Robux = require(Shared.Robux)
 local Shop = require(Shared.Logic.Shop)
+local Rewards = require(Shared.Logic.Rewards)
 
 local AdminService = {}
 
@@ -688,6 +691,58 @@ command("starter", "/starter", "Starter Pack znowu do kupienia (72 h od teraz)",
 	data.Robux.StarterPack = false
 	data.FirstJoin = os.time()
 	return "Starter Pack: znowu w sklepie na 72 h"
+end)
+
+----------------------------------------------------------------- Nagrody (Etap 11)
+command("codes", "/codes [reset]", "lista kodów (✓ = już wpisany); reset = wszystkie kody znowu do wpisania", function(_, data, args)
+	if string.lower(args[1] or "") == "reset" then
+		data.Codes = {}
+		return "Kody znowu do wpisania: " .. table.concat(RewardsService.codeList(), ", ")
+	end
+	local parts = {}
+	for _, code in ipairs(RewardsService.codeList()) do
+		local info = Rewards.codeInfo(code)
+		local mark = ""
+		if Rewards.codeUsed(data, code) then
+			mark = " ✓"
+		elseif not Rewards.codeActive(info, os.time()) then
+			mark = " (wygasł)"
+		end
+		table.insert(parts, code .. mark .. " → " .. tostring(info.Label))
+	end
+	return "Kody: " .. table.concat(parts, " · ")
+end)
+
+command("bonus", "/bonus [group on|off|auto] [friends 0-3|auto]", "udawaj bonus za grupę (+5% LP) albo znajomych na serwerze (+10% każdy)", function(player, _, args)
+	local what = string.lower(args[1] or "")
+	local value = string.lower(args[2] or "")
+	if what == "group" then
+		if value == "on" then
+			BonusService.setOverride(player, "group", true)
+		elseif value == "off" then
+			BonusService.setOverride(player, "group", false)
+		elseif value == "auto" then
+			BonusService.setOverride(player, "group", nil)
+		else
+			error("group on, off albo auto", 0)
+		end
+	elseif what == "friends" then
+		if value == "auto" then
+			BonusService.setOverride(player, "friends", nil)
+		else
+			BonusService.setOverride(player, "friends", needLevel(value, 10))
+		end
+	elseif what ~= "" then
+		error("group albo friends", 0)
+	end
+	return string.format(
+		"Bonus: grupa %s (ID %d), znajomi %d (liczy się %d) · warstwa bonusów LP ×%s (z 2x LP i Verified)",
+		BonusService.inGroup(player) and "TAK" or "nie",
+		BonusService.groupId(),
+		BonusService.friends(player),
+		math.min(BonusService.friends(player), Economy.Bonuses.FriendMax),
+		Format.small(Loop.lpBonus(LoopService.contextFor(player)))
+	)
 end)
 
 command("stats", "/stats", "pokaż swój zapis", function(player, data)

@@ -216,7 +216,8 @@ end
 
 -- Czy można kupić count boxów naraz. Zwraca true albo false i powód: BadRequest, Zone (trzeba
 -- odblokować strefę RequiresZone), Inventory (nie zmieszczą się), NotEnough (nie stać).
-function Clothes.canBuy(data, box, count, maxItems)
+-- free = box z nagrody (kod, nagroda dzienna, zadanie): bez L$ i bez strefy (przed strefą 3 Street).
+function Clothes.canBuy(data, box, count, maxItems, free)
 	local info = Clothes.boxInfo(box)
 	if count == nil then
 		count = 1
@@ -224,13 +225,13 @@ function Clothes.canBuy(data, box, count, maxItems)
 	if info == nil or type(count) ~= "number" or count < 1 or count ~= math.floor(count) then
 		return false, "BadRequest"
 	end
-	if data.ZonesUnlocked < info.RequiresZone then
+	if not free and data.ZonesUnlocked < info.RequiresZone then
 		return false, "Zone"
 	end
 	if maxItems ~= nil and Clothes.count(data) + count > maxItems then
 		return false, "Inventory"
 	end
-	if data.Cash < info.Price * count then
+	if not free and data.Cash < info.Price * count then
 		return false, "NotEnough"
 	end
 	return true, nil
@@ -241,13 +242,16 @@ end
 -- zakłada, gdy w kategorii jest wolny slot albo jest lepsze od najsłabszego założonego.
 -- Zwraca id, ubranie i czy zostało założone albo nil i powód (jak canBuy).
 -- forced = rzadkość zamiast losowania (tylko tryb testowy: /nextbox, żeby zobaczyć animację).
-function Clothes.openBox(data, ctx, box, random01, maxItems, forced)
-	local ok, reason = Clothes.canBuy(data, box, 1, maxItems)
+-- free = box z nagrody: losuje tak samo (ze szczęściem), ale nie zabiera L$.
+function Clothes.openBox(data, ctx, box, random01, maxItems, forced, free)
+	local ok, reason = Clothes.canBuy(data, box, 1, maxItems, free)
 	if not ok then
 		return nil, reason
 	end
 	local info = Clothes.boxInfo(box)
-	data.Cash = data.Cash - info.Price
+	if not free then
+		data.Cash = data.Cash - info.Price
+	end
 	local luck = 1
 	if info.LuckApplies ~= false then
 		luck = Formulas.luck(data.AuraUpgrades.Luck)
@@ -298,9 +302,9 @@ end
 
 -- Otwiera count boxów naraz (Triple Open, ten sam gamepass co przy jajkach). Najpierw sprawdza,
 -- czy stać na wszystkie i czy wszystkie się zmieszczą. Zwraca listę { id, item, worn } albo nil
--- i powód (jak canBuy).
-function Clothes.openBoxes(data, ctx, box, count, random01, maxItems, forced)
-	local ok, reason = Clothes.canBuy(data, box, count, maxItems)
+-- i powód (jak canBuy). free jak w openBox.
+function Clothes.openBoxes(data, ctx, box, count, random01, maxItems, forced, free)
+	local ok, reason = Clothes.canBuy(data, box, count, maxItems, free)
 	if not ok then
 		return nil, reason
 	end
@@ -310,7 +314,7 @@ function Clothes.openBoxes(data, ctx, box, count, random01, maxItems, forced)
 		if i == 1 then
 			first = forced -- wymuszona rzadkość tylko dla pierwszego z trzech
 		end
-		local id, item, worn = Clothes.openBox(data, ctx, box, random01, maxItems, first)
+		local id, item, worn = Clothes.openBox(data, ctx, box, random01, maxItems, first, free)
 		if id == nil then
 			break
 		end

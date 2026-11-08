@@ -48,6 +48,10 @@ local EMOJI = {
 	Egg = "🥚", -- grafiki Triple Open i Fast Open, gdy brak obrazka jajka
 	Check = "✅", -- kupiony gamepass (OWNED)
 	Sparkles = "✨",
+	Code = "🎟️", -- budka i okno z kodami (Etap 11)
+	Group = "👥", -- bonus za grupę
+	Friends = "🤝", -- bonus za znajomych na serwerze
+	Like = "👍", -- „polub grę” pod oknem kodów
 	-- Znaki Roblox (prywatne kody Unicode): ikona Robux (U+E002) i znaczek Verified (U+E000).
 	-- Zapisane bajtami UTF-8, bo tak rozumie je też Lua 5.1 w testach.
 	Robux = "\238\128\130",

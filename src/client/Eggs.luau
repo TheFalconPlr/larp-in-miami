@@ -1453,19 +1453,29 @@ function Eggs.start(hud)
 		end
 	end)
 
-	-- pety z premium jajek (i bez losowania) przychodzą po zakupie Robux: animacja, gdy nic innego
-	-- akurat nie trwa
+	-- pety z premium jajek (i bez losowania) przychodzą po zakupie Robux, a jajka z nagród (kody,
+	-- nagroda dzienna, zadania) w Notify „Reward” (Eggs = { { Zone, Egg, Pets } }): animacja po kolei,
+	-- gdy nic innego akurat nie trwa (boxy z tej samej nagrody czekają w Boxes.luau na koniec jajek)
 	State.onNotify(function(payload)
-		if payload.Kind ~= "Purchase" or payload.Result ~= "Pets" or type(payload.Pets) ~= "table" or #payload.Pets == 0 then
+		local groups = nil
+		if payload.Kind == "Purchase" and payload.Result == "Pets" and type(payload.Pets) == "table" and #payload.Pets > 0 then
+			groups = { { Egg = "P", Pets = payload.Pets, Direct = string.sub(tostring(payload.Key), 1, 9) == "DirectPet" } }
+		elseif payload.Kind == "Reward" and type(payload.Eggs) == "table" then
+			groups = payload.Eggs
+		end
+		if groups == nil then
 			return
 		end
-		local direct = string.sub(tostring(payload.Key), 1, 9) == "DirectPet"
 		task.spawn(function()
-			while hatching or State.busy do
-				task.wait(0.2)
+			for _, group in ipairs(groups) do
+				if type(group.Pets) == "table" and #group.Pets > 0 then
+					while hatching or State.busy do
+						task.wait(0.2)
+					end
+					dialog.hide()
+					hatch(group.Egg or "P", group.Pets, payload.OpenTime or Economy.OpenTimeSeconds, group.Direct == true)
+				end
 			end
-			dialog.hide()
-			hatch("P", payload.Pets, payload.OpenTime or Economy.OpenTimeSeconds, direct)
 		end)
 	end)
 

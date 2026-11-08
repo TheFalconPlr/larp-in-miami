@@ -14,9 +14,9 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 
 | Folder | Trafia w Studio do | Co zawiera |
 | --- | --- | --- |
-| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Config/RobuxIds` (ID gamepassów i produktów z Creator Hub, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Shop` (zakupy za Robuxy: premium jajka, boosty, Starter Pack, reklamy, numery zakupów), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Robux` (ID i ceny gamepassów i produktów), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
-| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), ShopService (zakupy za Robuxy, reklamy, teleport), AdminService), `Vendor/ProfileStore` (zapis danych) |
-| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Shop` (kafelki SHOP i TELEPORT, Starter Pack, boosty w rogu, ceny i zakup), `ShopWindow` (okno sklepu), `ShopThanks` (podziękowanie po zakupie), `ShopCatalog` (nazwy, opisy i grafiki produktów), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `Ui/Fx` (animacje i efekty: połysk, promienie, iskry, konfetti), `Ui/ShopArt` (grafiki gamepassów z obrazków), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
+| `src/shared` | ReplicatedStorage → Shared | `Config/Economy` (liczby z arkusza, generowane), `Config/Settings` (ustawienia gry, edytowane ręcznie), `Config/Pets` (nazwy i kolory petów), `Config/Clothes` (nazwy, kolory i kształty ubrań i boxów), `Config/Interview` (pytania i odpowiedzi w wywiadzie, edytowane ręcznie), `Config/RobuxIds` (ID gamepassów i produktów z Creator Hub, edytowane ręcznie), `Data/Template` (szablon zapisu gracza), `Logic/Loop` (klik, Bag, Sell, ulepszenia, strefy, aktywności, pety), `Logic/Clothes` (ubrania: boxy, sloty, bonus do LP, sprzedaż, łączenie), `Logic/Rebirth` (Rebirth, Aura, pasek Aury, sklep Aury), `Logic/Shop` (zakupy za Robuxy: premium jajka, boosty, Starter Pack, reklamy, numery zakupów), `Logic/Interview` (losowanie pytań i sprawdzanie treści wywiadu), `Logic/Rewards` (nagrody: kody, darmowe jajka i boxy, później nagroda dzienna i zadania), `Logic/RateLimiter`, `Formulas`, `Format`, `Net` (zdarzenia sieciowe), `Robux` (ID i ceny gamepassów i produktów), `ClothModels` (ubrania z klocków na postaci i w okienkach, pudełka boxów), `Tests` |
+| `src/server` | ServerScriptService → Server | `Main` (start serwera), `ConfigCheck` (testy w Studio), `Services/` (DataService, GamepassService, ZoneService, LoopService, ActivityService (aktywności w strefach 2–5), PetService, ClothesService (boxy i ubrania), RebirthService (Rebirth i sklep Aury), ShopService (zakupy za Robuxy, reklamy, teleport), BonusService (bonus za grupę i znajomych), RewardsService (kody i budka z kodami), AdminService), `Vendor/ProfileStore` (zapis danych) |
+| `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Codes` (budka z kodami, bonus za grupę i znajomych), `Shop` (kafelki SHOP i TELEPORT, Starter Pack, boosty w rogu, ceny i zakup), `ShopWindow` (okno sklepu), `ShopThanks` (podziękowanie po zakupie), `ShopCatalog` (nazwy, opisy i grafiki produktów), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `Ui/Fx` (animacje i efekty: połysk, promienie, iskry, konfetti), `Ui/ShopArt` (grafiki gamepassów z obrazków), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
 | `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
@@ -386,6 +386,49 @@ Do testu:
 - `/starter`: Starter Pack znów w sklepie.
 - `/ads`: znów 5 reklam na dziś.
 
+## Etap 11: nagrody i rankingi (w trakcie)
+
+Etap jest gotowy, gdy nagrody się zapisują i nie da się ich odebrać dwa razy. Robimy go w 6 częściach, każda to osobny commit do przetestowania:
+
+| Część | Co | Stan |
+| --- | --- | --- |
+| 1 | Kody i bonus za grupę i znajomych | ✓ do testu |
+| 2 | Nagroda dzienna (7 dni z modelu ekonomii) | następna |
+| 3 | Zadania dzienne (3 z 8, z Aurą) | |
+| 4 | Rankingi na ekranach LED przy spawnie i tytuł „Secret Society” | |
+| 5 | Polecenia (zaproszenia znajomych z nagrodą) | |
+| 6 | Zdjęcia z sesji (CaptureService) | |
+
+**Nagrody w modelu ekonomii.** Kody, nagroda dzienna i zadania są w `tools/gen_config.py` jako lista rzeczy (`Economy.Rewards`): boost, jajka A albo B, box, premium jajko. Strefę dobiera gra: jajko z najwyższej odblokowanej strefy, box najlepszy odblokowany (Street od strefy 3, Designer od 4, Iced od 5; przed strefą 3 Street), premium jajko z najwyższej strefy. Jajka i boxy z nagród losują tak jak kupione za L$ (ze szczęściem z Aury), tylko nic nie kosztują, i otwierają się tą samą animacją. Darmowe premium jajko nie jest płatnym losowaniem, więc dostaje je każdy tak samo. Logika jest w `src/shared/Logic/Rewards.luau`, a testy w `RewardsSpec`.
+
+**Kody.** Budka z kodami stoi w Downtown: model albo część `CodesBooth`. Dopóki jej nie ma, serwer stawia tymczasową po drugiej stronie pola Sell niż sklep Aury (biały kiosk z różową ramką i złotym biletem). Podejdź, naciśnij E i wpisz kod. Każdy kod działa raz na konto, a wielkość liter i spacje nie mają znaczenia.
+
+| Kod | Nagroda |
+| --- | --- |
+| `LARPINMIAMI` | Boost 2x LP 15 min |
+| `SECURETHEBAG` | 3 jajka A |
+| `LIKES1K` | Boost 2x LP 30 min |
+
+Gdy pety albo ubrania się nie zmieszczą, kod nie przepada: gracz robi miejsce i wpisuje go jeszcze raz. Po 6 złych kodach pod rząd jest 30 s przerwy. Progi polubień robimy kodami (jak `LIKES1K`), które wypuszczasz, gdy gra dojdzie do progu, bo gra nie widzi liczby polubień. Dostaje je każdy, kto wpisze kod.
+
+**Nowy kod** dopisujesz w `tools/gen_config.py` w `Codes`, np. `'RELEASE': reward('Boost 2x LP 30 min', boost(30))`. Z końcem ważności: `reward('Boost 2x LP 30 min', boost(30), ends='2026-12-31')` (działa do północy UTC po tym dniu). Potem `python tools/gen_config.py` i `python tools/test_luau.py`. Albo napisz mi nazwę i nagrodę, a ja to wpiszę.
+
+**Bonus za grupę i znajomych** (liczby w `Economy.Bonuses`):
+
+- **Grupa:** +5% LP dla członków grupy, do której należy gra (Larping Studio$). Inną grupę ustawisz w `Settings.Group.Id`.
+- **Znajomi:** +10% LP za każdego znajomego na tym samym serwerze, najwyżej 3 (+30%).
+- Bonus jest w tej samej warstwie co 2x LP i Verified, więc działa na klik i na aktywności.
+- W oknie CODES są dwie karty. JOIN GROUP otwiera okienko dołączania Robloxa, a bonus włącza się po chwili, bo Roblox pamięta wynik sprawdzenia (najpóźniej po ok. 2 minutach). Gdy grupa wymaga akceptacji, gracz tylko wysyła prośbę. INVITE otwiera okno zaproszeń Robloxa.
+- Komunikat pojawia się, gdy bonus się włącza i gdy znajomy wchodzi albo wychodzi.
+
+**Twoje stoisko:** model `CodesBooth` w Downtown (gra sama nadaje mu tag `LarpCodes`, a napis „CODES” i E stawia nad nim klient).
+
+Do testu:
+- Podejdź do budki, E, wpisz `larpinmiami`: komunikat i boost w prawym dolnym rogu. Drugi raz: „You already used this code”. `/codes` pokazuje, które kody już wpisałeś, a `/codes reset` pozwala wpisać je znowu.
+- `securethebag`: 3 jajka z animacją, okno samo się zamyka.
+- `/bonus group on` i `/bonus friends 3`: LP za klik rośnie (bez gamepassów 2x LP i Verified o 5% i o 30%, bo bonusy się dodają); `/bonus` pokazuje stan, a `auto` wraca do prawdziwego.
+- JOIN GROUP i INVITE sprawdzisz w opublikowanej grze, najlepiej na drugim koncie spoza grupy (w Studio okienka Robloxa mogą nie działać).
+
 ## Co dalej (plan etapów)
 
 Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, monetyzacja, a teraz nagrody i rankingi.
@@ -397,7 +440,9 @@ Kolejność jest jak w dokumencie projektu: pety i ubrania, Rebirth i Aura, mone
 | 8 | ✓ Gotowe: ubrania (opis wyżej). Etap „Pety, ubrania, sekrety” z dokumentu jest kompletny. |
 | 9 | ✓ Gotowe: Rebirth i Aura (opis wyżej). |
 | 10 | ✓ Gotowe: Robux (opis wyżej). Wszystkie ID z Creator Hub są w `Config/RobuxIds` (8.11.2026); zostaje test w Studio i po publikacji. |
-| 11 | Nagrody dzienne i zadania (z Aurą), kody, bonus za grupę i znajomych, rankingi (LP, Rebirthy, jajka, Aura Level, sekrety), tytuł „Secret Society”, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
+| 11 | W trakcie (opis wyżej). Część 1 gotowa do testu: kody i bonus za grupę i znajomych. Dalej nagroda dzienna, zadania dzienne (z Aurą), rankingi (LP, Rebirthy, jajka, Aura Level, sekrety) i tytuł „Secret Society”, polecenia, udostępnianie zdjęć z sesji (CaptureService), poprawki przed premierą. |
+| 12 | Testy i balans: zdarzenia w AnalyticsService (lejek nowego gracza, L$ i Aura), test zapisu (wyjście, szybki powrót, zmiana serwera, wyłączenie serwera), próby oszukiwania, zamknięty test z 10–20 osobami, słaby telefon. |
+| 13 | Premiera: `AllowInLive = false`, wyczyszczone testowe zapisy, checklista z dokumentu projektu, ikona i miniatury, pierwsze TikToki i kody na start. |
 
 Kolejność może się zmienić, jeśli coś będzie pilniejsze.
 
@@ -444,6 +489,8 @@ Działają w Studio, a w opublikowanej grze tylko dla właściciela grupy. W lew
 | `/policy on` | udaje gracza z ograniczeniem płatnych losowań (`off` = bez, `auto` = jak mówi `PolicyService`) |
 | `/ads` | znów 5 reklam za nagrodę na dziś |
 | `/starter` | Starter Pack znów do kupienia (72 h od teraz) |
+| `/codes` | lista kodów (✓ = już wpisany); `/codes reset` = wszystkie znowu do wpisania |
+| `/bonus group on` | udaje bonus za grupę (`off`, `auto` = naprawdę); `/bonus friends 3` udaje 3 znajomych na serwerze (`auto` = naprawdę); samo `/bonus` pokazuje stan |
 | `/stats` | pokazuje zapis |
 | `/reset` | czyści zapis, jak u nowego gracza |
 

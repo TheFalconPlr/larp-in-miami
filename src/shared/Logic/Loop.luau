@@ -608,7 +608,8 @@ end
 
 -- Czy można kupić count jajek naraz (1 albo 3 z Triple Open). Zwraca true albo false i powód:
 -- BadRequest, Zone, Inventory (nie zmieszczą się wszystkie), NotEnough (nie stać na wszystkie).
-function Loop.canBuyEggs(data, zone, egg, count, maxPets)
+-- free = jajko z nagrody (kod, nagroda dzienna, zadanie): bez płacenia L$.
+function Loop.canBuyEggs(data, zone, egg, count, maxPets, free)
 	local info = Loop.eggInfo(zone, egg)
 	if info == nil or type(count) ~= "number" or count < 1 or count ~= math.floor(count) then
 		return false, "BadRequest"
@@ -619,14 +620,14 @@ function Loop.canBuyEggs(data, zone, egg, count, maxPets)
 	if maxPets ~= nil and Loop.petCount(data) + count > maxPets then
 		return false, "Inventory"
 	end
-	if data.Cash < info.Price * count then
+	if not free and data.Cash < info.Price * count then
 		return false, "NotEnough"
 	end
 	return true, nil
 end
 
-function Loop.canBuyEgg(data, zone, egg, maxPets)
-	return Loop.canBuyEggs(data, zone, egg, 1, maxPets)
+function Loop.canBuyEgg(data, zone, egg, maxPets, free)
+	return Loop.canBuyEggs(data, zone, egg, 1, maxPets, free)
 end
 
 ----------------------------------------------------------------- Indeks
@@ -706,13 +707,16 @@ end
 -- Kupuje i otwiera jajko. random01 = funkcja losująca liczbę z [0, 1). Pierwsze jajko A w strefie 1
 -- zawsze daje Rare (dobry start). Szczęście z Aury działa na jajka za L$. Nowy pet trafia na wolny
 -- slot. Zwraca id, peta i czy jest nowy w indeksie albo nil i powód (jak canBuyEgg).
-function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
-	local ok, reason = Loop.canBuyEgg(data, zone, egg, maxPets)
+-- free = jajko z nagrody: losuje tak samo (ze szczęściem), ale nie zabiera L$.
+function Loop.openEgg(data, ctx, zone, egg, random01, maxPets, free)
+	local ok, reason = Loop.canBuyEgg(data, zone, egg, maxPets, free)
 	if not ok then
 		return nil, reason
 	end
 	local info = Loop.eggInfo(zone, egg)
-	data.Cash = data.Cash - info.Price
+	if not free then
+		data.Cash = data.Cash - info.Price
+	end
 	local rarity
 	if data.Stats.EggsOpened == 0 and zone == 1 and egg == "A" then
 		rarity = Economy.Pets.FirstEggRarity
@@ -740,15 +744,15 @@ function Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
 end
 
 -- Otwiera count jajek naraz (Triple Open). Najpierw sprawdza, czy stać na wszystkie i czy wszystkie
--- się zmieszczą. Zwraca listę { id, pet, new } albo nil i powód (jak canBuyEggs).
-function Loop.openEggs(data, ctx, zone, egg, count, random01, maxPets)
-	local ok, reason = Loop.canBuyEggs(data, zone, egg, count, maxPets)
+-- się zmieszczą. Zwraca listę { id, pet, new } albo nil i powód (jak canBuyEggs). free jak w openEgg.
+function Loop.openEggs(data, ctx, zone, egg, count, random01, maxPets, free)
+	local ok, reason = Loop.canBuyEggs(data, zone, egg, count, maxPets, free)
 	if not ok then
 		return nil, reason
 	end
 	local list = {}
 	for _ = 1, count do
-		local id, pet, isNew = Loop.openEgg(data, ctx, zone, egg, random01, maxPets)
+		local id, pet, isNew = Loop.openEgg(data, ctx, zone, egg, random01, maxPets, free)
 		if id == nil then
 			break
 		end

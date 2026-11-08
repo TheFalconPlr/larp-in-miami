@@ -51,6 +51,7 @@ return {
 		LP = 0, -- 2x LP
 		AutoSell = 0, -- Auto-Sell bez gamepassa
 	},
+	Codes = {}, -- [kod] = true: wpisane kody (Etap 11; każdy kod raz na konto)
 	Stats = {
 		LifetimeLP = 0,
 		LifetimeCash = 0,
