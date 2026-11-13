@@ -60,7 +60,7 @@ class Bot(v2.AuraPlayer):
 
     def __init__(s, cfg, profile, seed=0, max_rebirths=1, hype=0.0, overfill=False):
         s.pf = PROFILES[profile]
-        s.hype = hype          # propozycja: aktywna sesja daje nagrodę × (1 + hype)
+        s.hype = hype          # propozycja: aktywna sesja (każda aktywność) daje nagrodę × (1 + hype)
         s.overfill = overfill  # propozycja: ostatnia sesja może przepełnić Bag (nic nie przepada)
         s.zlog = {}            # (numer przejścia, strefa) -> statystyki
         s.events = []          # (czas, nazwa zakupu, numer przejścia, strefa)
@@ -71,6 +71,8 @@ class Bot(v2.AuraPlayer):
         out = []
         for name, zone, rate, chunk, cyc in super().acts():
             if chunk is not None:
+                # premia w każdej aktywności, też w wywiadzie: sama dla aut, jachtów i odrzutowców
+                # sprawia, że wywiad przestaje się opłacać (w strefie 3 wygrywają wtedy zdjęcia aut)
                 chunk = chunk * (1 + s.hype)
                 cyc = cyc + s.pf['start']
                 rate = chunk / cyc
