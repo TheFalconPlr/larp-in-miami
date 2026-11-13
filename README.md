@@ -19,7 +19,7 @@ Mapę, modele i wygląd UI budujesz w Studio. Skrypty edytujemy tylko w plikach,
 | `src/client` | StarterPlayerScripts → Client | `Main` (start gracza), `Hud` (interfejs), `Zones` (bramki, tablice, okno Unlock), `Activities` (aktywności: auto, wywiad, jacht, odrzutowiec), `InterviewShow` (program wywiadu: pytania, odpowiedzi, czat), `Pets` (okno PETS: sprzedaż, łączenie, indeks; pety za graczami), `Wardrobe` (okno CLOTHES), `MergeWindow` (okno i animacja łączenia petów i ubrań), `Eggs` (jajka: tablice, okno, otwieranie), `Boxes` (mystery boxy: tablice, okno, otwieranie), `SecretBanner` (komunikat o sekrecie u góry ekranu), `RebirthUi` (portal, okno i animacja Rebirth), `AuraShop` (sklep Aury), `Codes` (kody i bonus za grupę i znajomych: akcje i komunikaty, wygląd jest w sklepie), `Daily` (okno nagrody dziennej z zakładkami REWARDS i QUESTS, tablica), `Quests` (zakładka zadań dziennych i komunikaty o nich), `QuestTracker` (lista zadań na ekranie po prawej, przycisk REWARDS), `Topbar` (przycisk INVITE w pasku Robloxa przy koszyku), `Shop` (kafelki SHOP i TELEPORT, Starter Pack, boosty w rogu, ceny i zakup), `ShopWindow` (okno sklepu, na dole zakładka FREE z kodami), `ShopThanks` (podziękowanie po zakupie), `ShopCatalog` (nazwy, opisy i grafiki produktów), `Nametags` (tytuł, znaczek Verified i Aura Level nad głową, poświata), `StandAnchor` (punkt zaczepienia napisów nad stoiskami), `PetModels` (modele petów i jajek, wersje Golden i Diamond), `LocalHide` (ukrywanie części tylko u gracza), `Ui/Theme` (kolory, czcionka, skala), `Ui/Kit` (przyciski, kafelki, okna), `Ui/Icons` (ikony), `Ui/Sounds` (dźwięki), `Ui/Pattern` (wzór w tle), `Ui/Fx` (animacje i efekty: połysk, promienie, iskry, konfetti), `Ui/ShopArt` (grafiki gamepassów z obrazków), `ClickInput` (klikanie), `State` (stan od serwera), `Admin` (komendy testowe) |
 | `assets/icons` | — | `larp-icons.png` (arkusz 16 ikon do wgrania w Roblox) i `svg/` (źródła ikon) |
 | `docs` | — | rysunki do tego opisu (np. układ tymczasowych stref) |
-| `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
+| `tools` | — | `gen_config.py` (tworzy Config z modelu ekonomii), `test_luau.py` (testy bez Roblox), `playtest.py` (przejście gry symulowanym graczem: czas stref i nudne miejsca), `build_icons.py` (rysuje arkusz ikon), `economy/` (model i symulacja) |
 | `licenses` | — | licencje bibliotek (ProfileStore: Apache 2.0) |
 
 ## Instalacja (raz, Windows)
@@ -590,6 +590,31 @@ python tools/test_luau.py    # sprawdza wzory, pętlę i liczby (wymaga: pip ins
 ```
 
 Jeśli zmienisz coś w arkuszu, wyślij go Claude, a Config zostanie wygenerowany od nowa.
+
+## Tempo gry: przejście „na sucho”
+
+`python tools/playtest.py` przechodzi grę symulowanym graczem bez Robuxów, od zera do Rebirth 1. Dla każdej strefy pokazuje, ile trwa, ile jest w niej takich samych sesji, ile czasu gracz tylko patrzy, ile idzie po Sell i jak długo nie ma nic nowego do kupienia. Służy do szukania nudnych miejsc i do sprawdzania zmian w cenach, zanim trafią do gry.
+
+- Liczy na modelu ekonomii z `tools/economy` (tym samym, z którego powstaje `Economy.luau`) z regułą z gry, której model nie ma: nagroda aktywności wchodzi do Bag tylko do pełna, a reszta przepada.
+- Są dwa profile. **Gracz idealny** klika 4 razy na sekundę, nie traci czasu i kupuje to, co najszybciej się zwraca, więc to najszybsze możliwe przejście. **8-latek** klika i chodzi wolniej, zastanawia się, a kupuje, gdy tylko go stać (strefę, nowy pojazd, tanie ulepszenie, tanie jajko). Profil 8-latka to założenia, a nie pomiar: prawdziwe dziecko będzie gdzieś pomiędzy.
+- Pomysły sprawdzasz opcjami, bez zmiany modelu: `--hype 0.5` (aktywne sesje: do +50% nagrody), `--z5 1e12` i `--r1 2.5e13` (cena strefy 5 i Rebirth 1), `--yacht 4e8,2e9,1.5e10,1.2e11` i `--jet …` (ceny pojazdów), `--overfill` (ostatnia sesja może przepełnić Bag), `--rebirths 3` (kolejne przejścia), `--profile kid`.
+
+Stan na 13.11.2026, pierwsze przejście bez Robuxów:
+
+| Strefa | Gracz idealny | 8-latek (szacunek) | Co widać |
+| --- | --- | --- | --- |
+| 1 Downtown | 5 min, samo klikanie | 9 min | W porządku: dużo klikania i częste zakupy. |
+| 2 Luxury Cars | 15 min, 33 sesje zdjęciowe | 19 min | W porządku: sesja trwa 8 s, nowe auto co kilka minut. |
+| 3 Luxury Mall | 20 min, 12 wywiadów | 56 min, 31 wywiadów | Nie ma tu pojazdów do kupienia. Nagroda za wywiad często nie mieści się w Bag (8-latek traci ok. 20% LP). |
+| 4 Miami Beach | 88 min, 70 imprez na jachcie | ok. 6 h, ok. 350 imprez | Ściana. Ostatni jacht po ok. 30 min, potem 58 min bez niczego nowego, w tym 34 min bez żadnego zakupu. |
+| 5 Private Airport | 85 min, 51 lotów | ok. 3 h, ok. 115 lotów | 28 min od ostatniego odrzutowca do Rebirth. |
+| Rebirth 1 | po 3,5 h | po ok. 10 h | Arkusz zakładał 3 h 15 min, bo nie liczył ucinania nagrody na pełnym Bag. |
+
+Co z tego wynika (propozycje zmian czekają na decyzję, nic z nich nie jest jeszcze w grze):
+
+- Od strefy 2 klikanie nigdy się nie opłaca. Gracz przez 60–75% czasu ogląda sesję, w której nie ma nic do zrobienia (kliknięcia są wtedy zablokowane), a przez 15–25% wraca pieszo z pola Sell.
+- Strefa 4 to ściana: bramka do strefy 5 kosztuje 3T, a ostatni jacht 8B. Po nim zostaje ponad 99% drogi i nic nowego do kupienia.
+- Po Rebirthie strefy 1–4 trwają razem kilka minut, a potem każdy cykl to 1,5–2 h w strefie 5 (loty, jajka i boxy).
 
 ## Studio MCP (żeby Claude mógł testować grę w Studio)
 
