@@ -7,10 +7,10 @@
 --
 -- Zadania dzienne: 3 na dzień UTC (Logic/Rewards, zapis data.Quests). Postęp przychodzi z innych
 -- serwisów przez LoopService.progress (kliki gracza, Sell na polu, aktywności, jajka za L$, łączenie).
--- Skończone zadanie odbieramy od razu (po QUEST_GRANT_DELAY, żeby najpierw doszła odpowiedź na akcję,
--- np. animacja kupionego jajka), a bez miejsca w ekwipunku gracz dostaje Notify „QuestReady”
--- i odbiera nagrodę przyciskiem CLAIM w oknie (ClaimQuest(numer)). Nagroda idzie przez deliver
--- (Source = "Quest", z Aura i BonusAura), a stan okna w view.Quests.
+-- Skończone zadanie czeka na gracza: dostaje on Notify „QuestReady” i sam odbiera nagrodę przyciskiem
+-- CLAIM (lista zadań po prawej albo okno: ClaimQuest(numer)); bez miejsca w ekwipunku nagroda czeka
+-- dalej. Nieodebrane nagrody przepadają z nowym dniem UTC, razem ze starymi zadaniami. Nagroda idzie
+-- przez deliver (Source = "Quest", z Aura i BonusAura), a stan okna w view.Quests.
 --
 -- Kody: pole na kod jest na samym dole sklepu (ShopWindow, zakładka FREE, jak w Pet Simulator 99).
 -- RedeemCode(tekst): kod z Economy.Rewards.Codes, każdy raz na konto (data.Codes). Odpowiedź:
@@ -47,7 +47,7 @@ local DAY_CHECK = 5 -- co tyle sekund sprawdzamy, czy minęła północ UTC
 local WRONG_LIMIT = 6 -- tyle złych kodów pod rząd…
 local WRONG_PAUSE = 30 -- …i potem tyle sekund przerwy
 local SECRET_EXTRA = 3 -- komunikat o sekrecie z nagrody po animacjach (s)
-local QUEST_GRANT_DELAY = 0.3 -- nagroda za zadanie chwilę po akcji, która je skończyła (s)
+local QUEST_CLAIM_GAP = 0.4 -- najmniejszy odstęp między CLAIM przy zadaniach (s; można odebrać kilka pod rząd)
 
 local lastTry = {} -- [gracz] = os.clock() ostatniej próby
 local lastClaim = {} -- [gracz] = os.clock() ostatniego odbioru nagrody dziennej
@@ -279,34 +279,8 @@ local function claimDaily(player)
 end
 
 ----------------------------------------------------------------- Zadania dzienne
--- Nagroda zadania: sama po skończeniu (auto = true) albo z przycisku CLAIM w oknie. Zwraca wynik
--- jak Rewards.claimQuest (z PetCount i ItemCount) albo nil i powód.
-local function grantQuest(player, data, index, auto)
-	local result, reason = Rewards.claimQuest(data, LoopService.contextFor(player), index, random01, limitsFor(), os.time())
-	if result == nil then
-		if auto then
-			-- bez miejsca w ekwipunku nagroda czeka na CLAIM w oknie nagrody dziennej
-			local quest = data.Quests.List[index]
-			LoopService.notify(player, { Kind = "QuestReady", Index = index, Key = quest and quest.Key, Reason = reason })
-		end
-		LoopService.markDirty(player)
-		return nil, reason
-	end
-	local pets, items = RewardsService.deliver(player, data, result, "Quest", {
-		Index = index,
-		Key = result.Key,
-		Aura = result.Aura,
-		BonusAura = result.BonusAura,
-		AllDone = result.AllDone,
-		Auto = auto,
-	})
-	result.PetCount = pets
-	result.ItemCount = items
-	return result, nil
-end
-
--- Postęp z LoopService.progress. Skończone zadanie odbieramy chwilę później (najpierw dochodzi
--- odpowiedź na akcję, np. BuyEgg z animacją, potem nagroda), o ile to dalej to samo zadanie.
+-- Postęp z LoopService.progress. Skończone zadanie czeka na CLAIM (lista zadań po prawej albo okno
+-- nagrody dziennej), a gracz dostaje o nim komunikat.
 local function onProgress(player, key, amount)
 	local data = DataService.get(player)
 	if data == nil then
@@ -316,31 +290,13 @@ local function onProgress(player, key, amount)
 	if changed then
 		LoopService.markDirty(player)
 	end
-	if done == nil then
-		return
-	end
-	local day = data.Quests.Day
-	for _, index in ipairs(done) do
-		local questKey = data.Quests.List[index].Key
-		task.delay(QUEST_GRANT_DELAY, function()
-			if player.Parent ~= Players then
-				return
-			end
-			local current = DataService.get(player)
-			local q = current and current.Quests
-			local quest = nil
-			if type(q) == "table" and q.Day == day and type(q.List) == "table" then
-				quest = q.List[index]
-			end
-			if type(quest) ~= "table" or quest.Key ~= questKey or quest.Claimed then
-				return
-			end
-			grantQuest(player, current, index, true)
-		end)
+	for _, index in ipairs(done or {}) do
+		local quest = data.Quests.List[index]
+		LoopService.notify(player, { Kind = "QuestReady", Index = index, Key = quest and quest.Key })
 	end
 end
 
--- CLAIM w oknie: nagroda zadania, która czekała na miejsce w ekwipunku.
+-- CLAIM: nagroda skończonego zadania (numer z listy na dziś). Bez miejsca w ekwipunku nagroda czeka.
 local function claimQuest(player, index)
 	if type(index) ~= "number" or index ~= index or index % 1 ~= 0 then
 		return { Ok = false, Reason = "BadRequest" }
@@ -350,28 +306,36 @@ local function claimQuest(player, index)
 		return { Ok = false, Reason = "NotLoaded" }
 	end
 	local now = os.clock()
-	if lastQuestClaim[player] ~= nil and now - lastQuestClaim[player] < CLAIM_GAP then
+	if lastQuestClaim[player] ~= nil and now - lastQuestClaim[player] < QUEST_CLAIM_GAP then
 		return { Ok = false, Reason = "Cooldown" }
 	end
 	lastQuestClaim[player] = now
-	local result, reason = grantQuest(player, data, index, false)
+	local result, reason = Rewards.claimQuest(data, LoopService.contextFor(player), index, random01, limitsFor(), os.time())
 	if result == nil then
+		LoopService.markDirty(player) -- np. nowy dzień: lista u gracza była stara
 		return { Ok = false, Reason = reason }
 	end
+	local pets, items = RewardsService.deliver(player, data, result, "Quest", {
+		Index = index,
+		Key = result.Key,
+		Aura = result.Aura,
+		BonusAura = result.BonusAura,
+		AllDone = result.AllDone,
+	})
 	return {
 		Ok = true,
 		Index = index,
 		Key = result.Key,
 		Boosts = result.Boosts,
-		Pets = result.PetCount,
-		Items = result.ItemCount,
+		Pets = pets,
+		Items = items,
 		Aura = result.Aura,
 		BonusAura = result.BonusAura,
 		AllDone = result.AllDone,
 	}
 end
 
--- Tryb testowy: postęp zadania (np. /quests done 2 dokłada brakującą resztę). Nagroda jak w grze.
+-- Tryb testowy: postęp zadania (np. /quests done 2 dokłada brakującą resztę). Nagroda czeka na CLAIM.
 function RewardsService.progressQuest(player, key, amount)
 	onProgress(player, key, amount)
 end

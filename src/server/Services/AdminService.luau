@@ -751,7 +751,7 @@ command("daily", "/daily [reset|next|day 1-7]", "nagroda dzienna: reset = od zer
 	)
 end)
 
-command("quests", "/quests [reset|done 1-3|done all]", "zadania dzienne: postęp; reset = nowe losowanie na dziś; done 2 = kończy zadanie 2 (nagroda jak w grze)", function(player, data, args)
+command("quests", "/quests [reset|done 1-3|done all]", "zadania dzienne: postęp; reset = nowe losowanie na dziś; done 2 = kończy zadanie 2 (nagroda czeka na CLAIM, jak w grze)", function(player, data, args)
 	local what = string.lower(args[1] or "")
 	local now = os.time()
 	if what == "reset" then
@@ -792,7 +792,7 @@ command("quests", "/quests [reset|done 1-3|done all]", "zadania dzienne: postęp
 		if quest.Claimed then
 			mark = " ✓"
 		elseif info ~= nil and quest.Progress >= info.Target then
-			mark = " (nagroda za chwilę albo czeka na miejsce)"
+			mark = " (czeka na CLAIM)"
 		end
 		table.insert(parts, string.format("%d. %s %d/%d%s", i, quest.Key, quest.Progress, (info and info.Target) or 0, mark))
 	end

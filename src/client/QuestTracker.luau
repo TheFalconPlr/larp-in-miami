@@ -1,11 +1,12 @@
 -- Zadania dzienne na ekranie (Etap 11, część 3), jak lista zadań w Pet Simulator 99, ale po swojemu:
 --   • po prawej u góry, pod paskiem Robloxa, bez tła: nagłówek „Daily Quests 1/3” z cienką kreską,
 --     a pod nim 3 zadania wyrównane do prawej (cel białym napisem, pod nim postęp, ikona nagrody
---     i ikona Aury od Rebirth 1). Gotowe do odebrania: złote CLAIM! i całe zadanie pulsuje; odebrane:
---     szary cel i zielone DONE!; po odebraniu wszystkich lista zwija się do czasu do nowych zadań,
+--     i ikona Aury od Rebirth 1). Skończone zadanie czeka na gracza: zamiast postępu ma mały złoty
+--     przycisk CLAIM! i całe pulsuje, a klik w przycisk albo w zadanie odbiera nagrodę (Quests.claim);
+--     odebrane: szary cel i zielone DONE!; po odebraniu wszystkich lista zwija się do czasu do nowych,
 --   • pod listą zielony przycisk REWARDS z kropką „!” (okno nagrody dziennej i zadań, Daily.luau),
---     a klik w nagłówek otwiera to okno na zakładce QUESTS. Same zadania nie łapią kliknięć, więc
---     klikanie po LP w tym miejscu działa jak wcześniej,
+--     a klik w nagłówek otwiera to okno na zakładce QUESTS. Zadania w toku i odebrane nie łapią
+--     kliknięć, więc klikanie po LP w tym miejscu działa jak wcześniej,
 --   • przycisk „>” na lewo od listy chowa ją za prawą krawędź (zostaje „<”), jak menu po lewej;
 --     wybór jest w zapisie gracza (Settings.HideQuests, z zapisu tylko przy pierwszym stanie),
 --   • lista stoi nad kolumną SHOP / TELEPORT / Starter Pack (Shop.luau, hud.shopColumn); gdy miejsca
@@ -49,16 +50,22 @@ local L = {
 	TextSize = 19,
 	RowGap = 8, -- odstęp między zadaniami
 	Icon = 26, -- ikona nagrody (jajko, box, boost)
+	Claim = Vector2.new(80, 19), -- mały przycisk CLAIM! w miejscu postępu (skończone zadanie)
+	ClaimEdge = 3,
+	ClaimDrop = 2.5, -- przycisk CLAIM! tyle niżej niż linia postępu (nie wchodzi na cel zadania)
+	ClaimText = 15,
+	ClaimPad = 6, -- klikalne pole skończonego zadania wystaje tyle poza napisy
+	ClaimReset = 2.5, -- po tylu sekundach bez nowego stanu przycisk wraca z „...” do CLAIM!
 	AuraIcon = 22,
 	IconGap = 4,
-	ButtonGap = 8,
+	ButtonGap = 11, -- nad REWARDS (przycisk CLAIM! ostatniego zadania wystaje 3 px pod swoje zadanie)
 	Button = Vector2.new(176, 42),
 	ButtonEdge = 4,
 	ToggleW = 36,
 	ToggleH = 64,
 	ToggleGap = 8,
 	HiddenEdge = 6, -- schowana lista: „<” tyle pikseli od krawędzi ekranu
-	ColumnClear = 36, -- nad kolumną SHOP (koszyk wystaje nad kafelek do 30 px; Shop: ColumnTop = 10 + 236 + 36)
+	ColumnClear = 33, -- nad kolumną SHOP (koszyk wystaje nad kafelek do 30 px; Shop: ColumnTop = 10 + 239 + 33)
 	ShortGap = 12, -- niski ekran: odstęp listy od kolumny
 	ShortReserve = 90, -- niski ekran: dół zostaje dla boostów i przycisku skoku
 	MinFit = 0.6,
@@ -177,10 +184,49 @@ function QuestTracker.start(hud)
 		goal.holder.ZIndex = 5
 		local progress = Kit.line(frame, { name = "Progress", anchor = Vector2.new(1, 0.5), position = UDim2.new(1, 0, 0, L.LineH * 1.5), height = L.LineH })
 		progress.holder.ZIndex = 5
+		-- skończone zadanie: mały przycisk CLAIM! w miejscu postępu, a pod napisami pole, które też
+		-- odbiera nagrodę (łatwiej trafić palcem); oba są tylko przy zadaniu do odebrania
+		local claim = Kit.button(frame, {
+			name = "Claim",
+			size = L.Claim,
+			colors = Theme.Gradients.Gold,
+			radius = 9,
+			edge = L.ClaimEdge,
+			border = 3,
+			anchor = Vector2.new(1, 0.5),
+			position = UDim2.new(1, 0, 0, L.LineH * 1.5 + L.ClaimDrop),
+		})
+		claim.holder.ZIndex = 6
+		claim.holder.Visible = false
+		local claimLabel = Kit.text(claim.face, {
+			Name = "Label",
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.new(1, -8, 1, 0),
+			Text = TEXT.Claim,
+			ZIndex = 4,
+		}, { maxSize = L.ClaimText, stroke = 2.5 })
+		Fx.button(claim, 1.08)
+		local claimHit = Kit.new("TextButton", {
+			Name = "ClaimHit",
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, L.ClaimPad, 0.5, L.ClaimDrop),
+			Size = UDim2.fromOffset(L.Claim.X + 2 * L.ClaimPad, 2 * L.LineH + 2 * L.ClaimPad),
+			BackgroundTransparency = 1,
+			AutoButtonColor = false,
+			Text = "",
+			Visible = false,
+			ZIndex = 3,
+			Parent = frame,
+		})
 		rows[i] = {
 			frame = frame,
 			goal = goal,
 			progress = progress,
+			claim = claim,
+			claimLabel = claimLabel,
+			claimHit = claimHit,
+			lineW = 0, -- szerokość drugiej linii: postęp albo przycisk CLAIM!
 			pop = Kit.new("UIScale", { Parent = progress.holder }), -- podskok postępu
 			pulse = Kit.new("UIScale", { Parent = frame }), -- CLAIM!: całe zadanie pulsuje
 			aura = Icons.make("Aura", {
@@ -284,7 +330,7 @@ function QuestTracker.start(hud)
 		else
 			for _, row in ipairs(rows) do
 				if row.frame.Visible then
-					w = math.max(w, row.goal.holder.Size.X.Offset, row.iconsW + row.progress.holder.Size.X.Offset)
+					w = math.max(w, row.goal.holder.Size.X.Offset, row.iconsW + row.lineW)
 				end
 			end
 		end
@@ -367,6 +413,44 @@ function QuestTracker.start(hud)
 		setHidden(not state.hidden, true)
 		Net.event("SetSetting"):FireServer("HideQuests", state.hidden)
 	end)
+
+	------------------------------------------------------------- CLAIM
+	-- Odbiór nagrody skończonego zadania (przycisk CLAIM! albo klik w zadanie). Po udanym odbiorze
+	-- przycisk zostaje z „...” do nowego stanu z serwera (zadanie robi się DONE!).
+	local function claimRow(row)
+		if row.index == nil or row.claiming then
+			return
+		end
+		local started = Quests.claim(hud, row.index, function(ok)
+			if ok then
+				local token = row.claimToken
+				task.delay(L.ClaimReset, function()
+					if row.claiming and row.claimToken == token then
+						row.claiming = false
+						row.claimLabel.Text = TEXT.Claim
+					end
+				end)
+				return
+			end
+			row.claiming = false
+			row.claimLabel.Text = TEXT.Claim
+			Kit.shake(row.claim.body)
+		end)
+		if started then
+			row.claiming = true
+			row.claimToken = (row.claimToken or 0) + 1
+			row.claimLabel.Text = "..."
+		end
+	end
+	for _, row in ipairs(rows) do
+		row.claim.Activated:Connect(function()
+			claimRow(row)
+		end)
+		row.claimHit.Activated:Connect(function()
+			Sounds.play("Button")
+			claimRow(row)
+		end)
+	end
 
 	------------------------------------------------------------- Rysowanie
 	local function setRewardIcon(row, key)
@@ -464,10 +548,13 @@ function QuestTracker.start(hud)
 				elseif progress >= target then
 					kind = "Ready"
 				end
+				row.index = quest.Index
 				local rowKey = table.concat({ tostring(quest.Key), tostring(progress), kind, tostring(aura > 0) }, "|")
 				if row.key ~= rowKey then
 					local grew = row.quest == quest.Key and progress > (row.value or 0)
 					row.key = rowKey
+					row.claiming = false
+					row.claimLabel.Text = TEXT.Claim
 					if row.quest ~= quest.Key then
 						row.quest = quest.Key
 						setRewardIcon(row, quest.Key)
@@ -484,13 +571,7 @@ function QuestTracker.start(hud)
 						row.aura.Visible = false
 						row.iconsW = 0
 					else
-						local text = Format.number(progress) .. "/" .. Format.number(target)
-						local colors = Theme.Gradients.LP
-						if kind == "Ready" then
-							text = TEXT.Claim
-							colors = Theme.Gradients.Gold
-						end
-						row.progress.set({ { text = text, size = L.TextSize, colors = colors } })
+						row.progress.set({ { text = Format.number(progress) .. "/" .. Format.number(target), size = L.TextSize, colors = Theme.Gradients.LP } })
 						row.icon.Visible = true
 						row.aura.Visible = aura > 0
 						row.iconsW = L.Icon + L.IconGap
@@ -498,10 +579,21 @@ function QuestTracker.start(hud)
 							row.iconsW = row.iconsW + L.AuraIcon + L.IconGap
 						end
 					end
+					-- druga linia: postęp albo (skończone zadanie) przycisk CLAIM! na lewo od ikon nagrody
+					local ready = kind == "Ready"
 					row.progress.holder.Position = UDim2.new(1, -row.iconsW, 0, L.LineH * 1.5)
-					setPulse(row, kind == "Ready")
-					if grew then
-						Fx.bump(row.pop, (kind == "Normal" and L.Pop) or 1.4, 0.35)
+					row.progress.holder.Visible = not ready
+					row.claim.holder.Position = UDim2.new(1, -row.iconsW, 0, L.LineH * 1.5 + L.ClaimDrop)
+					row.claim.holder.Visible = ready
+					row.lineW = (ready and L.Claim.X) or row.progress.holder.Size.X.Offset
+					local rowW = math.max(row.goal.holder.Size.X.Offset, row.iconsW + row.lineW)
+					row.claimHit.Size = UDim2.fromOffset(rowW + 2 * L.ClaimPad, 2 * L.LineH + 2 * L.ClaimPad)
+					row.claimHit.Visible = ready
+					setPulse(row, ready)
+					if grew and ready then
+						Fx.bump(Fx.scaleOf(row.claim.body), 1.5, 0.4) -- przycisk CLAIM! wyskakuje
+					elseif grew then
+						Fx.bump(row.pop, L.Pop, 0.35)
 					end
 				end
 			end

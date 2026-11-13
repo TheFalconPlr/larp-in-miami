@@ -50,7 +50,7 @@ local SIDE = {
 	TipTouchTime = 2.5, -- na telefonie napis po dotknięciu znika po tylu sekundach
 	ShortScreen = 560, -- niższy ekran (telefon poziomo): kolumna po prawej od góry, ciaśniej
 	ColumnGap = 22, -- odstęp kafelków w kolumnie (napisy SHOP i TELEPORT wystają ok. 13 px w dół)
-	-- Góra kolumny: nad nią lista zadań dziennych (QuestTracker: 10 + 236) i koszyk, który wystaje
+	-- Góra kolumny: nad nią lista zadań dziennych (QuestTracker: 10 + 239) i koszyk, który wystaje
 	-- nad kafelek SHOP (24 px, a przy unoszeniu 30). Gdy kolumna się nie mieści (np. z przyciskiem
 	-- Starter Pack na niskim ekranie), stoi tuż nad rzędem boostów, a lista zadań jest trochę mniejsza.
 	ColumnTop = 282,

@@ -1,11 +1,12 @@
 -- Zadania dzienne po stronie gracza (Etap 11, część 3): zakładka QUESTS w oknie nagrody dziennej
 -- (okno i zakładki buduje Daily.luau, tu jest treść zakładki i komunikaty):
 --   • 3 karty: co zrobić, nagroda (i Aura od Rebirth 1), pasek postępu; odebrane zielone ze znaczkiem,
---     a czekające na miejsce w ekwipunku złote z przyciskiem CLAIM (pulsują tylko przy otwartej zakładce),
+--     a skończone złote z przyciskiem CLAIM (pulsują tylko przy otwartej zakładce),
 --   • nad kartami komplet (+20 Aury za wszystkie 3), pod nimi czas do nowych zadań (północ UTC),
---   • gotowe zadanie serwer odbiera sam (Notify „Reward” z Source = "Quest"): komunikat „Quest complete!”
---     pokazujemy po animacji jajek i boxów (Eggs.luau, Boxes.luau), a „+10 AURA” przy liczniku
---     przez State.emit; bez miejsca w ekwipunku Notify „QuestReady” mówi, gdzie odebrać nagrodę.
+--   • skończone zadanie czeka na gracza: Notify „QuestReady” daje komunikat „Quest complete!”, a nagrodę
+--     gracz odbiera sam przyciskiem CLAIM (tu albo na liście po prawej, QuestTracker): Quests.claim.
+--     Po odbiorze przychodzi Notify „Reward” z Source = "Quest": komunikat „Reward claimed!” pokazujemy
+--     po animacji jajek i boxów (Eggs.luau, Boxes.luau), a „+10 AURA” przy liczniku przez State.emit.
 -- Postęp liczy i nagrody daje serwer (RewardsService, Logic/Rewards).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -36,6 +37,7 @@ local L = {
 	Bar = Vector2.new(232, 32),
 	Button = Vector2.new(190, 40),
 	BusyCalm = 0.6, -- komunikat po tylu sekundach bez animacji (jajka i boxy z nagrody)
+	ClaimRetry = 0.45, -- CLAIM zaraz po poprzednim: serwer każe chwilę poczekać, próbujemy jeszcze raz
 }
 L.RowY = L.HeaderH + 10
 L.FooterY = L.RowY + L.Card.Y + 12
@@ -54,8 +56,9 @@ local TEXT = {
 	Completed = "COMPLETED!",
 	Aura = "+%s Aura",
 	Toast = "Quest complete!",
+	ToastClaim = "Claim your reward!",
+	ToastClaimed = "Reward claimed!",
 	ToastAll = "All daily quests done!",
-	MakeRoom = "Make room, then claim it at the Daily board",
 	PetInventory = "No room for pets: sell or merge some first",
 	ClothInventory = "No room for clothes: sell or merge some first",
 	Claimed = "Already claimed",
@@ -144,6 +147,43 @@ local function waitCalm()
 	end
 end
 
+-- Odbiór nagrody skończonego zadania (CLAIM w oknie i na liście po prawej): jedno żądanie naraz.
+-- done(ok, result) dostaje wynik; przy odmowie (np. brak miejsca na pety) gra dźwięk i komunikat.
+-- Zwraca false, gdy poprzedni odbiór jeszcze trwa.
+local claimBusy = false
+function Quests.claim(hud, index, done)
+	if claimBusy or type(index) ~= "number" then
+		return false
+	end
+	claimBusy = true
+	task.spawn(function()
+		local function ask()
+			local ok, result = pcall(function()
+				return Net.func("ClaimQuest"):InvokeServer(index)
+			end)
+			if ok and type(result) == "table" then
+				return result
+			end
+			return {}
+		end
+		local result = ask()
+		if result.Reason == "Cooldown" then
+			task.wait(L.ClaimRetry)
+			result = ask()
+		end
+		claimBusy = false
+		local ok = result.Ok == true
+		if not ok then
+			Sounds.play("NotEnough")
+			hud.toast({ { text = TEXT[result.Reason] or TEXT.Error, size = 26, colors = Theme.Gradients.Red } }, "QuestError")
+		end
+		if done ~= nil then
+			done(ok, result)
+		end
+	end)
+	return true
+end
+
 -- Ile zadań czeka na CLAIM (skończone, nieodebrane), dla kropki na zakładce.
 function Quests.claimable(view)
 	local quests = view and view.Quests
@@ -190,24 +230,22 @@ function Quests.create(hud, parent, helpers)
 		if claiming or card.index == nil then
 			return
 		end
-		claiming = true
-		card.button.setText("...")
-		local ok, result = pcall(function()
-			return Net.func("ClaimQuest"):InvokeServer(card.index)
-		end)
-		claiming = false
-		if ok and type(result) == "table" and result.Ok then
-			-- komunikat przyjdzie z Notify „Reward” (po animacji); jajka i boxy grają na całym ekranie
-			if ((result.Pets or 0) > 0 or (result.Items or 0) > 0) and helpers.close ~= nil then
-				helpers.close()
+		local started = Quests.claim(hud, card.index, function(ok, result)
+			claiming = false
+			if ok then
+				-- komunikat przyjdzie z Notify „Reward” (po animacji); jajka i boxy grają na całym ekranie
+				if ((result.Pets or 0) > 0 or (result.Items or 0) > 0) and helpers.close ~= nil then
+					helpers.close()
+				end
+				return
 			end
-			return
+			Kit.shake(card.button.body)
+			render(true)
+		end)
+		if started then
+			claiming = true
+			card.button.setText("...")
 		end
-		Sounds.play("NotEnough")
-		local reason = type(result) == "table" and result.Reason or nil
-		hud.toast({ { text = TEXT[reason] or TEXT.Error, size = 26, colors = Theme.Gradients.Red } }, "QuestError")
-		Kit.shake(card.button.body)
-		render(true)
 	end
 
 	for i = 1, count do
@@ -302,7 +340,7 @@ function Quests.create(hud, parent, helpers)
 			height = 28,
 		})
 		card.aura.holder.ZIndex = 7
-		-- pasek postępu (w toku i odebrane) albo CLAIM (skończone, czeka na miejsce)
+		-- pasek postępu (w toku i odebrane) albo CLAIM (skończone, czeka na odbiór)
 		local bar = Kit.new("Frame", {
 			Name = "Bar",
 			AnchorPoint = Vector2.new(0.5, 0),
@@ -545,7 +583,7 @@ function Quests.create(hud, parent, helpers)
 		for _, group in ipairs(payload.Boxes or {}) do
 			clothes = clothes + #(group.Items or {})
 		end
-		local items = { { icon = (QUESTS[payload.Key] or {}).icon or "Quest", size = 38 }, { text = TEXT.Toast, size = 26, colors = Theme.Gradients.Gold } }
+		local items = { { icon = (QUESTS[payload.Key] or {}).icon or "Quest", size = 38 }, { text = TEXT.ToastClaimed, size = 26, colors = Theme.Gradients.Gold } }
 		for _, item in ipairs(Codes.rewardItems({ Boosts = payload.Boosts, Pets = pets, Items = clothes })) do
 			table.insert(items, item)
 		end
@@ -583,13 +621,17 @@ function Quests.create(hud, parent, helpers)
 				showDone(payload)
 			end)
 		elseif payload.Kind == "QuestReady" then
-			-- zadanie skończone, ale nagroda się nie mieści: czeka na CLAIM w oknie nagrody dziennej
-			Sounds.play("NotEnough")
-			hud.toast({
-				{ icon = (QUESTS[payload.Key] or {}).icon or "Quest", size = 38 },
-				{ text = TEXT.Toast, size = 26, colors = Theme.Gradients.Gold },
-				{ text = TEXT.MakeRoom, size = 22, colors = Theme.Gradients.Red },
-			}, "QuestReady")
+			-- zadanie skończone: nagroda czeka na CLAIM (lista po prawej albo okno); komunikat po
+			-- aktywności albo animacji, żeby nie zginął
+			task.spawn(function()
+				waitCalm()
+				Sounds.play("Unlock", { volume = 0.6 })
+				hud.toast({
+					{ icon = (QUESTS[payload.Key] or {}).icon or "Quest", size = 38 },
+					{ text = TEXT.Toast, size = 26, colors = Theme.Gradients.Gold },
+					{ text = TEXT.ToastClaim, size = 24 },
+				}, "QuestReady")
+			end)
 		end
 	end)
 
